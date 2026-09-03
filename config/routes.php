@@ -72,6 +72,9 @@ $router->post('/admin/tenants', [AdminController::class, 'createTenant'], [Admin
 $router->put('/admin/tenants/{id}', [AdminController::class, 'updateTenant'], [AdminMiddleware::class]);
 $router->post('/admin/tenants/{id}/extend', [AdminController::class, 'extendTenant'], [AdminMiddleware::class]);
 $router->get('/admin/tenants/{id}/usage', [AdminController::class, 'tenantUsage'], [AdminMiddleware::class]);
+$router->get('/admin/tenants/{id}/billing', [AdminController::class, 'tenantBillingView'], [AdminMiddleware::class]);
+$router->get('/admin/tenants/{id}/billing/api', [AdminController::class, 'tenantBilling'], [AdminMiddleware::class]);
+$router->post('/admin/tenants/{id}/billing', [AdminController::class, 'tenantBilling'], [AdminMiddleware::class]);
 
 // Users
 $router->get('/admin/tenants/{id}/users', [AdminController::class, 'tenantUsers'], [AdminMiddleware::class]);

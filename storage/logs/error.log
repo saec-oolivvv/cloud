@@ -73,3 +73,76 @@
 [03-Sep-2026 05:33:43 Europe/Amsterdam] [EXCEPTION] syntax error, unexpected token ".", expecting end of file in /volume1/web/cloud/app/Views/layouts/main.php:8
 [03-Sep-2026 05:34:57 Europe/Amsterdam] [EXCEPTION] json_decode(): Argument #1 ($json) must be of type string, null given in /volume1/web/cloud/app/Controllers/AdminController.php:570
 [03-Sep-2026 05:40:38 Europe/Amsterdam] [ERROR] [2] mkdir(): Permission denied in /volume1/web/cloud/app/Controllers/FileController.php:16
+[03-Sep-2026 06:00:36 Europe/Amsterdam] [EXCEPTION] syntax error, unexpected token "," in /volume1/web/cloud/app/Views/dashboard/index.php:86
+[03-Sep-2026 06:00:54 Europe/Amsterdam] [EXCEPTION] syntax error, unexpected token "," in /volume1/web/cloud/app/Views/dashboard/index.php:86
+[03-Sep-2026 06:00:55 Europe/Amsterdam] [EXCEPTION] syntax error, unexpected token "," in /volume1/web/cloud/app/Views/dashboard/index.php:86
+[03-Sep-2026 06:00:56 Europe/Amsterdam] [EXCEPTION] syntax error, unexpected token "," in /volume1/web/cloud/app/Views/dashboard/index.php:86
+[03-Sep-2026 06:01:05 Europe/Amsterdam] PHP Fatal error:  Unparenthesized `a ? b : c ? d : e` is not supported. Use either `(a ? b : c) ? d : e` or `a ? b : (c ? d : e)` in /volume1/web/cloud/app/Views/dashboard/index.php on line 127
+[03-Sep-2026 06:01:08 Europe/Amsterdam] PHP Fatal error:  Unparenthesized `a ? b : c ? d : e` is not supported. Use either `(a ? b : c) ? d : e` or `a ? b : (c ? d : e)` in /volume1/web/cloud/app/Views/dashboard/index.php on line 127
+[03-Sep-2026 06:01:09 Europe/Amsterdam] PHP Fatal error:  Unparenthesized `a ? b : c ? d : e` is not supported. Use either `(a ? b : c) ? d : e` or `a ? b : (c ? d : e)` in /volume1/web/cloud/app/Views/dashboard/index.php on line 127
+[03-Sep-2026 06:01:21 Europe/Amsterdam] PHP Fatal error:  Unparenthesized `a ? b : c ? d : e` is not supported. Use either `(a ? b : c) ? d : e` or `a ? b : (c ? d : e)` in /volume1/web/cloud/app/Views/dashboard/index.php on line 127
+[03-Sep-2026 06:01:22 Europe/Amsterdam] PHP Fatal error:  Unparenthesized `a ? b : c ? d : e` is not supported. Use either `(a ? b : c) ? d : e` or `a ? b : (c ? d : e)` in /volume1/web/cloud/app/Views/dashboard/index.php on line 127
+[03-Sep-2026 06:01:23 Europe/Amsterdam] PHP Fatal error:  Unparenthesized `a ? b : c ? d : e` is not supported. Use either `(a ? b : c) ? d : e` or `a ? b : (c ? d : e)` in /volume1/web/cloud/app/Views/dashboard/index.php on line 127
+[03-Sep-2026 06:01:33 Europe/Amsterdam] PHP Fatal error:  Unparenthesized `a ? b : c ? d : e` is not supported. Use either `(a ? b : c) ? d : e` or `a ? b : (c ? d : e)` in /volume1/web/cloud/app/Views/dashboard/index.php on line 127
+[03-Sep-2026 06:01:34 Europe/Amsterdam] PHP Fatal error:  Unparenthesized `a ? b : c ? d : e` is not supported. Use either `(a ? b : c) ? d : e` or `a ? b : (c ? d : e)` in /volume1/web/cloud/app/Views/dashboard/index.php on line 127
+[03-Sep-2026 06:01:35 Europe/Amsterdam] PHP Fatal error:  Unparenthesized `a ? b : c ? d : e` is not supported. Use either `(a ? b : c) ? d : e` or `a ? b : (c ? d : e)` in /volume1/web/cloud/app/Views/dashboard/index.php on line 127
+[03-Sep-2026 06:13:36 Europe/Amsterdam] [ERROR] [2] mkdir(): Permission denied in /volume1/web/cloud/app/Controllers/FileController.php:16
+[03-Sep-2026 07:19:55 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 07:19:55 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 12:41:36 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 12:41:36 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 12:41:39 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 12:41:39 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 12:48:40 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 12:48:40 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 12:48:43 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 12:48:43 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 12:48:43 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 12:48:43 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 12:53:00 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 12:53:00 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 12:53:01 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 12:53:01 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 12:53:02 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 12:53:02 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 12:53:11 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 12:53:11 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 12:56:29 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 12:56:29 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 12:56:30 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 12:56:30 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 12:58:26 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 12:58:26 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 12:58:27 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 12:58:27 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 13:02:00 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 13:02:00 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 13:02:01 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 13:02:01 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 13:10:53 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 13:10:53 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 13:10:55 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 13:10:55 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 13:12:44 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 13:12:44 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 13:12:45 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 13:12:45 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 13:12:45 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 13:12:45 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 13:12:45 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 13:12:45 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 13:12:45 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 13:12:45 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 13:15:48 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 13:15:48 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 13:22:46 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 13:22:46 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 13:22:47 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 13:22:47 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 13:22:47 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 13:22:47 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 13:22:47 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 13:22:47 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 13:22:47 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
+[03-Sep-2026 13:22:47 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 16:11:07 Europe/Amsterdam] [ERROR] [2] mkdir(): Permission denied in /volume1/web/cloud/app/Controllers/FolderController.php:146

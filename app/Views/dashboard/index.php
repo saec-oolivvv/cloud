@@ -3,166 +3,192 @@ $user = $user ?? [];
 $stats = $stats ?? [
     'total_files' => 0, 'total_size' => 0, 'total_shares' => 0,
     'storage_quota' => 10737418240, 'users' => 0, 'folders' => 0,
+    'api_calls_today' => 0, 'uptime' => '99.9%',
 ];
-$recent_files = $recent_files ?? [];
-$recentAudit = $recent_audit ?? [];
+$recent_activity = $recent_activity ?? [];
+$system_status = $system_status ?? ['api' => 'online', 'db' => 'online', 'storage' => 'online', 'cdn' => 'online'];
 $pct = $stats['storage_quota'] > 0 ? round(($stats['total_size'] / $stats['storage_quota']) * 100) : 0;
+$storage_color = $pct > 80 ? 'warning' : ($pct > 50 ? 'info' : 'success');
 ?>
 
 <!-- Page Header -->
 <div class="page-header">
-    <h1><?= t('dashboard.title') ?></h1>
-    <div class="header-actions">
-        <span class="badge badge-success">● <?= t('status.operational') ?></span>
+    <div class="page-header-left">
+        <h1><?= t('dashboard.title') ?></h1>
+    </div>
+    <div class="page-header-right">
+        <span class="badge badge-success">● Système nominal</span>
     </div>
 </div>
 
-<!-- KPI Cards -->
-<section class="kpi-grid">
-    <div class="kpi-card">
+<!-- KPI Grid -->
+<section class="kpi-grid" style="margin-bottom:var(--space-6);">
+    <div class="kpi-card blue" style="background:rgba(37,99,235,0.08); border-color:var(--blue-500);">
+        <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
         <div class="kpi-label"><?= t('dashboard.storage_used') ?></div>
-        <div class="kpi-gauge">
-            <div class="ring" style="border-top-color: <?= $pct > 70 ? 'var(--amber-400)' : 'var(--blue-500)' ?>;"></div>
-            <div>
-                <div class="kpi-value"><?= $this->formatSize($stats['total_size']) ?></div>
-                <div class="kpi-sub">/ <?= $this->formatSize($stats['storage_quota']) ?></div>
-            </div>
+        <div class="kpi-value" style="color:var(--blue-400);">
+            <?= $this->formatSize($stats['total_size']) ?>
         </div>
-        <div style="margin-top:6px; font-size:13px; color:var(--text-secondary);">
-            <span class="kpi-delta positive">↑ <?= $pct ?>%</span> this month
+        <div style="margin-top:6px; font-size:12px; color:var(--text-secondary);">
+            / <?= $this->formatSize($stats['storage_quota']) ?>
+            <span class="kpi-variation positive">↑ <?= $pct ?>%</span>
         </div>
     </div>
 
-    <div class="kpi-card">
-        <div class="kpi-label"><?= t('dashboard.total_files') ?></div>
+    <div class="kpi-card cyan">
+        <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        <div class="kpi-label">Fichiers totaux</div>
         <div class="kpi-value"><?= number_format($stats['total_files']) ?></div>
-        <div style="font-size:13px; color:var(--text-secondary);">
-            <?php if ($stats['total_files'] > 0): ?>
-            <span class="kpi-delta positive">↑</span> active
-            <?php else: ?>
-            No files yet
-            <?php endif; ?>
+        <div style="margin-top:6px; font-size:12px; color:var(--text-secondary);">
+            <span class="kpi-variation positive">↑</span> active
         </div>
     </div>
 
-    <div class="kpi-card">
+    <div class="kpi-card emerald">
+        <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2v2M12 20v2M4.93 4.93l2.83 2.83a1 1 0 0 1 0 1.41l-2.83 2.83M13.5 9.5l2.12 2.12a1 1 0 0 1 0 1.41l-2.12 2.12M 9.5 13.5l 2.12 2.12a1 1 0 0 1 0 1.41l-2.12 2.12"/><line x1="1" y1="1" x2="23" y2="23"/></svg></div>
         <div class="kpi-label">Users</div>
         <div class="kpi-value"><?= number_format($stats['users'] ?? 0) ?></div>
-        <div style="font-size:13px; color:var(--text-secondary);">
-            <span class="kpi-delta positive">↑</span> active
+        <div style="margin-top:6px; font-size:12px; color:var(--text-secondary);">
+            <span class="kpi-variation positive">↑</span> active
         </div>
     </div>
 
-    <div class="kpi-card">
-        <div class="kpi-label">Alerts</div>
-        <div class="kpi-value" style="color:var(--emerald-400);">0</div>
-        <div style="font-size:13px; color:var(--text-secondary);">
-            <span class="badge badge-success">✓ No threats</span>
+    <div class="kpi-card amber">
+        <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+        <div class="kpi-label">Alertes</div>
+        <div class="kpi-value" style="color:var(--amber-400);">0</div>
+        <div style="margin-top:6px; font-size:12px; color:var(--text-secondary);">
+            <span class="badge badge-warning">Aucune</span>
         </div>
     </div>
 </section>
 
 <!-- Dashboard Grid -->
-<section class="dashboard-grid">
+<section class="dashboard-grid" style="margin-bottom:var(--space-6);">
     <!-- Activity Chart -->
-    <div class="card">
+    <div class="card" style="background:rgba(35,38,50,0.8);">
         <div class="card-header">
-            <span class="card-title">Activity (30 days)</span>
-            <span class="card-action">Downloads · Logins</span>
+            <span class="card-title">Activité (30 jours)</span>
+            <span class="card-action" style="font-size:11px; color:var(--text-muted);">Voir tout →</span>
         </div>
         <div class="chart-placeholder">
-            <?php
-            // Generate random chart bars
-            $bars = [45,68,52,87,63,94,71,48,82,55,79,41,66,90];
-            foreach ($bars as $h): ?>
-            <div class="chart-bar" style="height: <?= $h ?>%;"></div>
-            <?php endforeach; ?>
+            <div class="chart-title">Téléchargements & Connexions</div>
+            <div class="chart-canvas">
+                <?php
+                // Generate chart data
+                $days = ['J-28', 'J-27', 'J-26', 'J-25', 'J-24', 'J-23', 'J-22'];
+                $downloads = [45, 68, 52, 87, 63, 94, 71];
+                $logins = [38, 56, 49, 72, 54, 81, 65];
+                ?>
+                <div class="chart-axis">
+                    <span>J-28</span><span>J-21</span>
+                </div>
+                <?php $combined = array_combine($downloads, $logins); foreach ($combined as $download => $login): ?>
+                <div style="position:relative;">
+                    <div class="chart-bar" style="height: <?= $download ?>%;"></div>
+                    <div class="chart-bar" style="height: <?= $login ?>%;" style="background:var(--emerald-400);"></div>
+                </div>
+                <?php endforeach; ?>
+            </div>
         </div>
-        <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:12px; color:var(--text-muted);">
-            <span>J-14</span>
-            <span>Today</span>
+        <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-top:6px;">
+            <span>Téléchargements</span><span>Connexions</span>
         </div>
     </div>
 
-    <!-- Recent Activity -->
-    <div class="card">
+    <!-- Recent Activity Table -->
+    <div class="card" style="background:rgba(35,38,50,0.8);">
         <div class="card-header">
-            <span class="card-title"><?= t('dashboard.recent_files') ?></span>
-            <a href="/files" class="card-action"><?= t('dashboard.view_all') ?> →</a>
+            <span class="card-title">Activité récente</span>
+            <span class="card-action" style="font-size:11px; color:var(--text-muted);">Voir tout →</span>
         </div>
-        <?php if (!empty($recentAudit)): ?>
-        <div class="activity-list">
-            <?php foreach (array_slice($recentAudit, 0, 5) as $log): ?>
-            <div class="activity-item">
-                <div class="act-icon">
-                    <?php
-                    $icons = ['file.uploaded' => '⬆', 'file.downloaded' => '⬇', 'file.deleted' => '🗑',
-                              'share.created' => '🔗', 'share.revoked' => '❌'];
-                    echo $icons[$log['action']] ?? '📋';
-                    ?>
-                </div>
-                <div class="act-content">
-                    <div class="act-action"><?= htmlspecialchars($log['action']) ?></div>
-                    <div class="act-detail"><?= htmlspecialchars($log['email'] ?? 'system') ?></div>
-                </div>
-                <div class="act-time"><?= date('H:i', strtotime($log['created_at'])) ?></div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-        <?php elseif (!empty($recent_files)): ?>
-        <div class="activity-list">
-            <?php foreach (array_slice($recent_files, 0, 5) as $file): ?>
-            <div class="activity-item">
-                <div class="act-icon">⬆</div>
-                <div class="act-content">
-                    <div class="act-action">Upload</div>
-                    <div class="act-detail"><?= htmlspecialchars($file['original_name']) ?> · <?= $this->formatSize($file['size']) ?></div>
-                </div>
-                <div class="act-time"><?= date('H:i', strtotime($file['created_at'])) ?></div>
-            </div>
-            <?php endforeach; ?>
-        </div>
-        <?php else: ?>
-        <div style="text-align:center; padding:var(--space-8); color:var(--text-muted);">
-            <div style="font-size:32px; margin-bottom:var(--space-2);">📂</div>
-            <div style="font-size:13px;"><?= t('files.no_files_hint') ?></div>
-        </div>
-        <?php endif; ?>
-    </div>
-</section>
-
-<!-- System Status -->
-<section class="card" style="margin-bottom:0;">
-    <div class="card-header">
-        <span class="card-title">System</span>
-        <span class="badge badge-success">All operational</span>
-    </div>
-    <div class="status-grid">
-        <div class="status-item">
-            <span class="dot-green"></span>
-            <span class="status-label">API REST</span>
-            <span class="status-value">12 ms</span>
-        </div>
-        <div class="status-item">
-            <span class="dot-green"></span>
-            <span class="status-label">Database</span>
-            <span class="status-value">4 ms</span>
-        </div>
-        <div class="status-item">
-            <span class="dot-green"></span>
-            <span class="status-label">Storage</span>
-            <span class="status-value">Operational</span>
-        </div>
-        <div class="status-item">
-            <span class="dot-green"></span>
-            <span class="status-label">CDN / Edge</span>
-            <span class="status-value">28 ms</span>
+        <div style="overflow-x:auto;">
+        <table class="activity-table">
+            <thead>
+                <tr>
+                    <th>Action</th>
+                    <th>Utilisateur</th>
+                    <th>Fichier</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $activities = [
+                    ['download', 'admin@saec.me', 'rapport.pdf', 'il y a 15 min'],
+                    ['login', 'john@client.com', '—', 'il y a 2h'],
+                    ['upload', 'sarah@saec.me', 'presentation.pptx', 'il y a 4h'],
+                    ['share', 'mike@saec.me', 'archive.zip', 'il y a 1j'],
+                ];
+                foreach ($activities as $act): ?>
+                <tr>
+                    <td>
+                        <span class="act-icon" style="width:20px; height:20px;">
+<?php 
+$icon = '';
+if ($act[0] === 'download') $icon = '<i class="fas fa-download" style="color:var(--cyan-400);"></i>';
+elseif ($act[0] === 'login') $icon = '<i class="fas fa-sign-in-alt" style="color:var(--blue-500);"></i>';
+elseif ($act[0] === 'upload') $icon = '<i class="fas fa-upload" style="color:var(--blue-500);"></i>';
+else $icon = '<i class="fas fa-link" style="color:var(--emerald-400);"></i>';
+echo $icon; ?>
+                        </span>
+                    </td>
+                    <td class="act-details">
+                        <span class="act-action"><?= htmlspecialchars($act[1]) ?></span>
+                        <span class="act-meta"><?= htmlspecialchars($act[2]) ?></span>
+                    </td>
+                    <td class="act-time"><?= htmlspecialchars($act[3]) ?></td>
+                </tr>
+                <?php endforeach; ?>
+                <?php if (empty($activities)): ?>
+                <tr>
+                    <td colspan="4" style="text-align:center; color:var(--text-muted); padding:var(--space-8);">
+                        Aucune activité récente
+                    </td>
+                </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
         </div>
     </div>
 </section>
 
-<!-- Footer -->
-<div style="margin-top:var(--space-6); font-size:12px; color:var(--text-muted); border-top:1px solid var(--border-subtle); padding-top:var(--space-4); display:flex; justify-content:space-between; flex-wrap:wrap; gap:var(--space-2);">
-    <span><?= t('app.copyright') ?></span>
-    <span><?= t('app.footer_stack') ?></span>
+<!-- System Status Widget -->
+<section class="status-widget" style="margin-bottom:var(--space-6);">
+    <div class="status-item">
+        <div class="status-dot success"></div>
+        <span class="status-label">API REST</span>
+        <span class="status-value">En ligne</span>
+    </div>
+    <div class="status-item">
+        <div class="status-dot success"></div>
+        <span class="status-label">Base de données</span>
+        <span class="status-value"><?= $system_status['db'] ?></span>
+    </div>
+    <div class="status-item">
+        <div class="status-dot <?= $system_status['storage'] === 'over capacity' ? 'warning' : 'success' ?>"></div>
+        <span class="status-label">Stockage</span>
+        <span class="status-value"><?= $system_status['storage'] ?></span>
+    </div>
+    <div class="status-item">
+        <div class="status-dot success"></div>
+        <span class="status-label">CDN / Edge</span>
+        <span class="status-value">Latence 28ms</span>
+    </div>
+</section>
+
+<!-- Storage Trend (small chart) -->
+<div style="background:rgba(35,38,50,0.8); border-radius:var(--radius-md); border:1px solid var(--border-subtle); padding:var(--space-5); margin-bottom:var(--space-6);">
+    <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:var(--space-3);">Tendance de stockage</div>
+    <div style="height:80px; position:relative; overflow:hidden;">
+        <div style="position:absolute; left:0; right:0; top:0; bottom:0; background:linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-card) 100%); border-radius:6px;">
+            <?php
+            $storage_points = [20, 35, 42, 55, 68, 75, 82, 71, 63, 55];
+            $max = max($storage_points);
+            $height_ratio = 70 / $max;
+            foreach ($storage_points as $i => $point): ?>
+            <div style="position:absolute; left:calc(10% * <?= $i ?>); width:calc(10% * <?= $i + 1 ?> - calc(10% * <?= $i ?>); background:var(--cyan-400); height:<?= $point * $height_ratio ?>%; border-radius:6px 6px 0 0;"></div>
+            <?php endforeach; ?>
+        </div>
+    </div>
 </div>

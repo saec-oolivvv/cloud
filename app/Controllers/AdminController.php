@@ -207,16 +207,33 @@ class AdminController extends Controller
             return;
         }
 
+        // Plan-based limits
+        $plan = $_POST['plan'] ?? 'custom';
+        $planLimits = [
+            'starter' => ['max_users' => 1, 'storage_quota' => 10737418240, 'max_file_size' => 1073741824, 'extra_user_price' => 2.00],
+            'professional' => ['max_users' => 5, 'storage_quota' => 107374182400, 'max_file_size' => 10737418240, 'extra_user_price' => 1.50],
+            'enterprise' => ['max_users' => 15, 'storage_quota' => 0, 'max_file_size' => 53687091200, 'extra_user_price' => 1.00],
+            'custom' => ['max_users' => 50, 'storage_quota' => 10737418240, 'max_file_size' => 104857600, 'extra_user_price' => 0.00],
+        ];
+        $limits = $planLimits[$plan] ?? $planLimits['custom'];
+
         $tenantId = $db->insert('tenants', [
             'name' => $name,
             'slug' => $slug,
-            'storage_quota' => (int) ($_POST['storage_quota'] ?? 10737418240),
-            'max_file_size' => (int) ($_POST['max_file_size'] ?? 104857600),
-            'max_users' => (int) ($_POST['max_users'] ?? 50),
+            'plan' => $plan,
+            'storage_quota' => (int) ($_POST['storage_quota'] ?? $limits['storage_quota']),
+            'max_file_size' => (int) ($_POST['max_file_size'] ?? $limits['max_file_size']),
+            'max_users' => (int) ($_POST['max_users'] ?? $limits['max_users']),
+            'plan_max_users' => $limits['max_users'],
+            'extra_users_count' => 0,
+            'extra_user_price' => $limits['extra_user_price'],
             'start_date' => $_POST['start_date'] ?? date('Y-m-d'),
             'end_date' => $_POST['end_date'] ?: null,
             'auto_deactivate' => (int) ($_POST['auto_deactivate'] ?? 1),
             'features' => json_encode($_POST['features'] ?? []),
+            'billing_cycle' => $_POST['billing_cycle'] ?? 'monthly',
+            'billing_status' => 'trial',
+            'trial_ends_at' => date('Y-m-d H:i:s', strtotime('+14 days')),
         ]);
 
         // Créer répertoire physique
@@ -731,6 +748,118 @@ class AdminController extends Controller
         ]);
 
         $this->json(['success' => true]);
+    }
+
+    public function tenantBillingView(string $id): void
+    {
+        $user = $this->requireAdmin();
+        $db = Database::getInstance();
+
+        $tenant = $db->fetch("SELECT * FROM tenants WHERE id = ?", [$id]);
+        if (!$tenant) {
+            http_response_code(404);
+            echo "Tenant not found";
+            return;
+        }
+
+        $userCount = $db->fetch("SELECT COUNT(*) as count FROM users WHERE tenant_id = ? AND active = 1", [$id]);
+        $currentUsers = (int) $userCount['count'];
+        $includedUsers = (int) ($tenant['plan_max_users'] ?? $tenant['max_users']);
+        $extraUsers = max(0, $currentUsers - $includedUsers);
+        $extraUserPrice = (float) ($tenant['extra_user_price'] ?? 0);
+        $monthlyExtra = $extraUsers * $extraUserPrice;
+        $basePrice = match($tenant['plan']) {
+            'starter' => 9.00,
+            'professional' => 29.00,
+            'enterprise' => 0.00,
+            default => 0.00,
+        };
+
+        $billing = [
+            'tenant' => $tenant,
+            'current_users' => $currentUsers,
+            'included_users' => $includedUsers,
+            'extra_users' => $extraUsers,
+            'extra_user_price' => $extraUserPrice,
+            'monthly_extra_cost' => $monthlyExtra,
+            'base_price' => $basePrice,
+            'total_monthly' => $basePrice + $monthlyExtra,
+            'billing_status' => $tenant['billing_status'] ?? 'trial',
+            'billing_cycle' => $tenant['billing_cycle'] ?? 'monthly',
+        ];
+
+        $data = [
+            'user' => $user,
+            'tenant' => $tenant,
+            'billing' => $billing,
+            'pageTitle' => "Facturation — {$tenant['name']}",
+        ];
+
+        $this->view('admin/billing', $data);
+    }
+
+    public function tenantBilling(string $id): void
+    {
+        $user = $this->requireAdmin();
+        $db = Database::getInstance();
+
+        $tenant = $db->fetch("SELECT * FROM tenants WHERE id = ?", [$id]);
+        if (!$tenant) {
+            $this->json(['error' => 'Tenant not found'], 404);
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $extraUsers = (int) ($_POST['extra_users_count'] ?? 0);
+            $billingStatus = $_POST['billing_status'] ?? 'trial';
+            $billingCycle = $_POST['billing_cycle'] ?? 'monthly';
+
+            $db->execute(
+                "UPDATE tenants SET extra_users_count = ?, billing_status = ?, billing_cycle = ? WHERE id = ?",
+                [$extraUsers, $billingStatus, $billingCycle, $id]
+            );
+
+            $db->insert('audit_logs', [
+                'tenant_id' => $user['tenant_id'],
+                'user_id' => $user['id'],
+                'action' => 'tenant.billing_updated',
+                'resource_type' => 'tenant',
+                'resource_id' => $id,
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                'metadata' => json_encode([
+                    'extra_users_count' => $extraUsers,
+                    'billing_status' => $billingStatus,
+                    'billing_cycle' => $billingCycle,
+                ]),
+            ]);
+
+            $this->json(['success' => true]);
+            return;
+        }
+
+        $userCount = $db->fetch("SELECT COUNT(*) as count FROM users WHERE tenant_id = ? AND active = 1", [$id]);
+        $currentUsers = (int) $userCount['count'];
+        $includedUsers = (int) ($tenant['plan_max_users'] ?? $tenant['max_users']);
+        $extraUsers = max(0, $currentUsers - $includedUsers);
+        $extraUserPrice = (float) ($tenant['extra_user_price'] ?? 0);
+        $monthlyExtra = $extraUsers * $extraUserPrice;
+        $basePrice = match($tenant['plan']) {
+            'starter' => 9.00,
+            'professional' => 29.00,
+            'enterprise' => 0.00,
+            default => 0.00,
+        };
+
+        $this->json([
+            'tenant' => $tenant,
+            'current_users' => $currentUsers,
+            'included_users' => $includedUsers,
+            'extra_users' => $extraUsers,
+            'extra_user_price' => $extraUserPrice,
+            'monthly_extra_cost' => $monthlyExtra,
+            'base_price' => $basePrice,
+            'total_monthly' => $basePrice + $monthlyExtra,
+        ]);
     }
 
     // ═══════════════════════════════════════════════════

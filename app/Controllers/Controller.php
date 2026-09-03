@@ -18,6 +18,18 @@ abstract class Controller
 
     protected function view(string $view, array $data = []): void
     {
+        $user = $this->getAuthUser();
+        $translation = \Saec\Core\Translation::getInstance();
+        
+        $layoutData = [
+            'user' => $user,
+            'isAdmin' => $user && $user['role'] === 'admin',
+            'currentPage' => $this->getCurrentPage($view),
+            'availableLangs' => \Saec\Core\Translation::getAvailable(),
+            'currentLang' => $translation->getLang(),
+        ];
+        
+        $data = array_merge($layoutData, $data);
         extract($data);
         $viewPath = __DIR__ . '/../Views/' . str_replace('.', '/', $view) . '.php';
 
@@ -32,6 +44,22 @@ abstract class Controller
         $content = ob_get_clean();
 
         require __DIR__ . '/../Views/layouts/main.php';
+    }
+
+    private function getCurrentPage(string $view): string
+    {
+        $map = [
+            'dashboard/index' => 'dashboard',
+            'files/index' => 'files',
+            'shares/index' => 'shares',
+            'admin/dashboard' => 'admin',
+            'admin/tenants' => 'admin',
+            'admin/modules' => 'admin',
+            'admin/audit' => 'admin',
+            'admin/config' => 'admin',
+            'admin/users' => 'admin',
+        ];
+        return $map[$view] ?? basename($view);
     }
 
     protected function json(mixed $data, int $status = 200): void

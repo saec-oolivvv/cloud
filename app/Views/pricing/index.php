@@ -11,7 +11,7 @@ $plans = [
         'color' => '#06b6d4',
         'features' => [
             '10 GB de stockage',
-            '5 utilisateurs max',
+            '1 utilisateur inclus',
             '500 fichiers max',
             '1 GB par fichier',
             'Partages externes',
@@ -21,8 +21,9 @@ $plans = [
         ],
         'not_included' => ['Dossiers team', 'Versions fichiers', 'API access', 'Audit logs'],
         'storage' => 10737418240,
-        'max_users' => 5,
+        'max_users' => 1,
         'max_file_size' => 1073741824,
+        'extra_user_price' => 2,
     ],
     [
         'name' => 'Professional',
@@ -32,7 +33,7 @@ $plans = [
         'popular' => true,
         'features' => [
             '100 GB de stockage',
-            '25 utilisateurs max',
+            '5 utilisateurs inclus',
             '5 000 fichiers max',
             '10 GB par fichier',
             'Partages externes',
@@ -46,8 +47,9 @@ $plans = [
         ],
         'not_included' => ['Branding custom', 'SLA 99.99%'],
         'storage' => 107374182400,
-        'max_users' => 25,
+        'max_users' => 5,
         'max_file_size' => 10737418240,
+        'extra_user_price' => 1.50,
     ],
     [
         'name' => 'Enterprise',
@@ -56,7 +58,7 @@ $plans = [
         'color' => '#00ff88',
         'features' => [
             'Stockage illimité',
-            'Utilisateurs illimités',
+            '15 utilisateurs inclus',
             'Fichiers illimités',
             '50 GB par fichier',
             'Partages externes',
@@ -72,8 +74,9 @@ $plans = [
         ],
         'not_included' => [],
         'storage' => 0,
-        'max_users' => 0,
+        'max_users' => 15,
         'max_file_size' => 53687091200,
+        'extra_user_price' => 1,
     ],
 ];
 ?>
@@ -112,6 +115,12 @@ $plans = [
                         <?= $feature ?>
                     </li>
                     <?php endforeach; ?>
+                    <?php if (($plan['extra_user_price'] ?? 0) > 0): ?>
+                    <li class="pricing-feature extra-users" style="color: var(--amber-400); font-size: 12px;">
+                        <i class="fas fa-user-plus"></i>
+                        Utilisateurs supplémentaires : <?= number_format($plan['extra_user_price'], 2) ?>€/mois chacun
+                    </li>
+                    <?php endif; ?>
                     <?php foreach ($plan['not_included'] as $feature): ?>
                     <li class="pricing-feature excluded">
                         <i class="fas fa-minus"></i>
