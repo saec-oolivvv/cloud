@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50">
+  <rect width="200" height="50" rx="8" fill="#0a0a0a"/>
+  <text x="25" y="35" font-family="monospace" font-size="24" font-weight="bold" fill="#00ff88">SAEC</text>
+  <text x="105" y="35" font-family="monospace" font-size="24" fill="#888888">cloud</text>
+</svg>

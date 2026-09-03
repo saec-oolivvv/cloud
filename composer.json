@@ -1,0 +1,17 @@
+{
+    "name": "saec/cloud",
+    "description": "SAEC Cloud — Secure Multi-Tenant File Storage",
+    "type": "project",
+    "license": "proprietary",
+    "autoload": {
+        "psr-4": {
+            "Saec\\": "app/",
+            "Saec\\Core\\": "core/"
+        }
+    },
+    "require": {
+        "php": ">=8.2",
+        "vlucas/phpdotenv": "^5.6",
+        "firebase/php-jwt": "^6.10"
+    }
+}

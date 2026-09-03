@@ -1,0 +1,75 @@
+[03-Sep-2026 03:56:54 Europe/Amsterdam] [EXCEPTION] Class "Saec\Controllers\AuthController" not found in /volume1/web/cloud/core/Router.php:66
+[03-Sep-2026 03:57:02 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:57:06 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:57:10 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:57:12 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:57:19 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:57:26 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:58:00 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:58:01 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:58:04 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:58:05 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:58:21 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:58:22 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:58:23 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:58:24 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:59:12 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:59:13 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:59:14 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:59:22 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:59:24 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:59:30 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:59:30 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:59:30 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 03:59:30 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 04:00:46 Europe/Amsterdam] [ERROR] [2] file_get_contents(/volume1/web/cloud/public/../storage/xc1cb20dd3961d2f2.conf): Failed to open stream: Permission denied in /volume1/web/cloud/public/index.php:37
+[03-Sep-2026 04:02:07 Europe/Amsterdam] [EXCEPTION] SQLSTATE[HY000] [1045] Access denied for user 'saec_user'@'192.168.0.201' (using password: YES) in /volume1/web/cloud/core/Database.php:25
+[03-Sep-2026 04:02:53 Europe/Amsterdam] [EXCEPTION] SQLSTATE[HY000] [1045] Access denied for user 'saec_user'@'192.168.0.201' (using password: YES) in /volume1/web/cloud/core/Database.php:25
+[03-Sep-2026 04:02:54 Europe/Amsterdam] [ERROR] [2] require(/volume1/web/cloud/core/../app/views/errors/404.php): Failed to open stream: No such file or directory in /volume1/web/cloud/core/Router.php:76
+[03-Sep-2026 04:03:04 Europe/Amsterdam] [ERROR] [2] require(/volume1/web/cloud/core/../app/views/errors/404.php): Failed to open stream: No such file or directory in /volume1/web/cloud/core/Router.php:76
+[03-Sep-2026 04:03:04 Europe/Amsterdam] [ERROR] [2] require(/volume1/web/cloud/core/../app/views/errors/404.php): Failed to open stream: No such file or directory in /volume1/web/cloud/core/Router.php:76
+[03-Sep-2026 04:10:11 Europe/Amsterdam] [EXCEPTION] SQLSTATE[HY000] [1045] Access denied for user 'saec_cloud'@'192.168.0.201' (using password: YES) in /volume1/web/cloud/core/Database.php:25
+[03-Sep-2026 04:17:03 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 04:18:31 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 04:18:32 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 04:19:59 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 04:20:01 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 04:20:49 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 04:22:33 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 04:22:35 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 04:23:02 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 's.created_by' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 04:24:10 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 04:24:32 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 04:24:33 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 04:25:55 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 04:27:29 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 04:27:45 Europe/Amsterdam] [ERROR] [2] file_put_contents(/volume1/web/cloud/storage/uploads/794b8c4be74e57e738079b905ed42cc9.jpeg): Failed to open stream: Permission denied in /volume1/web/cloud/core/Encryption.php:93
+[03-Sep-2026 05:05:56 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'folder_id' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 05:06:00 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 05:09:29 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'folder_id' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 05:10:49 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'folder_id' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 05:11:57 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'folder_id' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 05:12:02 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'folder_id' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 05:14:37 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'folder_id' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 05:14:38 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'folder_id' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 05:14:56 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 05:16:37 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[03-Sep-2026 05:17:13 Europe/Amsterdam] [EXCEPTION] Call to undefined function t() in /volume1/web/cloud/app/Views/layouts/main.php:68
+[03-Sep-2026 05:17:13 Europe/Amsterdam] [ERROR] [2] http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:58) in /volume1/web/cloud/public/index.php:24
+[03-Sep-2026 05:17:13 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:58) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 05:17:27 Europe/Amsterdam] [EXCEPTION] Call to undefined function t() in /volume1/web/cloud/app/Views/layouts/main.php:68
+[03-Sep-2026 05:17:27 Europe/Amsterdam] [ERROR] [2] http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:58) in /volume1/web/cloud/public/index.php:24
+[03-Sep-2026 05:17:27 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:58) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 05:17:38 Europe/Amsterdam] [EXCEPTION] Call to undefined function t() in /volume1/web/cloud/app/Views/layouts/main.php:68
+[03-Sep-2026 05:17:38 Europe/Amsterdam] [ERROR] [2] http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:58) in /volume1/web/cloud/public/index.php:24
+[03-Sep-2026 05:17:38 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:58) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 05:18:08 Europe/Amsterdam] [EXCEPTION] Call to undefined function t() in /volume1/web/cloud/app/Views/layouts/main.php:68
+[03-Sep-2026 05:18:08 Europe/Amsterdam] [ERROR] [2] http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:58) in /volume1/web/cloud/public/index.php:24
+[03-Sep-2026 05:18:08 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:58) in /volume1/web/cloud/public/index.php on line 17
+[03-Sep-2026 05:30:45 Europe/Amsterdam] [EXCEPTION] syntax error, unexpected token ".", expecting end of file in /volume1/web/cloud/app/Views/layouts/main.php:8
+[03-Sep-2026 05:30:48 Europe/Amsterdam] [EXCEPTION] syntax error, unexpected token ".", expecting end of file in /volume1/web/cloud/app/Views/layouts/main.php:8
+[03-Sep-2026 05:31:29 Europe/Amsterdam] [EXCEPTION] syntax error, unexpected token ".", expecting end of file in /volume1/web/cloud/app/Views/layouts/main.php:8
+[03-Sep-2026 05:32:20 Europe/Amsterdam] [EXCEPTION] syntax error, unexpected token ".", expecting end of file in /volume1/web/cloud/app/Views/layouts/main.php:8
+[03-Sep-2026 05:33:43 Europe/Amsterdam] [EXCEPTION] syntax error, unexpected token ".", expecting end of file in /volume1/web/cloud/app/Views/layouts/main.php:8
+[03-Sep-2026 05:34:57 Europe/Amsterdam] [EXCEPTION] json_decode(): Argument #1 ($json) must be of type string, null given in /volume1/web/cloud/app/Controllers/AdminController.php:570
+[03-Sep-2026 05:40:38 Europe/Amsterdam] [ERROR] [2] mkdir(): Permission denied in /volume1/web/cloud/app/Controllers/FileController.php:16
