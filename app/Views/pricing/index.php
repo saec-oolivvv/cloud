@@ -81,27 +81,29 @@ $plans = [
 ];
 ?>
 
-<section class="pricing-hero">
+<!-- ═══ HERO ═══ -->
+<section class="pricing-hero" data-stagger>
     <div class="max-w-7xl mx-auto px-6 text-center">
-        <span class="eyebrow">Pricing</span>
-        <h1 class="section-title mt-5">Un stockage sécurisé, à votre mesure.</h1>
-        <p class="section-desc mx-auto mt-4">
+        <span class="eyebrow animate-fade-in">Pricing</span>
+        <h1 class="section-title mt-5 animate-slide-up">Un stockage sécurisé, à votre mesure.</h1>
+        <p class="section-desc mx-auto mt-4 animate-slide-up">
             Chiffrement militaire AES-256-GCM. Multi-tenant. Souveraineté totale de vos données.
         </p>
     </div>
 </section>
 
+<!-- ═══ PLANS ═══ -->
 <section class="pricing-grid-section">
     <div class="max-w-7xl mx-auto px-6">
-        <div class="pricing-grid">
+        <div class="pricing-grid" data-stagger>
             <?php foreach ($plans as $plan): ?>
-            <div class="pricing-card <?= $plan['popular'] ?? false ? 'popular' : '' ?>">
+            <div class="pricing-card <?= ($plan['popular'] ?? false) ? 'popular' : '' ?>" data-color="<?= $plan['color'] ?>">
                 <?php if ($plan['popular'] ?? false): ?>
                 <div class="pricing-badge">Populaire</div>
                 <?php endif; ?>
 
                 <div class="pricing-header">
-                    <h3 class="pricing-name" style="color: <?= $plan['color'] ?>"><?= $plan['name'] ?></h3>
+                    <h3 class="pricing-name"><?= $plan['name'] ?></h3>
                     <div class="pricing-price">
                         <span class="pricing-amount"><?= $plan['price'] ?></span>
                         <span class="pricing-period"><?= $plan['period'] ?></span>
@@ -111,13 +113,13 @@ $plans = [
                 <ul class="pricing-features">
                     <?php foreach ($plan['features'] as $feature): ?>
                     <li class="pricing-feature included">
-                        <i class="fas fa-check" style="color: <?= $plan['color'] ?>"></i>
+                        <i class="fas fa-check"></i>
                         <?= $feature ?>
                     </li>
                     <?php endforeach; ?>
                     <?php if (($plan['extra_user_price'] ?? 0) > 0): ?>
-                    <li class="pricing-feature extra-users" style="color: var(--amber-400); font-size: 12px;">
-                        <i class="fas fa-user-plus"></i>
+                    <li class="pricing-feature extra-users">
+                        <span class="badge badge-warning"><i class="fas fa-user-plus"></i></span>
                         Utilisateurs supplémentaires : <?= number_format($plan['extra_user_price'], 2) ?>€/mois chacun
                     </li>
                     <?php endif; ?>
@@ -129,7 +131,7 @@ $plans = [
                     <?php endforeach; ?>
                 </ul>
 
-                <a href="/subscribe?plan=<?= strtolower($plan['name']) ?>" class="btn <?= $plan['popular'] ?? false ? 'btn-primary' : 'btn-ghost' ?>" style="<?= $plan['popular'] ?? false ? "background:{$plan['color']};color:#040918" : "border-color:{$plan['color']};color:{$plan['color']}" ?>">
+                <a href="/subscribe?plan=<?= strtolower($plan['name']) ?>" class="btn <?= ($plan['popular'] ?? false) ? 'btn-primary btn-lg' : 'btn-outline btn-lg' ?>">
                     Commencer →
                 </a>
             </div>
@@ -138,8 +140,10 @@ $plans = [
     </div>
 </section>
 
+<!-- ═══ FAQ ═══ -->
 <section class="pricing-faq">
     <div class="max-w-3xl mx-auto px-6">
+        <span class="eyebrow pricing-faq-eyebrow">FAQ</span>
         <h2 class="section-title text-center">Questions fréquentes</h2>
 
         <div class="faq-item">
@@ -165,6 +169,29 @@ $plans = [
         <div class="faq-item">
             <h4 class="faq-question">Puis-je tester avant de m'engager ?</h4>
             <p class="faq-answer">Contactez-nous pour une démo personnalisée. Nous pouvons aussi configurer un essai gratuit de 14 jours.</p>
+        </div>
+    </div>
+</section>
+
+<!-- ═══ TRUST FOOTER ═══ -->
+<section class="pricing-trust" data-stagger>
+    <div class="max-w-7xl mx-auto px-6 text-center">
+        <div class="trust-badges">
+            <div class="trust-badge animate-slide-up">
+                <i class="fas fa-shield-halved"></i>
+                <span class="trust-label">AES-256</span>
+                <span class="trust-desc">Chiffrement bout en bout</span>
+            </div>
+            <div class="trust-badge animate-slide-up">
+                <i class="fas fa-scale-balanced"></i>
+                <span class="trust-label">RGPD</span>
+                <span class="trust-desc">Conformité européenne</span>
+            </div>
+            <div class="trust-badge animate-slide-up">
+                <i class="fas fa-flag"></i>
+                <span class="trust-label">Souverain</span>
+                <span class="trust-desc">Infrastructure 100% française</span>
+            </div>
         </div>
     </div>
 </section>

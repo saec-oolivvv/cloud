@@ -23,16 +23,16 @@ $quota = $quota ?? 10737418240;
             <?php foreach ($breadcrumb as $i => $bc): ?>
             <?php if ($i > 0): ?> / <?php endif; ?>
             <?php if ($bc['url']): ?>
-            <a href="<?= $bc['url'] ?>" style="color:var(--text-secondary);"><?= htmlspecialchars($bc['name']) ?></a>
+            <a href="<?= $bc['url'] ?>"><?= htmlspecialchars($bc['name']) ?></a>
             <?php else: ?>
             <span><?= htmlspecialchars($bc['name']) ?></span>
             <?php endif; ?>
             <?php endforeach; ?>
         </div>
     </div>
-    <div style="display:flex; gap:var(--space-3);">
+    <div class="header-actions">
         <button class="btn btn-outline" onclick="document.getElementById('newFolderModal').style.display='flex'">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
             <?= t('files.create_folder') ?>
         </button>
         <button class="btn btn-primary" onclick="document.getElementById('uploadZone').scrollIntoView({behavior:'smooth'})">
@@ -45,7 +45,7 @@ $quota = $quota ?? 10737418240;
 <div class="card" style="margin-bottom: var(--space-6);">
     <div class="card-header">
         <span class="card-title"><?= t('dashboard.storage_used') ?></span>
-        <span style="font-size:12px; color:var(--text-muted);">
+        <span class="card-sub">
             <?= $this->formatSize($used) ?> / <?= $this->formatSize($quota) ?>
         </span>
     </div>
@@ -57,7 +57,7 @@ $quota = $quota ?? 10737418240;
 
 <!-- Upload Zone -->
 <div class="upload-zone" id="uploadZone">
-    <div class="upload-icon">☁️</div>
+    <div class="upload-icon" style="background: linear-gradient(135deg, var(--blue-500), var(--cyan-400)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">☁️</div>
     <h3><?= t('files.upload_drag') ?></h3>
     <p><?= t('files.upload_click') ?></p>
     <div class="upload-actions">
@@ -86,19 +86,19 @@ $quota = $quota ?? 10737418240;
     <div class="file-list-header">
         <span class="list-title">📁 <?= t('nav.files') ?></span>
     </div>
-    <div class="file-list">
+    <div class="file-list" data-stagger>
         <?php foreach ($folders as $folder): ?>
         <div class="file-row">
             <div class="row-icon" style="color: var(--amber-400);">📁</div>
             <div class="row-info">
-                <a href="/files?folder=<?= $folder['id'] ?>" class="row-name" style="color:var(--text-primary);">
+                <a href="/files?folder=<?= $folder['id'] ?>" class="row-name">
                     <?= htmlspecialchars($folder['name']) ?>
                 </a>
                 <div class="row-meta"><?= date('d/m/Y', strtotime($folder['created_at'])) ?></div>
             </div>
             <div class="row-actions">
                 <span class="action-btn" onclick="renameFolder(<?= $folder['id'] ?>, '<?= htmlspecialchars($folder['name']) ?>')" title="<?= t('common.save') ?>">✏️</span>
-                <span class="action-btn" onclick="deleteFolder(<?= $folder['id'] ?>)" title="<?= t('files.delete') ?>" style="color:var(--rose-400);">🗑</span>
+                <span class="action-btn" onclick="deleteFolder(<?= $folder['id'] ?>)" title="<?= t('files.delete') ?>" style="color:var(--rose-500);">🗑</span>
             </div>
         </div>
         <?php endforeach; ?>
@@ -112,7 +112,7 @@ $quota = $quota ?? 10737418240;
     <div class="file-list-header">
         <span class="list-title">📄 <?= t('files.title') ?> (<?= count($files) ?>)</span>
     </div>
-    <div class="file-list">
+    <div class="file-list" data-stagger>
         <?php foreach ($files as $file): ?>
         <div class="file-row" data-id="<?= $file['id'] ?>">
             <div class="row-icon"><?= getFileIcon($file['mime_type'] ?? '') ?></div>
@@ -126,7 +126,7 @@ $quota = $quota ?? 10737418240;
             <div class="row-actions">
                 <span class="action-btn" onclick="downloadFile(<?= $file['id'] ?>)" title="<?= t('files.download') ?>">📥</span>
                 <span class="action-btn" onclick="shareFile(<?= $file['id'] ?>)" title="<?= t('files.share') ?>">🔗</span>
-                <span class="action-btn" onclick="deleteFile(<?= $file['id'] ?>)" title="<?= t('files.delete') ?>" style="color:var(--rose-400);">🗑</span>
+                <span class="action-btn" onclick="deleteFile(<?= $file['id'] ?>)" title="<?= t('files.delete') ?>" style="color:var(--rose-500);">🗑</span>
             </div>
         </div>
         <?php endforeach; ?>
@@ -135,67 +135,69 @@ $quota = $quota ?? 10737418240;
 <?php endif; ?>
 
 <?php if (empty($files) && empty($folders)): ?>
-<div class="card" style="text-align:center; padding: var(--space-10);">
-    <div style="font-size:48px; margin-bottom:var(--space-4); opacity:0.5;">📂</div>
-    <div style="font-size:16px; font-weight:500; margin-bottom:var(--space-2);"><?= t('files.no_files') ?></div>
-    <div style="font-size:13px; color:var(--text-muted);"><?= t('files.no_files_hint') ?></div>
+<div class="empty-state">
+    <div class="empty-state-icon">📂</div>
+    <h3><?= t('files.no_files') ?></h3>
+    <p><?= t('files.no_files_hint') ?></p>
 </div>
 <?php endif; ?>
 
 <!-- Footer -->
-<div style="margin-top:var(--space-6); font-size:12px; color:var(--text-muted); border-top:1px solid var(--border-subtle); padding-top:var(--space-4); display:flex; justify-content:space-between; flex-wrap:wrap; gap:var(--space-2);">
+<div class="page-footer">
     <span><?= t('app.copyright') ?></span>
-    <span>AES-256-GCM · <?= t('app.footer_stack') ?></span>
+    <span class="footer-badge">🔐 AES-256-GCM · <?= t('app.footer_stack') ?></span>
 </div>
 
 <!-- Modal New Folder -->
 <div id="newFolderModal" class="modal" style="display:none;">
     <div class="modal-content" style="max-width:440px;">
-        <div style="background:var(--bg-secondary); border-radius:var(--radius-lg); border:1px solid var(--border-subtle); overflow:hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.5); animation: modalIn 0.2s ease-out;">
-            <div style="padding:var(--space-5) var(--space-6); border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:space-between;">
-                <div style="display:flex; align-items:center; gap:var(--space-3);">
-                    <div style="width:36px; height:36px; border-radius:var(--radius-md); background:linear-gradient(135deg, var(--blue-500), var(--cyan-400)); display:flex; align-items:center; justify-content:center;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" style="width:18px; height:18px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+        <div class="card" style="animation: modalIn 0.2s ease-out;">
+            <div class="card-header">
+                <div class="card-title" style="display:flex; align-items:center; gap:var(--space-3);">
+                    <div class="settings-section-icon blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
                     </div>
                     <div>
-                        <div style="font-size:15px; font-weight:600;"><?= t('files.create_folder') ?></div>
-                        <div style="font-size:11px; color:var(--text-muted);">Créer un nouveau dossier</div>
+                        <div><?= t('files.create_folder') ?></div>
+                        <div style="font-size:11px; color:var(--text-muted); font-weight:400;">Créer un nouveau dossier</div>
                     </div>
                 </div>
-                <button onclick="document.getElementById('newFolderModal').style.display='none'" style="width:32px; height:32px; border-radius:var(--radius-sm); border:none; background:transparent; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; transition:all 0.15s;">×</button>
+                <button class="modal-close" onclick="document.getElementById('newFolderModal').style.display='none'">×</button>
             </div>
-            <form id="newFolderForm">
-                <div style="padding:var(--space-6);">
+            <div class="card-body">
+                <form id="newFolderForm">
                     <div class="form-group">
                         <label class="form-label">Nom du dossier</label>
-                        <input type="text" name="name" class="form-input" required autofocus placeholder="Mon dossier" style="font-size:14px; padding:var(--space-3) var(--space-4);" autocomplete="off">
+                        <input type="text" name="name" class="form-input" required autofocus placeholder="Mon dossier" autocomplete="off">
                     </div>
                     <?php if ($parentId): ?>
                     <input type="hidden" name="parent_id" value="<?= $parentId ?>">
                     <?php endif; ?>
-                </div>
-                <div style="padding:var(--space-4) var(--space-6); border-top:1px solid var(--border-subtle); display:flex; justify-content:flex-end; gap:var(--space-3); background:rgba(0,0,0,0.15);">
-                    <button type="button" onclick="document.getElementById('newFolderModal').style.display='none'" class="btn btn-ghost" style="font-size:13px;">Annuler</button>
-                    <button type="submit" class="btn btn-primary" style="font-size:13px; padding:var(--space-2) var(--space-5);">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-                        Créer
-                    </button>
-                </div>
-            </form>
+                    <div style="display:flex; justify-content:flex-end; gap:var(--space-3);">
+                        <button type="button" onclick="document.getElementById('newFolderModal').style.display='none'" class="btn btn-ghost">Annuler</button>
+                        <button type="submit" class="btn btn-primary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                            Créer
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
-<style>
-@keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-</style>
 
 <!-- Modal Share -->
 <div id="shareModal" class="modal" style="display:none;">
     <div class="modal-content">
         <div class="card">
             <div class="card-header">
-                <span class="card-title"><?= t('shares.create') ?></span>
-                <button class="btn btn-ghost" onclick="document.getElementById('shareModal').style.display='none'">×</button>
+                <div class="card-title" style="display:flex; align-items:center; gap:var(--space-3);">
+                    <div class="settings-section-icon cyan">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                    </div>
+                    <?= t('shares.create') ?>
+                </div>
+                <button class="modal-close" onclick="document.getElementById('shareModal').style.display='none'">×</button>
             </div>
             <div class="card-body">
                 <form id="shareForm">
@@ -203,6 +205,10 @@ $quota = $quota ?? 10737418240;
                     <div class="form-group">
                         <label class="form-label"><?= t('shares.expires') ?></label>
                         <input type="datetime-local" name="expires_at" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password (optional)</label>
+                        <input type="password" name="password" class="form-input" placeholder="••••••••">
                     </div>
                     <button type="submit" class="btn btn-primary" style="width:100%;"><?= t('common.confirm') ?></button>
                 </form>
@@ -217,6 +223,22 @@ $quota = $quota ?? 10737418240;
         </div>
     </div>
 </div>
+
+<style>
+@keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+.page-footer {
+    margin-top: var(--space-6); font-size: 12px; color: var(--text-muted);
+    border-top: 1px solid var(--border-subtle); padding-top: var(--space-4);
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2);
+}
+.footer-badge {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    padding: var(--space-1) var(--space-3); border-radius: var(--radius-full);
+    background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2);
+    font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--emerald-400);
+}
+</style>
 
 <script>
 <?php
@@ -316,22 +338,26 @@ async function uploadFile(file, queueList, queueCount) {
                 label.textContent = '100%';
                 status.className = 'file-status done';
                 status.textContent = '✅';
+                if (typeof SaecToast !== 'undefined') SaecToast.success('<?= t('files.upload_success') ?>');
                 setTimeout(() => location.reload(), 800);
             } else {
                 status.className = 'file-status error';
                 status.textContent = '❌';
                 label.textContent = data.error || 'Error';
+                if (typeof SaecToast !== 'undefined') SaecToast.error(data.error || 'Upload failed');
             }
         };
         xhr.onerror = function() {
             status.className = 'file-status error';
             status.textContent = '❌';
+            if (typeof SaecToast !== 'undefined') SaecToast.error('Network error');
         };
         xhr.open('POST', '/files/upload');
         xhr.send(formData);
     } catch(e) {
         status.className = 'file-status error';
         status.textContent = '❌';
+        if (typeof SaecToast !== 'undefined') SaecToast.error('Upload failed');
     }
 }
 
@@ -345,7 +371,12 @@ async function deleteFile(id) {
     form.append('_token', '<?= \Saec\Core\Session::csrfToken() ?>');
     const res = await fetch(`/files/${id}`, { method: 'DELETE', body: form });
     const data = await res.json();
-    if (data.success) location.reload();
+    if (data.success) {
+        if (typeof SaecToast !== 'undefined') SaecToast.success('File deleted');
+        setTimeout(() => location.reload(), 600);
+    } else {
+        if (typeof SaecToast !== 'undefined') SaecToast.error(data.error || 'Delete failed');
+    }
 }
 
 // Share
@@ -363,13 +394,20 @@ document.getElementById('shareForm').addEventListener('submit', async (e) => {
     if (data.success) {
         document.getElementById('shareLink').value = `${window.location.origin}/share/${data.share.share_token}`;
         document.getElementById('shareResult').style.display = 'block';
+        if (typeof SaecToast !== 'undefined') SaecToast.success('Share link created');
+    } else {
+        if (typeof SaecToast !== 'undefined') SaecToast.error(data.error || 'Share failed');
     }
 });
 function copyShareLink() {
     const input = document.getElementById('shareLink');
     input.select();
-    document.execCommand('copy');
-    alert('<?= t('shares.link_copied') ?>');
+    navigator.clipboard.writeText(input.value).then(() => {
+        if (typeof SaecToast !== 'undefined') SaecToast.success('<?= t('shares.link_copied') ?>');
+    }).catch(() => {
+        document.execCommand('copy');
+        if (typeof SaecToast !== 'undefined') SaecToast.success('<?= t('shares.link_copied') ?>');
+    });
 }
 
 // Folder
@@ -379,8 +417,12 @@ document.getElementById('newFolderForm').addEventListener('submit', async (e) =>
     form.append('_token', '<?= \Saec\Core\Session::csrfToken() ?>');
     const res = await fetch('/folders', { method: 'POST', body: form });
     const data = await res.json();
-    if (data.success) location.reload();
-    else alert(data.error || 'Erreur lors de la création');
+    if (data.success) {
+        if (typeof SaecToast !== 'undefined') SaecToast.success('Folder created');
+        setTimeout(() => location.reload(), 600);
+    } else {
+        if (typeof SaecToast !== 'undefined') SaecToast.error(data.error || 'Erreur lors de la création');
+    }
 });
 async function deleteFolder(id) {
     if (!confirm('Delete folder?')) return;
@@ -388,7 +430,12 @@ async function deleteFolder(id) {
     form.append('_token', '<?= \Saec\Core\Session::csrfToken() ?>');
     const res = await fetch(`/folders/${id}`, { method: 'DELETE', body: form });
     const data = await res.json();
-    if (data.success) location.reload();
+    if (data.success) {
+        if (typeof SaecToast !== 'undefined') SaecToast.success('Folder deleted');
+        setTimeout(() => location.reload(), 600);
+    } else {
+        if (typeof SaecToast !== 'undefined') SaecToast.error(data.error || 'Delete failed');
+    }
 }
 async function renameFolder(id, oldName) {
     const name = prompt('New name:', oldName);
@@ -398,6 +445,11 @@ async function renameFolder(id, oldName) {
     form.append('_token', '<?= \Saec\Core\Session::csrfToken() ?>');
     const res = await fetch(`/folders/${id}/rename`, { method: 'POST', body: form });
     const data = await res.json();
-    if (data.success) location.reload();
+    if (data.success) {
+        if (typeof SaecToast !== 'undefined') SaecToast.success('Folder renamed');
+        setTimeout(() => location.reload(), 600);
+    } else {
+        if (typeof SaecToast !== 'undefined') SaecToast.error(data.error || 'Rename failed');
+    }
 }
 </script>

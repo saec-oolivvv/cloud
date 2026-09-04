@@ -21,7 +21,7 @@ $currentPlan = $plans[$plan] ?? $plans['professional'];
         <span class="eyebrow">Souscription</span>
         <h1 class="section-title mt-5">Rejoindre SAEC Cloud</h1>
         <p class="section-desc mx-auto mt-4">
-            Plan <strong style="color: var(--accent)"><?= $currentPlan['name'] ?></strong> — <?= $currentPlan['price'] ?>
+            Plan <strong class="text-accent"><?= $currentPlan['name'] ?></strong> — <?= $currentPlan['price'] ?>
         </p>
     </div>
 </section>
@@ -42,7 +42,7 @@ $currentPlan = $plans[$plan] ?? $plans['professional'];
             <div class="subscribe-step-line"></div>
             <div class="subscribe-step" data-step="3">
                 <span class="step-num">3</span>
-                <span class="step-label">Besins</span>
+                <span class="step-label">Besoins</span>
             </div>
             <div class="subscribe-step-line"></div>
             <div class="subscribe-step" data-step="4">
@@ -51,7 +51,7 @@ $currentPlan = $plans[$plan] ?? $plans['professional'];
             </div>
         </div>
 
-        <form id="subscribeForm" class="subscribe-form">
+        <form id="subscribeForm" class="subscribe-form" data-stagger>
             <input type="hidden" name="plan" value="<?= $plan ?>">
 
             <!-- Step 1: Entreprise -->
@@ -204,7 +204,7 @@ $currentPlan = $plans[$plan] ?? $plans['professional'];
 
                 <div class="form-group">
                     <label class="form-label">Date de souhaitée</label>
-                    <input type="date" name=" desired_date" class="form-input">
+                    <input type="date" name="desired_date" class="form-input">
                 </div>
 
                 <div class="form-group">
@@ -225,7 +225,7 @@ $currentPlan = $plans[$plan] ?? $plans['professional'];
                 <div class="subscribe-summary">
                     <div class="summary-row">
                         <span>Plan</span>
-                        <strong style="color: var(--accent)"><?= $currentPlan['name'] ?></strong>
+                        <strong class="text-accent"><?= $currentPlan['name'] ?></strong>
                     </div>
                     <div class="summary-row">
                         <span>Prix</span>
@@ -256,7 +256,7 @@ $currentPlan = $plans[$plan] ?? $plans['professional'];
         </form>
 
         <!-- Success message -->
-        <div id="subscribeSuccess" class="subscribe-success" style="display:none">
+        <div id="subscribeSuccess" class="subscribe-success subscribe-success--hidden">
             <div class="success-icon">
                 <i class="fas fa-check-circle"></i>
             </div>
@@ -292,10 +292,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function goToStep(step) {
         steps.forEach(s => s.classList.remove('active'));
-        stepIndicators.forEach(s => s.classList.remove('active'));
+        stepIndicators.forEach(s => s.classList.remove('active', 'done'));
+
+        // Mark previous steps as done
+        for (let i = 1; i < step; i++) {
+            document.querySelector(`.subscribe-step[data-step="${i}"]`).classList.add('done');
+        }
 
         document.querySelector(`.form-step[data-step="${step}"]`).classList.add('active');
         document.querySelector(`.subscribe-step[data-step="${step}"]`).classList.add('active');
+
+        // Activate step lines
+        document.querySelectorAll('.subscribe-step-line').forEach((line, idx) => {
+            line.classList.toggle('active', idx < step - 1);
+        });
     }
 
     // Submit
@@ -314,15 +324,13 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 form.style.display = 'none';
-                document.getElementById('subscribeSuccess').style.display = 'block';
+                document.getElementById('subscribeSuccess').classList.remove('subscribe-success--hidden');
             } else {
-                alert(data.error || 'Erreur lors de l\'envoi');
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Envoyer la demande';
             }
         })
         .catch(() => {
-            alert('Erreur réseau');
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Envoyer la demande';
         });
