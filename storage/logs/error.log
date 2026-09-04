@@ -147,3 +147,57 @@
 [03-Sep-2026 13:22:47 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
 [03-Sep-2026 16:11:07 Europe/Amsterdam] [ERROR] [2] mkdir(): Permission denied in /volume1/web/cloud/app/Controllers/FolderController.php:146
 [04-Sep-2026 02:07:56 Europe/Amsterdam] [ERROR] [2] Undefined array key "billing_status" in /volume1/web/cloud/app/Views/admin/tenants.php:55
+[04-Sep-2026 02:55:19 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'name' in 'SET' in /volume1/web/cloud/core/Database.php:48
+[04-Sep-2026 02:55:53 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:55:55 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:43 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:45 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:45 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:45 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:46 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:46 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:46 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:46 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:46 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:46 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:46 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:46 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:46 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:47 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:47 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:47 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:47 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:47 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:47 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:47 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:47 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:47 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:47 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:47 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:47 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:48 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:48 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:48 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:48 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:56:48 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:57:08 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:57:46 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:57:47 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:57:48 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:57:48 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:57:48 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:57:48 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:57:49 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:57:49 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:57:49 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:57:49 Europe/Amsterdam] [ERROR] [2] Undefined array key "uptime" in /volume1/web/cloud/app/Views/dashboard/index.php:85
+[04-Sep-2026 02:59:03 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[04-Sep-2026 02:59:04 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[04-Sep-2026 02:59:44 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[04-Sep-2026 02:59:46 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[04-Sep-2026 02:59:46 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[04-Sep-2026 02:59:47 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[04-Sep-2026 02:59:47 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[04-Sep-2026 02:59:47 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[04-Sep-2026 02:59:47 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[04-Sep-2026 02:59:48 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48

@@ -212,7 +212,7 @@ function formatBytes(int $bytes): string {
                     </div>
                 </div>
 
-                <form id="profileForm" class="s-fields">
+                <form id="profileForm" class="s-fields" enctype="multipart/form-data">
                     <input type="hidden" name="_token" value="<?= $csrf ?>">
                     <div class="s-field">
                         <label>Nom complet</label>
@@ -242,7 +242,7 @@ function formatBytes(int $bytes): string {
                 </div>
             </div>
             <div class="s-body">
-                <form id="passwordForm" class="s-fields">
+                <form id="passwordForm" class="s-fields" enctype="multipart/form-data">
                     <input type="hidden" name="_token" value="<?= $csrf ?>">
                     <div class="s-field">
                         <label>Mot de passe actuel</label>
@@ -294,7 +294,7 @@ function formatBytes(int $bytes): string {
                 </div>
                 <?php endif; ?>
 
-                <form id="destroySessionsForm">
+                <form id="destroySessionsForm" enctype="multipart/form-data">
                     <input type="hidden" name="_token" value="<?= $csrf ?>">
                     <button type="submit" class="s-btn s-btn-danger" style="width:100%;">
                         <i class="fas fa-right-from-bracket" style="font-size:12px;"></i> Déconnecter toutes les sessions
@@ -366,26 +366,34 @@ function sToast(msg, type='ok') {
     setTimeout(() => t.style.display = 'none', 3000);
 }
 
+async function safeFetch(url, body) {
+    try {
+        const res = await fetch(url, { method: 'POST', body });
+        const text = await res.text();
+        try { return JSON.parse(text); } catch(e) { return { error: 'Réponse serveur invalide' }; }
+    } catch(e) { return { error: 'Erreur réseau' }; }
+}
+
 document.getElementById('profileForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const res = await fetch('/config/profile', { method: 'POST', body: new FormData(e.target) });
-    const data = await res.json();
+    const data = await safeFetch('/config/profile', new FormData(e.target));
     sToast(data.message || data.error, data.success ? 'ok' : 'err');
 });
 
 document.getElementById('passwordForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const res = await fetch('/config/password', { method: 'POST', body: new FormData(e.target) });
-    const data = await res.json();
+    const btn = e.target.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Envoi...'; }
+    const data = await safeFetch('/config/password', new FormData(e.target));
     sToast(data.message || data.error, data.success ? 'ok' : 'err');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-key" style="font-size:12px;"></i> Changer le mot de passe'; }
     if (data.success) e.target.reset();
 });
 
 document.getElementById('destroySessionsForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!confirm('Déconnecter toutes les autres sessions ?')) return;
-    const res = await fetch('/config/sessions/destroy', { method: 'POST', body: new FormData(e.target) });
-    const data = await res.json();
+    const data = await safeFetch('/config/sessions/destroy', new FormData(e.target));
     sToast(data.message || data.error, data.success ? 'ok' : 'err');
 });
 </script>

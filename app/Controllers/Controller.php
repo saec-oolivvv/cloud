@@ -92,6 +92,13 @@ abstract class Controller
     {
         $user = $this->getAuthUser();
         if (!$user) {
+            $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+                || (str_contains($_SERVER['CONTENT_TYPE'] ?? '', 'multipart/form-data'))
+                || (str_contains($_SERVER['CONTENT_TYPE'] ?? '', 'application/x-www-form-urlencoded'));
+            if ($isAjax) {
+                $this->json(['error' => 'Non authentifié'], 401);
+                return [];
+            }
             $this->redirect('/login');
             exit;
         }

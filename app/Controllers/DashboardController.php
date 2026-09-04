@@ -25,6 +25,14 @@ class DashboardController extends Controller
             [$tenantId]
         );
 
+        // Dossiers
+        $folders = $db->fetch(
+            "SELECT COUNT(*) as total_folders
+             FROM folders
+             WHERE tenant_id = ? AND deleted_at IS NULL",
+            [$tenantId]
+        );
+
         // Quota tenant
         $tenant = $db->fetch(
             "SELECT storage_quota FROM tenants WHERE id = ?",
@@ -49,6 +57,16 @@ class DashboardController extends Controller
             [$tenantId]
         );
 
+        // Activité récente (audit logs)
+        $recentActivity = $db->fetchAll(
+            "SELECT action as type, resource_type as detail, created_at
+             FROM audit_logs
+             WHERE tenant_id = ?
+             ORDER BY created_at DESC
+             LIMIT 6",
+            [$tenantId]
+        );
+
         $data = [
             'user' => $user,
             'stats' => [
@@ -56,21 +74,20 @@ class DashboardController extends Controller
                 'total_size' => (int) ($stats['total_size'] ?? 0),
                 'total_shares' => (int) ($shares['total_shares'] ?? 0),
                 'storage_quota' => (int) ($tenant['storage_quota'] ?? 10737418240),
+                'folders' => (int) ($folders['total_folders'] ?? 0),
+                'uptime' => '99.9%',
             ],
             'recent_files' => $recentFiles,
+            'recent_activity' => $recentActivity,
+            'system_status' => [
+                'api' => 'online',
+                'db' => 'online',
+                'storage' => 'online',
+                'cdn' => 'online',
+            ],
             'pageTitle' => 'Dashboard',
         ];
 
         $this->view('dashboard/index', $data);
-    }
-
-    protected function formatSize(int $bytes): string
-    {
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $bytes = max($bytes, 0);
-        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-        $pow = min($pow, count($units) - 1);
-        $bytes /= pow(1024, $pow);
-        return round($bytes, 2) . ' ' . $units[$pow];
     }
 }

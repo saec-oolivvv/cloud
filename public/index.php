@@ -11,12 +11,15 @@ ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 ini_set('error_log', __DIR__ . '/../storage/logs/error.log');
 
-// Gestion erreurs
+// Gestion erreurs — only fatal/catchable errors trigger 500
 set_error_handler(function($severity, $message, $file, $line) {
     error_log("[ERROR] [$severity] $message in $file:$line");
-    http_response_code(500);
-    echo 'Internal Server Error';
-    exit;
+    if ($severity === E_ERROR || $severity === E_PARSE || $severity === E_COMPILE_ERROR) {
+        http_response_code(500);
+        echo 'Internal Server Error';
+        exit;
+    }
+    return false;
 });
 
 set_exception_handler(function($exception) {
