@@ -207,3 +207,4 @@
 [04-Sep-2026 03:00:29 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
 [04-Sep-2026 03:01:04 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
 [04-Sep-2026 03:01:05 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'deleted_at' in 'WHERE' in /volume1/web/cloud/core/Database.php:48
+[04-Sep-2026 03:07:44 Europe/Amsterdam] [EXCEPTION] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'resource_type' in 'SELECT' in /volume1/web/cloud/core/Database.php:48

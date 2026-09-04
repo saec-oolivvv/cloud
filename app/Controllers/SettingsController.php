@@ -246,7 +246,7 @@ class SettingsController extends Controller
 
         // Audit logs
         $logs = $db->fetchAll(
-            "SELECT action, resource_type, created_at, ip_address
+            "SELECT action, created_at, ip_address
              FROM audit_logs WHERE user_id = ? ORDER BY created_at DESC LIMIT 500",
             [$userId]
         );

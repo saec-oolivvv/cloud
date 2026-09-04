@@ -4,15 +4,15 @@
 - [x] Dashboard 500 : `deleted_at` sur table `folders` → fixé
 - [x] Password change non fonctionnel : error handler 500 + pas de try/catch → fixé
 - [x] Error handler convertissait warnings en 500 → fixé
-- [ ] Cookie consent banner RGPD obligatoire
-- [ ] Page Politique de confidentialité (/privacy)
-- [ ] Page Conditions d'utilisation (/terms)
-- [ ] Export données personnelles (RGPD Art. 20)
-- [ ] Suppression compte (RGPD Art. 17)
+- [x] Cookie consent banner RGPD → fixé (layout)
+- [x] Page Politique de confidentialité (/privacy) → fixé
+- [x] Page Conditions d'utilisation (/terms) → fixé
+- [x] Export données personnelles (RGPD Art. 20) → fixé (GET /config/export)
+- [x] Suppression compte (RGPD Art. 17) → fixé (POST /config/delete-account)
 
 ## 🟠 HAUT — Sécurité & RGPD
-- [ ] Rate limiting sur changement mot de passe
-- [ ] Complexité mot de passe renforcée (12+ chars, majuscule, chiffre, symbole)
+- [x] Rate limiting sur changement mot de passe (5/h max) → fixé
+- [x] Complexité mot de passe renforcée (12+ chars) → fixé
 - [ ] Vérification email nouvel utilisateur
 - [ ] 2FA / TOTP optionnel
 - [ ] Rétention des logs audit configurables

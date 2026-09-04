@@ -59,7 +59,7 @@ class DashboardController extends Controller
 
         // Activité récente (audit logs)
         $recentActivity = $db->fetchAll(
-            "SELECT action as type, resource_type as detail, created_at
+            "SELECT action as type, created_at
              FROM audit_logs
              WHERE tenant_id = ?
              ORDER BY created_at DESC
