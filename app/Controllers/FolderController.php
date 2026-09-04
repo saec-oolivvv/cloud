@@ -85,6 +85,12 @@ class FolderController extends Controller
             return;
         }
 
+        $token = $_POST['_token'] ?? '';
+        if (!\Saec\Core\Session::verifyCsrf($token)) {
+            $this->json(['error' => 'Token CSRF invalide'], 403);
+            return;
+        }
+
         $name = trim($_POST['name'] ?? '');
         if (empty($name)) {
             $this->json(['error' => 'Nom du dossier requis'], 400);
@@ -175,6 +181,12 @@ class FolderController extends Controller
             return;
         }
 
+        $token = $_POST['_token'] ?? '';
+        if (!\Saec\Core\Session::verifyCsrf($token)) {
+            $this->json(['error' => 'Token CSRF invalide'], 403);
+            return;
+        }
+
         $db = Database::getInstance();
         $tenantId = $user['tenant_id'];
 
@@ -241,6 +253,23 @@ class FolderController extends Controller
     public function delete(string $id): void
     {
         $user = $this->requireAuth();
+
+        // For DELETE requests, CSRF token may be in body or header
+        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        if (!$token && $_SERVER['REQUEST_METHOD'] === 'DELETE') {
+            // Try to read from php://input
+            $raw = file_get_contents('php://input');
+            parse_str($raw, $body);
+            $token = $body['_token'] ?? '';
+        }
+        if (!$token) {
+            $token = $_POST['_token'] ?? '';
+        }
+        if (!\Saec\Core\Session::verifyCsrf($token)) {
+            $this->json(['error' => 'Token CSRF invalide'], 403);
+            return;
+        }
+
         $db = Database::getInstance();
         $tenantId = $user['tenant_id'];
 

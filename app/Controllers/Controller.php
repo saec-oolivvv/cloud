@@ -52,6 +52,7 @@ abstract class Controller
             'dashboard/index' => 'dashboard',
             'files/index' => 'files',
             'shares/index' => 'shares',
+            'settings/index' => 'settings',
             'admin/dashboard' => 'admin',
             'admin/tenants' => 'admin',
             'admin/modules' => 'admin',

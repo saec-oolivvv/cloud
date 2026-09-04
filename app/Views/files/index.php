@@ -150,27 +150,44 @@ $quota = $quota ?? 10737418240;
 
 <!-- Modal New Folder -->
 <div id="newFolderModal" class="modal" style="display:none;">
-    <div class="modal-content">
-        <div class="card">
-            <div class="card-header">
-                <span class="card-title"><?= t('files.create_folder') ?></span>
-                <button class="btn btn-ghost" onclick="document.getElementById('newFolderModal').style.display='none'">×</button>
+    <div class="modal-content" style="max-width:440px;">
+        <div style="background:var(--bg-secondary); border-radius:var(--radius-lg); border:1px solid var(--border-subtle); overflow:hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.5); animation: modalIn 0.2s ease-out;">
+            <div style="padding:var(--space-5) var(--space-6); border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:var(--space-3);">
+                    <div style="width:36px; height:36px; border-radius:var(--radius-md); background:linear-gradient(135deg, var(--blue-500), var(--cyan-400)); display:flex; align-items:center; justify-content:center;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" style="width:18px; height:18px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                    </div>
+                    <div>
+                        <div style="font-size:15px; font-weight:600;"><?= t('files.create_folder') ?></div>
+                        <div style="font-size:11px; color:var(--text-muted);">Créer un nouveau dossier</div>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('newFolderModal').style.display='none'" style="width:32px; height:32px; border-radius:var(--radius-sm); border:none; background:transparent; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; transition:all 0.15s;">×</button>
             </div>
-            <div class="card-body">
-                <form id="newFolderForm">
+            <form id="newFolderForm">
+                <div style="padding:var(--space-6);">
                     <div class="form-group">
-                        <label class="form-label"><?= t('files.folder_name') ?></label>
-                        <input type="text" name="name" class="form-input" required autofocus>
+                        <label class="form-label">Nom du dossier</label>
+                        <input type="text" name="name" class="form-input" required autofocus placeholder="Mon dossier" style="font-size:14px; padding:var(--space-3) var(--space-4);" autocomplete="off">
                     </div>
                     <?php if ($parentId): ?>
                     <input type="hidden" name="parent_id" value="<?= $parentId ?>">
                     <?php endif; ?>
-                    <button type="submit" class="btn btn-primary" style="width:100%;"><?= t('common.confirm') ?></button>
-                </form>
-            </div>
+                </div>
+                <div style="padding:var(--space-4) var(--space-6); border-top:1px solid var(--border-subtle); display:flex; justify-content:flex-end; gap:var(--space-3); background:rgba(0,0,0,0.15);">
+                    <button type="button" onclick="document.getElementById('newFolderModal').style.display='none'" class="btn btn-ghost" style="font-size:13px;">Annuler</button>
+                    <button type="submit" class="btn btn-primary" style="font-size:13px; padding:var(--space-2) var(--space-5);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                        Créer
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+<style>
+@keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+</style>
 
 <!-- Modal Share -->
 <div id="shareModal" class="modal" style="display:none;">
@@ -324,7 +341,9 @@ function downloadFile(id) { window.location.href = `/files/${id}/download`; }
 // Delete
 async function deleteFile(id) {
     if (!confirm('Delete file?')) return;
-    const res = await fetch(`/files/${id}`, { method: 'DELETE' });
+    const form = new FormData();
+    form.append('_token', '<?= \Saec\Core\Session::csrfToken() ?>');
+    const res = await fetch(`/files/${id}`, { method: 'DELETE', body: form });
     const data = await res.json();
     if (data.success) location.reload();
 }
@@ -338,6 +357,7 @@ function shareFile(id) {
 document.getElementById('shareForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = new FormData(e.target);
+    form.append('_token', '<?= \Saec\Core\Session::csrfToken() ?>');
     const res = await fetch(`/files/${form.get('file_id')}/share`, { method: 'POST', body: form });
     const data = await res.json();
     if (data.success) {
@@ -356,13 +376,17 @@ function copyShareLink() {
 document.getElementById('newFolderForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = new FormData(e.target);
+    form.append('_token', '<?= \Saec\Core\Session::csrfToken() ?>');
     const res = await fetch('/folders', { method: 'POST', body: form });
     const data = await res.json();
     if (data.success) location.reload();
+    else alert(data.error || 'Erreur lors de la création');
 });
 async function deleteFolder(id) {
     if (!confirm('Delete folder?')) return;
-    const res = await fetch(`/folders/${id}`, { method: 'DELETE' });
+    const form = new FormData();
+    form.append('_token', '<?= \Saec\Core\Session::csrfToken() ?>');
+    const res = await fetch(`/folders/${id}`, { method: 'DELETE', body: form });
     const data = await res.json();
     if (data.success) location.reload();
 }
@@ -371,6 +395,7 @@ async function renameFolder(id, oldName) {
     if (!name || name === oldName) return;
     const form = new FormData();
     form.append('name', name);
+    form.append('_token', '<?= \Saec\Core\Session::csrfToken() ?>');
     const res = await fetch(`/folders/${id}/rename`, { method: 'POST', body: form });
     const data = await res.json();
     if (data.success) location.reload();

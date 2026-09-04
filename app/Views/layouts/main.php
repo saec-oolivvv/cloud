@@ -65,7 +65,7 @@
             <!-- User Menu (mobile) -->
             <div class="user-menu" id="userMenu" style="position:absolute; right:0; top:100%; margin-top:8px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:var(--space-4); min-width:200px; display:none; z-index:100;">
                 <div style="font-size:12px; color:var(--text-secondary); margin-bottom:var(--space-3);">Profil</div>
-                <a href="/config" style="display:block; padding:var(--space-2) var(--space-3); color:var(--text-primary); font-size:13px; margin-bottom:var(--space-2); border-radius:var(--radius-sm);" onclick="toggleUserMenu();return false;">
+                <a href="/config" style="display:block; padding:var(--space-2) var(--space-3); color:var(--text-primary); font-size:13px; margin-bottom:var(--space-2); border-radius:var(--radius-sm);" onclick="toggleUserMenu();">
                     <i class="fas fa-cog" style="color:var(--amber-400); margin-right:var(--space-2);"></i>Paramètres
                 </a>
                 <a href="/logout" style="display:block; padding:var(--space-2) var(--space-3); color:var(--rose-500); font-size:13px; border-radius:var(--radius-sm);">
@@ -107,6 +107,11 @@
             <a href="/shares" class="nav-item <?= basename($_SERVER['REQUEST_URI']) === 'shares.php' ? 'active' : '' ?>">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                 <span class="nav-text">Partages</span>
+            </a>
+
+            <a href="/config" class="nav-item <?= strpos($_SERVER['REQUEST_URI'], '/config') !== false && strpos($_SERVER['REQUEST_URI'], '/admin') === false ? 'active' : '' ?>">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span class="nav-text">Mon compte</span>
             </a>
 
             <?php if ($isAdmin): ?>

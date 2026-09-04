@@ -35,6 +35,15 @@ $router->get('/logout', [AuthController::class, 'logout']);
 $router->get('/dashboard', [DashboardController::class, 'index'], [AuthMiddleware::class]);
 
 use Saec\Controllers\FolderController;
+use Saec\Controllers\SettingsController;
+
+// ─────────────────────────────────────────────────────────────
+// SETTINGS (User Account)
+// ─────────────────────────────────────────────────────────────
+$router->get('/config', [SettingsController::class, 'index'], [AuthMiddleware::class]);
+$router->post('/config/profile', [SettingsController::class, 'updateProfile'], [AuthMiddleware::class]);
+$router->post('/config/password', [SettingsController::class, 'changePassword'], [AuthMiddleware::class]);
+$router->post('/config/sessions/destroy', [SettingsController::class, 'destroySessions'], [AuthMiddleware::class]);
 
 // ─────────────────────────────────────────────────────────────
 // FILES
