@@ -109,6 +109,64 @@
 
 ---
 
+## 🎯 STORAGE MULTI-SOURCE PAR TENANT (IDÉES 2026-09-04)
+
+> Chaque client a sa propre config storage. Upload/download = transparent.
+> Le tenant ne voit jamais d'où viennent ses fichiers.
+
+### Architecture Multi-Source
+- [ ] **Config par tenant** — admin assigne N providers par client (ex: client1=local+dropbox, client2=aws+local)
+- [ ] **Routing intelligent upload** — écrit sur tous les providers assignés au tenant simultanément
+- [ ] **Routing intelligent download** — lit depuis le provider le plus rapide/disponible
+- [ ] **Transparent** — le tenant ne voit aucune différence, fichiers toujours accessibles
+- [ ] **Quotas par provider par tenant** — ex: 10Go local + 50Go Dropbox
+
+### Providers Supportés
+- [ ] **Local** — stockage NAS (par défaut, obligatoire)
+- [ ] **FTP/FTPS** — serveur distant classique
+- [ ] **SFTP/SSH** — serveur distant sécurisé
+- [ ] **Amazon S3** — SDK PHP natif
+- [ ] **Cloudflare R2** — S3-compatible, zero egress
+- [ ] **MinIO** — self-hosted S3
+- [ ] **Dropbox** — API v2, OAuth2
+- [ ] **Google Drive** — Google API PHP Client, OAuth2
+- [ ] **OneDrive** — Microsoft Graph API, OAuth2
+- [ ] **WebDAV** — Nextcloud, ownCloud, serveurs WebDAV
+- [ ] **Backblaze B2** — S3-compatible
+- [ ] **Wasabi** — S3-compatible, zero egress
+- [ ] **DigitalOcean Spaces** — endpoint-based
+
+### Sécurité Providers Externes
+- [ ] **Chiffrement avant upload** — AES-256-GCM tout fichier envoyé externe
+- [ ] **Clés API chiffrées en base** — jamais en clair, chiffrement AES master key
+- [ ] **Dossier Dropbox sécurisé** — chiffré, lisible uniquement par le client
+- [ ] **Token rotation OAuth2** — refresh automatique, jamais expiré
+- [ ] **Audit log** — chaque opération storage logguée (upload/download/delete)
+
+### Disponibilité
+- [ ] **Cache local** — si provider distant indisponible, lecture depuis cache
+- [ ] **Retry automatique** — backoff exponentiel sur échec
+- [ ] **Status dashboard admin** — santé de chaque provider (latence, uptime)
+- [ ] **Failover automatique** — si provider1 KO → bascule sur provider2
+
+### Configuration Admin
+- [ ] **Page admin: Providers** — lister, ajouter, modifier, supprimer providers
+- [ ] **Page admin: Tenant Storage** — assigner des providers par tenant
+- [ ] **Page admin: Status** — dashboard santé providers + quota utilisation
+- [ ] **Migration providers** — transférer fichiers d'un provider à un autre (pull/push)
+
+### Exemple Config Tenant
+```
+Tenant "ACME Corp" (Plan: Enterprise)
+├── Provider 1: Local NAS (principal, 50Go)
+├── Provider 2: Dropbox (backup, 200Go)
+├── Provider 3: S3 (archivage cold, illimité)
+└── Route: upload → local + Dropbox (mirror)
+          download → local si dispo, sinon Dropbox
+```
+
+---
+
 ## 🔄 BACKUP & SYNC OCTOPUS ARM
 
 ### Types de Backup

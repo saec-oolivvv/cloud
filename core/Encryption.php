@@ -73,6 +73,11 @@ class Encryption
             throw new \RuntimeException("Cannot read file: {$inputPath}");
         }
 
+        return $this->encryptFileFromContent($plaintext, $outputPath);
+    }
+
+    public function encryptFileFromContent(string $plaintext, string $outputPath): array
+    {
         $key = $this->generateFileKey();
         $iv = random_bytes(openssl_cipher_iv_length($this->cipher));
         $tag = '';

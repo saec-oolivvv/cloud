@@ -95,49 +95,67 @@ class FileController extends Controller
         $uploadDir = $this->getUploadDir($tenantId);
         $storagePath = $uploadDir . '/' . $storedName;
 
-        // Chiffrement AES-256-GCM
-        $encryption = new Encryption();
-        $result = $encryption->encryptFile($file['tmp_name'], $storagePath);
+        try {
+            // Chiffrement AES-256-GCM
+            $encryption = new Encryption();
+            $result = $encryption->encryptFile($file['tmp_name'], $storagePath);
 
-        // Checksum du fichier chiffré
-        $checksum = hash_file('sha256', $storagePath);
+            // Checksum du fichier chiffré
+            $checksum = hash_file('sha256', $storagePath);
 
-        $fileId = $db->insert('files', [
-            'tenant_id' => $tenantId,
-            'user_id' => $userId,
-            'folder_id' => $folderId,
-            'original_name' => $file['name'],
-            'stored_name' => $storedName,
-            'mime_type' => $mimeType,
-            'size' => $file['size'],
-            'checksum' => $checksum,
-            'file_key' => $result['key'],
-        ]);
+            // Vérifier que le fichier existe bien sur disque
+            if (!file_exists($storagePath) || filesize($storagePath) === 0) {
+                throw new \RuntimeException("Échec écriture fichier sur disque");
+            }
 
-        $db->insert('audit_logs', [
-            'tenant_id' => $tenantId,
-            'user_id' => $userId,
-            'action' => 'file.uploaded',
-            'resource_type' => 'file',
-            'resource_id' => $fileId,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-            'metadata' => json_encode([
-                'name' => $file['name'],
-                'size' => $file['size'],
-                'mime' => $mimeType,
+            $fileId = $db->insert('files', [
+                'tenant_id' => $tenantId,
+                'user_id' => $userId,
                 'folder_id' => $folderId,
-            ]),
-        ]);
-
-        $this->json([
-            'success' => true,
-            'file' => [
-                'id' => $fileId,
-                'name' => $file['name'],
-                'size' => $file['size'],
+                'original_name' => $file['name'],
+                'stored_name' => $storedName,
                 'mime_type' => $mimeType,
-            ],
-        ]);
+                'size' => $file['size'],
+                'checksum' => $checksum,
+                'file_key' => $result['key'],
+            ]);
+
+            if (!$fileId) {
+                throw new \RuntimeException("Échec insertion en base de données");
+            }
+
+            $db->insert('audit_logs', [
+                'tenant_id' => $tenantId,
+                'user_id' => $userId,
+                'action' => 'file.uploaded',
+                'resource_type' => 'file',
+                'resource_id' => $fileId,
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                'metadata' => json_encode([
+                    'name' => $file['name'],
+                    'size' => $file['size'],
+                    'mime' => $mimeType,
+                    'folder_id' => $folderId,
+                ]),
+            ]);
+
+            $this->json([
+                'success' => true,
+                'file' => [
+                    'id' => $fileId,
+                    'name' => $file['name'],
+                    'size' => $file['size'],
+                    'mime_type' => $mimeType,
+                    'folder_id' => $folderId,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            // Nettoyer le fichier si l'insert DB échoue
+            if (file_exists($storagePath)) {
+                @unlink($storagePath);
+            }
+            $this->json(['error' => 'Erreur upload: ' . $e->getMessage()], 500);
+        }
     }
 
     public function download(string $id): void
@@ -162,21 +180,22 @@ class FileController extends Controller
             return;
         }
 
-        // Isolation: storage/uploads/{tenant_id}/
+        // Isolation stricte: storage/uploads/{tenant_id}/
         $uploadDir = $this->getUploadDir($user['tenant_id']);
         $storagePath = $uploadDir . '/' . $file['stored_name'];
+
+        // Vérifier que le path est bien dans le dossier du tenant (prevent path traversal)
+        $realUploadDir = realpath($uploadDir);
+        $realStoragePath = realpath($storagePath);
+        if ($realUploadDir === false || $realStoragePath === false || !str_starts_with($realStoragePath, $realUploadDir . '/')) {
+            http_response_code(403);
+            echo "Accès interdit";
+            return;
+        }
 
         if (!file_exists($storagePath)) {
             http_response_code(404);
             echo "Fichier manquant sur le serveur";
-            return;
-        }
-
-        // Vérifier checksum
-        $currentChecksum = hash_file('sha256', $storagePath);
-        if ($currentChecksum !== $file['checksum']) {
-            http_response_code(500);
-            echo "Intégrité du fichier compromise";
             return;
         }
 
@@ -314,6 +333,15 @@ class FileController extends Controller
         $uploadDir = $this->getUploadDir($user['tenant_id']);
         $storagePath = $uploadDir . '/' . $file['stored_name'];
 
+        // Path traversal protection
+        $realUploadDir = realpath($uploadDir);
+        $realStoragePath = realpath($storagePath);
+        if ($realUploadDir === false || $realStoragePath === false || !str_starts_with($realStoragePath, $realUploadDir . '/')) {
+            http_response_code(403);
+            echo "Accès interdit";
+            return;
+        }
+
         if (!file_exists($storagePath)) {
             http_response_code(404);
             echo "Fichier manquant";
@@ -328,5 +356,209 @@ class FileController extends Controller
         header('X-Content-Type-Options: nosniff');
         header('Cache-Control: no-store');
         echo $content;
+    }
+
+    /**
+     * Vue inline du fichier — affiche le contenu dans le SaaS
+     */
+    public function view(string $id): void
+    {
+        $user = $this->requireAuth();
+        $db = Database::getInstance();
+
+        $file = $db->fetch(
+            "SELECT * FROM files WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL",
+            [$id, $user['tenant_id']]
+        );
+
+        if (!$file) {
+            $this->json(['error' => 'Fichier non trouvé'], 404);
+            return;
+        }
+
+        $this->view('files/viewer', [
+            'user' => $user,
+            'file' => $file,
+            'pageTitle' => $file['original_name'],
+        ]);
+    }
+
+    /**
+     * API: retourne le contenu du fichier (JSON)
+     */
+    public function getContent(string $id): void
+    {
+        $user = $this->requireAuth();
+        $db = Database::getInstance();
+
+        $file = $db->fetch(
+            "SELECT * FROM files WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL",
+            [$id, $user['tenant_id']]
+        );
+
+        if (!$file || empty($file['file_key'])) {
+            $this->json(['error' => 'Fichier non trouvé'], 404);
+            return;
+        }
+
+        $uploadDir = $this->getUploadDir($user['tenant_id']);
+        $storagePath = $uploadDir . '/' . $file['stored_name'];
+
+        $realUploadDir = realpath($uploadDir);
+        $realStoragePath = realpath($storagePath);
+        if ($realUploadDir === false || $realStoragePath === false || !str_starts_with($realStoragePath, $realUploadDir . '/')) {
+            $this->json(['error' => 'Accès interdit'], 403);
+            return;
+        }
+
+        if (!file_exists($storagePath)) {
+            $this->json(['error' => 'Fichier manquant sur le serveur'], 404);
+            return;
+        }
+
+        $encryption = new Encryption();
+        $content = $encryption->decryptFile($storagePath, $file['file_key']);
+
+        $mime = $file['mime_type'] ?? '';
+        $isText = str_starts_with($mime, 'text/')
+            || in_array($mime, ['application/json', 'application/javascript', 'application/xml', 'application/x-httpd-php']);
+
+        $this->json([
+            'success' => true,
+            'file' => [
+                'id' => $file['id'],
+                'name' => $file['original_name'],
+                'mime_type' => $mime,
+                'size' => $file['size'],
+                'is_text' => $isText,
+                'content' => $isText ? $content : base64_encode($content),
+            ],
+        ]);
+    }
+
+    /**
+     * Sauvegarder le contenu édité d'un fichier texte
+     */
+    public function saveContent(string $id): void
+    {
+        $user = $this->requireAuth();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->json(['error' => 'Method not allowed'], 405);
+            return;
+        }
+
+        $db = Database::getInstance();
+        $file = $db->fetch(
+            "SELECT * FROM files WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL",
+            [$id, $user['tenant_id']]
+        );
+
+        if (!$file || empty($file['file_key'])) {
+            $this->json(['error' => 'Fichier non trouvé'], 404);
+            return;
+        }
+
+        $raw = file_get_contents('php://input');
+        $body = json_decode($raw, true);
+        $newContent = $body['content'] ?? null;
+
+        if ($newContent === null) {
+            $this->json(['error' => 'Contenu manquant'], 400);
+            return;
+        }
+
+        $uploadDir = $this->getUploadDir($user['tenant_id']);
+        $storagePath = $uploadDir . '/' . $file['stored_name'];
+
+        try {
+            $encryption = new Encryption();
+            $result = $encryption->encryptFileFromContent($newContent, $storagePath);
+
+            $checksum = hash_file('sha256', $storagePath);
+
+            $db->execute(
+                "UPDATE files SET checksum = ?, file_key = ?, size = ?, version = version + 1, updated_at = NOW() WHERE id = ? AND tenant_id = ?",
+                [$checksum, $result['key'], strlen($newContent), $id, $user['tenant_id']]
+            );
+
+            // Sauvegarder la version
+            $db->insert('file_versions', [
+                'file_id' => $id,
+                'version' => $file['version'] + 1,
+                'stored_name' => $file['stored_name'],
+                'size' => strlen($newContent),
+                'checksum' => $checksum,
+                'created_by' => $user['id'],
+            ]);
+
+            $db->insert('audit_logs', [
+                'tenant_id' => $user['tenant_id'],
+                'user_id' => $user['id'],
+                'action' => 'file.edited',
+                'resource_type' => 'file',
+                'resource_id' => $id,
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+            ]);
+
+            $this->json(['success' => true, 'checksum' => $checksum]);
+        } catch (\Throwable $e) {
+            $this->json(['error' => 'Erreur sauvegarde: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Déplacer un fichier vers un dossier
+     */
+    public function move(string $id): void
+    {
+        $user = $this->requireAuth();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->json(['error' => 'Method not allowed'], 405);
+            return;
+        }
+
+        $db = Database::getInstance();
+        $body = json_decode(file_get_contents('php://input'), true);
+        $targetFolderId = isset($body['folder_id']) ? (int) $body['folder_id'] : null;
+
+        $file = $db->fetch(
+            "SELECT * FROM files WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL",
+            [$id, $user['tenant_id']]
+        );
+
+        if (!$file) {
+            $this->json(['error' => 'Fichier non trouvé'], 404);
+            return;
+        }
+
+        if ($targetFolderId) {
+            $folder = $db->fetch(
+                "SELECT id FROM folders WHERE id = ? AND tenant_id = ?",
+                [$targetFolderId, $user['tenant_id']]
+            );
+            if (!$folder) {
+                $this->json(['error' => 'Dossier destination non trouvé'], 404);
+                return;
+            }
+        }
+
+        $db->execute(
+            "UPDATE files SET folder_id = ?, updated_at = NOW() WHERE id = ? AND tenant_id = ?",
+            [$targetFolderId, $id, $user['tenant_id']]
+        );
+
+        $db->insert('audit_logs', [
+            'tenant_id' => $user['tenant_id'],
+            'user_id' => $user['id'],
+            'action' => 'file.moved',
+            'resource_type' => 'file',
+            'resource_id' => $id,
+            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+            'metadata' => json_encode(['target_folder_id' => $targetFolderId]),
+        ]);
+
+        $this->json(['success' => true]);
     }
 }

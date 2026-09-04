@@ -3,453 +3,915 @@
 /** @var array $files */
 /** @var array $folders */
 /** @var array $breadcrumb */
-/** @var int $total */
+/** @var int $used */
+/** @var int $quota */
+/** @var int|null $parentId */
 
 $user = $user ?? [];
 $files = $files ?? [];
 $folders = $folders ?? [];
-$breadcrumb = $breadcrumb ?? [['name' => t('files.breadcrumb_home'), 'url' => '/files']];
-$total = $total ?? 0;
+$breadcrumb = $breadcrumb ?? [['name' => 'Fichiers', 'url' => '/files']];
 $parentId = $parentId ?? null;
 $used = $used ?? 0;
 $quota = $quota ?? 10737418240;
+$csrf = \Saec\Core\Session::csrfToken();
+
+function getFileIconSvg(string $mime, string $name = ''): string {
+    $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+    if (in_array($ext, ['pdf'])) {
+        return '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="2" width="36" height="44" rx="4" fill="#E53935" opacity="0.15"/><rect x="6" y="2" width="36" height="44" rx="4" stroke="#E53935" stroke-width="1.5"/><text x="24" y="30" text-anchor="middle" fill="#E53935" font-size="11" font-weight="700" font-family="Inter,sans-serif">PDF</text></svg>';
+    }
+    if (in_array($ext, ['doc', 'docx'])) {
+        return '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="2" width="36" height="44" rx="4" fill="#1565C0" opacity="0.15"/><rect x="6" y="2" width="36" height="44" rx="4" stroke="#1565C0" stroke-width="1.5"/><text x="24" y="30" text-anchor="middle" fill="#1565C0" font-size="10" font-weight="700" font-family="Inter,sans-serif">DOC</text></svg>';
+    }
+    if (in_array($ext, ['xls', 'xlsx', 'csv'])) {
+        return '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="2" width="36" height="44" rx="4" fill="#2E7D32" opacity="0.15"/><rect x="6" y="2" width="36" height="44" rx="4" stroke="#2E7D32" stroke-width="1.5"/><text x="24" y="30" text-anchor="middle" fill="#2E7D32" font-size="10" font-weight="700" font-family="Inter,sans-serif">XLS</text></svg>';
+    }
+    if (in_array($ext, ['ppt', 'pptx'])) {
+        return '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="2" width="36" height="44" rx="4" fill="#E65100" opacity="0.15"/><rect x="6" y="2" width="36" height="44" rx="4" stroke="#E65100" stroke-width="1.5"/><text x="24" y="30" text-anchor="middle" fill="#E65100" font-size="10" font-weight="700" font-family="Inter,sans-serif">PPT</text></svg>';
+    }
+    if (in_array($ext, ['zip', 'rar', '7z', 'tar', 'gz'])) {
+        return '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="2" width="36" height="44" rx="4" fill="#6A1B9A" opacity="0.15"/><rect x="6" y="2" width="36" height="44" rx="4" stroke="#6A1B9A" stroke-width="1.5"/><text x="24" y="30" text-anchor="middle" fill="#6A1B9A" font-size="10" font-weight="700" font-family="Inter,sans-serif">ZIP</text></svg>';
+    }
+    if (in_array($ext, ['mp4', 'avi', 'mkv', 'mov', 'webm'])) {
+        return '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="2" width="36" height="44" rx="4" fill="#AD1457" opacity="0.15"/><rect x="6" y="2" width="36" height="44" rx="4" stroke="#AD1457" stroke-width="1.5"/><path d="M20 16l12 8-12 8V16z" fill="#AD1457"/></svg>';
+    }
+    if (in_array($ext, ['mp3', 'wav', 'ogg', 'flac', 'aac'])) {
+        return '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="2" width="36" height="44" rx="4" fill="#00838F" opacity="0.15"/><rect x="6" y="2" width="36" height="44" rx="4" stroke="#00838F" stroke-width="1.5"/><path d="M28 16v16M22 20v10M16 18v14M34 14v18" stroke="#00838F" stroke-width="2" stroke-linecap="round"/></svg>';
+    }
+    if (str_starts_with($mime, 'image/') || in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp', 'ico'])) {
+        return '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="2" width="36" height="44" rx="4" fill="#1565C0" opacity="0.15"/><rect x="6" y="2" width="36" height="44" rx="4" stroke="#1565C0" stroke-width="1.5"/><circle cx="18" cy="18" r="4" fill="#1565C0" opacity="0.5"/><path d="M6 34l10-10 8 8 6-6 12 10" stroke="#1565C0" stroke-width="1.5" fill="none"/></svg>';
+    }
+    if (in_array($ext, ['js', 'ts', 'jsx', 'tsx', 'php', 'py', 'rb', 'go', 'rs', 'java', 'c', 'cpp', 'h', 'css', 'scss', 'html', 'xml', 'json', 'yaml', 'yml', 'sh', 'bash'])) {
+        return '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="2" width="36" height="44" rx="4" fill="#F57C00" opacity="0.15"/><rect x="6" y="2" width="36" height="44" rx="4" stroke="#F57C00" stroke-width="1.5"/><text x="24" y="27" text-anchor="middle" fill="#F57C00" font-size="8" font-weight="700" font-family="JetBrains Mono,monospace">&lt;/&gt;</text></svg>';
+    }
+    if (in_array($ext, ['txt', 'md', 'log', 'ini', 'cfg', 'conf'])) {
+        return '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="2" width="36" height="44" rx="4" fill="#546E7A" opacity="0.15"/><rect x="6" y="2" width="36" height="44" rx="4" stroke="#546E7A" stroke-width="1.5"/><line x1="14" y1="16" x2="34" y2="16" stroke="#546E7A" stroke-width="1.5" opacity="0.5"/><line x1="14" y1="22" x2="30" y2="22" stroke="#546E7A" stroke-width="1.5" opacity="0.5"/><line x1="14" y1="28" x2="28" y2="28" stroke="#546E7A" stroke-width="1.5" opacity="0.5"/></svg>';
+    }
+    if (in_array($ext, ['exe', 'msi', 'dmg', 'deb', 'rpm', 'app'])) {
+        return '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="2" width="36" height="44" rx="4" fill="#455A64" opacity="0.15"/><rect x="6" y="2" width="36" height="44" rx="4" stroke="#455A64" stroke-width="1.5"/><path d="M24 14v8M20 18h8" stroke="#455A64" stroke-width="2" stroke-linecap="round"/></svg>';
+    }
+    return '<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="2" width="36" height="44" rx="4" fill="#78909C" opacity="0.15"/><rect x="6" y="2" width="36" height="44" rx="4" stroke="#78909C" stroke-width="1.5"/><line x1="14" y1="16" x2="34" y2="16" stroke="#78909C" stroke-width="1.5" opacity="0.5"/><line x1="14" y1="22" x2="34" y2="22" stroke="#78909C" stroke-width="1.5" opacity="0.5"/><line x1="14" y1="28" x2="26" y2="28" stroke="#78909C" stroke-width="1.5" opacity="0.5"/></svg>';
+}
+
+function getFileColor(string $mime, string $name = ''): string {
+    $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+    if ($ext === 'pdf') return '#E53935';
+    if (in_array($ext, ['doc', 'docx'])) return '#1565C0';
+    if (in_array($ext, ['xls', 'xlsx', 'csv'])) return '#2E7D32';
+    if (in_array($ext, ['ppt', 'pptx'])) return '#E65100';
+    if (in_array($ext, ['zip', 'rar', '7z', 'tar', 'gz'])) return '#6A1B9A';
+    if (in_array($ext, ['mp4', 'avi', 'mkv', 'mov', 'webm'])) return '#AD1457';
+    if (in_array($ext, ['mp3', 'wav', 'ogg', 'flac'])) return '#00838F';
+    if (str_starts_with($mime, 'image/')) return '#1565C0';
+    if (in_array($ext, ['js', 'ts', 'php', 'py', 'html', 'css', 'json'])) return '#F57C00';
+    return '#546E7A';
+}
+
+function formatSize(int $bytes): string {
+    $units = ['o', 'Ko', 'Mo', 'Go', 'To'];
+    $bytes = max($bytes, 0);
+    $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+    $pow = min($pow, count($units) - 1);
+    $bytes /= pow(1024, $pow);
+    return round($bytes, 1) . ' ' . $units[$pow];
+}
 ?>
 
-<!-- Page Header -->
-<div class="page-header">
-    <div>
-        <h1><?= t('files.title') ?></h1>
-        <div class="breadcrumb">
-            <?php foreach ($breadcrumb as $i => $bc): ?>
-            <?php if ($i > 0): ?> / <?php endif; ?>
-            <?php if ($bc['url']): ?>
-            <a href="<?= $bc['url'] ?>"><?= htmlspecialchars($bc['name']) ?></a>
-            <?php else: ?>
-            <span><?= htmlspecialchars($bc['name']) ?></span>
-            <?php endif; ?>
-            <?php endforeach; ?>
-        </div>
-    </div>
-    <div class="header-actions">
-        <button class="btn btn-outline" onclick="document.getElementById('newFolderModal').style.display='flex'">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-            <?= t('files.create_folder') ?>
-        </button>
-        <button class="btn btn-primary" onclick="document.getElementById('uploadZone').scrollIntoView({behavior:'smooth'})">
-            + <?= t('files.upload') ?>
-        </button>
-    </div>
-</div>
-
-<!-- Storage Bar -->
-<div class="card" style="margin-bottom: var(--space-6);">
-    <div class="card-header">
-        <span class="card-title"><?= t('dashboard.storage_used') ?></span>
-        <span class="card-sub">
-            <?= $this->formatSize($used) ?> / <?= $this->formatSize($quota) ?>
-        </span>
-    </div>
-    <?php $pct = $quota > 0 ? ($used / $quota) * 100 : 0; ?>
-    <div class="storage-bar">
-        <div class="storage-bar-fill <?= $pct > 90 ? 'danger' : ($pct > 70 ? 'warning' : '') ?>" style="width: <?= min($pct, 100) ?>%"></div>
-    </div>
-</div>
-
-<!-- Upload Zone -->
-<div class="upload-zone" id="uploadZone">
-    <div class="upload-icon" style="background: linear-gradient(135deg, var(--blue-500), var(--cyan-400)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">☁️</div>
-    <h3><?= t('files.upload_drag') ?></h3>
-    <p><?= t('files.upload_click') ?></p>
-    <div class="upload-actions">
-        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click();">
-            📁 <?= t('common.next') ?>
-        </button>
-    </div>
-    <div class="file-types">
-        <?= t('files.upload_hint', ['size' => '10 GB']) ?>
-    </div>
-    <input type="file" id="fileInput" multiple style="display:none;" />
-</div>
-
-<!-- Upload Queue (hidden by default) -->
-<div class="upload-queue" id="uploadQueue" style="display:none;">
-    <div class="queue-header">
-        <span class="queue-title">📦 Queue</span>
-        <span class="queue-count" id="queueCount">0 files</span>
-    </div>
-    <div id="queueList"></div>
-</div>
-
-<!-- Folders -->
-<?php if (!empty($folders)): ?>
-<div style="margin-bottom: var(--space-4);">
-    <div class="file-list-header">
-        <span class="list-title">📁 <?= t('nav.files') ?></span>
-    </div>
-    <div class="file-list" data-stagger>
-        <?php foreach ($folders as $folder): ?>
-        <div class="file-row">
-            <div class="row-icon" style="color: var(--amber-400);">📁</div>
-            <div class="row-info">
-                <a href="/files?folder=<?= $folder['id'] ?>" class="row-name">
-                    <?= htmlspecialchars($folder['name']) ?>
-                </a>
-                <div class="row-meta"><?= date('d/m/Y', strtotime($folder['created_at'])) ?></div>
-            </div>
-            <div class="row-actions">
-                <span class="action-btn" onclick="renameFolder(<?= $folder['id'] ?>, '<?= htmlspecialchars($folder['name']) ?>')" title="<?= t('common.save') ?>">✏️</span>
-                <span class="action-btn" onclick="deleteFolder(<?= $folder['id'] ?>)" title="<?= t('files.delete') ?>" style="color:var(--rose-500);">🗑</span>
+<div class="file-browser">
+    <!-- Toolbar -->
+    <div class="fb-toolbar">
+        <div class="fb-toolbar-left">
+            <div class="fb-breadcrumb">
+                <?php foreach ($breadcrumb as $i => $bc): ?>
+                    <?php if ($i > 0): ?><span class="fb-bc-sep">›</span><?php endif; ?>
+                    <a href="<?= $bc['url'] ?>" class="fb-bc-item"><?= htmlspecialchars($bc['name']) ?></a>
+                <?php endforeach; ?>
             </div>
         </div>
-        <?php endforeach; ?>
-    </div>
-</div>
-<?php endif; ?>
-
-<!-- Files -->
-<?php if (!empty($files)): ?>
-<div>
-    <div class="file-list-header">
-        <span class="list-title">📄 <?= t('files.title') ?> (<?= count($files) ?>)</span>
-    </div>
-    <div class="file-list" data-stagger>
-        <?php foreach ($files as $file): ?>
-        <div class="file-row" data-id="<?= $file['id'] ?>">
-            <div class="row-icon"><?= getFileIcon($file['mime_type'] ?? '') ?></div>
-            <div class="row-info">
-                <div class="row-name"><?= htmlspecialchars($file['original_name']) ?></div>
-                <div class="row-meta">
-                    <?= $this->formatSize($file['size']) ?> · <?= date('d/m/Y H:i', strtotime($file['created_at'])) ?>
-                </div>
+        <div class="fb-toolbar-right">
+            <div class="fb-view-toggle" id="viewToggle">
+                <button class="fb-view-btn active" data-view="grid" title="Grille">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+                </button>
+                <button class="fb-view-btn" data-view="list" title="Liste">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="3" rx="1"/><rect x="1" y="7" width="14" height="3" rx="1"/><rect x="1" y="12" width="14" height="3" rx="1"/></svg>
+                </button>
             </div>
-            <div class="row-size"><?= $this->formatSize($file['size']) ?></div>
-            <div class="row-actions">
-                <span class="action-btn" onclick="downloadFile(<?= $file['id'] ?>)" title="<?= t('files.download') ?>">📥</span>
-                <span class="action-btn" onclick="shareFile(<?= $file['id'] ?>)" title="<?= t('files.share') ?>">🔗</span>
-                <span class="action-btn" onclick="deleteFile(<?= $file['id'] ?>)" title="<?= t('files.delete') ?>" style="color:var(--rose-500);">🗑</span>
-            </div>
+            <button class="fb-btn fb-btn-primary" id="uploadBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Upload
+            </button>
+            <button class="fb-btn fb-btn-outline" id="newFolderBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                Nouveau dossier
+            </button>
         </div>
-        <?php endforeach; ?>
     </div>
-</div>
-<?php endif; ?>
 
-<?php if (empty($files) && empty($folders)): ?>
-<div class="empty-state">
-    <div class="empty-state-icon">📂</div>
-    <h3><?= t('files.no_files') ?></h3>
-    <p><?= t('files.no_files_hint') ?></p>
-</div>
-<?php endif; ?>
+    <!-- Storage Bar -->
+    <div class="fb-storage">
+        <div class="fb-storage-info">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            <span><?= formatSize($used) ?> / <?= formatSize($quota) ?></span>
+        </div>
+        <?php $pct = $quota > 0 ? min(($used / $quota) * 100, 100) : 0; ?>
+        <div class="fb-storage-bar">
+            <div class="fb-storage-fill <?= $pct > 90 ? 'danger' : ($pct > 70 ? 'warning' : '') ?>" style="width: <?= $pct ?>%"></div>
+        </div>
+    </div>
 
-<!-- Footer -->
-<div class="page-footer">
-    <span><?= t('app.copyright') ?></span>
-    <span class="footer-badge">🔐 AES-256-GCM · <?= t('app.footer_stack') ?></span>
-</div>
+    <!-- Batch Actions Bar (hidden by default) -->
+    <div class="fb-batch-bar" id="batchBar" style="display:none;">
+        <span id="batchCount">0 sélectionnés</span>
+        <div class="fb-batch-actions">
+            <button class="fb-batch-btn" onclick="batchDownload()" title="Télécharger">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            <button class="fb-batch-btn" onclick="batchMove()" title="Déplacer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+            </button>
+            <button class="fb-batch-btn fb-batch-danger" onclick="batchDelete()" title="Supprimer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            </button>
+            <button class="fb-batch-btn" onclick="clearSelection()" title="Annuler">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+    </div>
 
-<!-- Modal New Folder -->
-<div id="newFolderModal" class="modal" style="display:none;">
-    <div class="modal-content" style="max-width:440px;">
-        <div class="card" style="animation: modalIn 0.2s ease-out;">
-            <div class="card-header">
-                <div class="card-title" style="display:flex; align-items:center; gap:var(--space-3);">
-                    <div class="settings-section-icon blue">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-                    </div>
-                    <div>
-                        <div><?= t('files.create_folder') ?></div>
-                        <div style="font-size:11px; color:var(--text-muted); font-weight:400;">Créer un nouveau dossier</div>
-                    </div>
-                </div>
-                <button class="modal-close" onclick="document.getElementById('newFolderModal').style.display='none'">×</button>
+    <!-- Main Content -->
+    <div class="fb-content">
+        <!-- Folders -->
+        <?php if (!empty($folders)): ?>
+        <div class="fb-section" id="foldersSection">
+            <div class="fb-section-header">
+                <span class="fb-section-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                    Dossiers
+                </span>
+                <span class="fb-section-count"><?= count($folders) ?></span>
             </div>
-            <div class="card-body">
-                <form id="newFolderForm">
-                    <div class="form-group">
-                        <label class="form-label">Nom du dossier</label>
-                        <input type="text" name="name" class="form-input" required autofocus placeholder="Mon dossier" autocomplete="off">
+            <div class="fb-grid" id="foldersGrid">
+                <?php foreach ($folders as $folder): ?>
+                <div class="fb-item fb-folder" data-id="<?= $folder['id'] ?>" data-type="folder">
+                    <div class="fb-item-icon">
+                        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 12C6 9.79 7.79 8 10 8H18L22 14H38C40.21 14 42 15.79 42 18V36C42 38.21 40.21 40 38 40H10C7.79 40 6 38.21 6 36V12Z" fill="#F59E0B" opacity="0.2"/>
+                            <path d="M6 12C6 9.79 7.79 8 10 8H18L22 14H38C40.21 14 42 15.79 42 18V36C42 38.21 40.21 40 38 40H10C7.79 40 6 38.21 6 36V12Z" stroke="#F59E0B" stroke-width="2" fill="none"/>
+                        </svg>
                     </div>
-                    <?php if ($parentId): ?>
-                    <input type="hidden" name="parent_id" value="<?= $parentId ?>">
-                    <?php endif; ?>
-                    <div style="display:flex; justify-content:flex-end; gap:var(--space-3);">
-                        <button type="button" onclick="document.getElementById('newFolderModal').style.display='none'" class="btn btn-ghost">Annuler</button>
-                        <button type="submit" class="btn btn-primary">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-                            Créer
+                    <div class="fb-item-info">
+                        <div class="fb-item-name" title="<?= htmlspecialchars($folder['name']) ?>"><?= htmlspecialchars($folder['name']) ?></div>
+                        <div class="fb-item-meta"><?= ($folder['file_count'] ?? 0) ?> fichiers</div>
+                    </div>
+                    <div class="fb-item-actions">
+                        <button class="fb-action-btn" onclick="renameFolder(<?= $folder['id'] ?>, '<?= htmlspecialchars(addslashes($folder['name'])) ?>')" title="Renommer">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <button class="fb-action-btn fb-action-danger" onclick="deleteFolder(<?= $folder['id'] ?>)" title="Supprimer">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                         </button>
                     </div>
-                </form>
+                    <a href="/files?folder=<?= $folder['id'] ?>" class="fb-item-link"></a>
+                </div>
+                <?php endforeach; ?>
             </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Files -->
+        <?php if (!empty($files)): ?>
+        <div class="fb-section" id="filesSection">
+            <div class="fb-section-header">
+                <span class="fb-section-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    Fichiers
+                </span>
+                <span class="fb-section-count"><?= count($files) ?></span>
+            </div>
+            <div class="fb-grid" id="filesGrid">
+                <?php foreach ($files as $file): ?>
+                <div class="fb-item fb-file" data-id="<?= $file['id'] ?>" data-type="file" data-mime="<?= htmlspecialchars($file['mime_type'] ?? '') ?>" data-name="<?= htmlspecialchars($file['original_name']) ?>">
+                    <div class="fb-item-checkbox">
+                        <input type="checkbox" class="fb-select" data-id="<?= $file['id'] ?>" data-type="file">
+                    </div>
+                    <div class="fb-item-icon" style="color: <?= getFileColor($file['mime_type'] ?? '', $file['original_name']) ?>">
+                        <?= getFileIconSvg($file['mime_type'] ?? '', $file['original_name']) ?>
+                    </div>
+                    <div class="fb-item-info">
+                        <div class="fb-item-name" title="<?= htmlspecialchars($file['original_name']) ?>"><?= htmlspecialchars($file['original_name']) ?></div>
+                        <div class="fb-item-meta"><?= formatSize((int)$file['size']) ?> · <?= date('d/m/Y H:i', strtotime($file['created_at'])) ?></div>
+                    </div>
+                    <div class="fb-item-actions">
+                        <button class="fb-action-btn" onclick="viewFile(<?= $file['id'] ?>, '<?= htmlspecialchars($file['mime_type'] ?? '') ?>', '<?= htmlspecialchars(addslashes($file['original_name'])) ?>')" title="Ouvrir">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        <button class="fb-action-btn" onclick="downloadFile(<?= $file['id'] ?>)" title="Télécharger">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        </button>
+                        <button class="fb-action-btn" onclick="shareFile(<?= $file['id'] ?>)" title="Partager">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                        </button>
+                        <button class="fb-action-btn fb-action-danger" onclick="deleteFile(<?= $file['id'] ?>)" title="Supprimer">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Empty State -->
+        <?php if (empty($files) && empty($folders)): ?>
+        <div class="fb-empty">
+            <div class="fb-empty-icon">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+            </div>
+            <h3>Aucun fichier</h3>
+            <p>Glissez des fichiers ici ou cliquez sur Upload</p>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="fb-modal" id="uploadModal" style="display:none;">
+    <div class="fb-modal-overlay" onclick="closeUploadModal()"></div>
+    <div class="fb-modal-content">
+        <div class="fb-modal-header">
+            <h3>Upload de fichiers</h3>
+            <button class="fb-modal-close" onclick="closeUploadModal()">×</button>
+        </div>
+        <div class="fb-modal-body">
+            <div class="fb-upload-dropzone" id="uploadDropzone">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <p>Glissez vos fichiers ici</p>
+                <span>ou</span>
+                <button class="fb-btn fb-btn-primary" onclick="document.getElementById('uploadFileInput').click()">Parcourir</button>
+                <input type="file" id="uploadFileInput" multiple style="display:none;">
+            </div>
+            <div class="fb-upload-dest">
+                <label class="fb-label">Destination :</label>
+                <select id="uploadFolderSelect" class="fb-select-input">
+                    <option value="">📁 Racine</option>
+                    <?php foreach ($folders as $f): ?>
+                    <option value="<?= $f['id'] ?>" <?= $parentId == $f['id'] ? 'selected' : '' ?>>📁 <?= htmlspecialchars($f['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="fb-upload-list" id="uploadList"></div>
+        </div>
+        <div class="fb-modal-footer">
+            <button class="fb-btn fb-btn-ghost" onclick="closeUploadModal()">Annuler</button>
+            <button class="fb-btn fb-btn-primary" id="uploadStartBtn" disabled>Uploader</button>
         </div>
     </div>
 </div>
 
-<!-- Modal Share -->
-<div id="shareModal" class="modal" style="display:none;">
-    <div class="modal-content">
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title" style="display:flex; align-items:center; gap:var(--space-3);">
-                    <div class="settings-section-icon cyan">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-                    </div>
-                    <?= t('shares.create') ?>
-                </div>
-                <button class="modal-close" onclick="document.getElementById('shareModal').style.display='none'">×</button>
+<!-- New Folder Modal -->
+<div class="fb-modal" id="folderModal" style="display:none;">
+    <div class="fb-modal-overlay" onclick="closeFolderModal()"></div>
+    <div class="fb-modal-content fb-modal-sm">
+        <div class="fb-modal-header">
+            <h3>Nouveau dossier</h3>
+            <button class="fb-modal-close" onclick="closeFolderModal()">×</button>
+        </div>
+        <div class="fb-modal-body">
+            <input type="text" id="folderNameInput" class="fb-input" placeholder="Nom du dossier" autofocus>
+        </div>
+        <div class="fb-modal-footer">
+            <button class="fb-btn fb-btn-ghost" onclick="closeFolderModal()">Annuler</button>
+            <button class="fb-btn fb-btn-primary" onclick="createFolder()">Créer</button>
+        </div>
+    </div>
+</div>
+
+<!-- Viewer Modal -->
+<div class="fb-modal fb-viewer" id="viewerModal" style="display:none;">
+    <div class="fb-modal-overlay" onclick="closeViewer()"></div>
+    <div class="fb-viewer-content">
+        <div class="fb-viewer-header">
+            <div class="fb-viewer-title" id="viewerTitle">fichier.txt</div>
+            <div class="fb-viewer-actions">
+                <button class="fb-btn fb-btn-ghost fb-btn-sm" id="viewerEditBtn" onclick="toggleEditMode()" style="display:none;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Éditer
+                </button>
+                <button class="fb-btn fb-btn-ghost fb-btn-sm" id="viewerSaveBtn" onclick="saveFileContent()" style="display:none;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+                    Sauvegarder
+                </button>
+                <button class="fb-btn fb-btn-ghost fb-btn-sm" onclick="downloadFile(currentViewerFileId)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+                <button class="fb-viewer-close" onclick="closeViewer()">×</button>
             </div>
-            <div class="card-body">
-                <form id="shareForm">
-                    <input type="hidden" name="file_id" id="shareFileId">
-                    <div class="form-group">
-                        <label class="form-label"><?= t('shares.expires') ?></label>
-                        <input type="datetime-local" name="expires_at" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Password (optional)</label>
-                        <input type="password" name="password" class="form-input" placeholder="••••••••">
-                    </div>
-                    <button type="submit" class="btn btn-primary" style="width:100%;"><?= t('common.confirm') ?></button>
-                </form>
-                <div id="shareResult" style="display:none; margin-top:var(--space-4);">
-                    <label class="form-label"><?= t('shares.copy_link') ?></label>
-                    <div style="display:flex; gap:var(--space-2);">
-                        <input type="text" id="shareLink" class="form-input" readonly>
-                        <button class="btn btn-outline" onclick="copyShareLink()"><?= t('shares.copy_link') ?></button>
-                    </div>
+        </div>
+        <div class="fb-viewer-body" id="viewerBody">
+            <div class="fb-viewer-loading">Chargement...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Share Modal -->
+<div class="fb-modal" id="shareModal" style="display:none;">
+    <div class="fb-modal-overlay" onclick="closeShareModal()"></div>
+    <div class="fb-modal-content fb-modal-sm">
+        <div class="fb-modal-header">
+            <h3>Partager le fichier</h3>
+            <button class="fb-modal-close" onclick="closeShareModal()">×</button>
+        </div>
+        <div class="fb-modal-body">
+            <div class="fb-form-group">
+                <label class="fb-label">Expiration</label>
+                <input type="datetime-local" id="shareExpiry" class="fb-input">
+            </div>
+            <div class="fb-form-group">
+                <label class="fb-label">Mot de passe (optionnel)</label>
+                <input type="password" id="sharePassword" class="fb-input" placeholder="••••••••">
+            </div>
+            <div id="shareResult" style="display:none;">
+                <label class="fb-label">Lien de partage</label>
+                <div class="fb-share-link-row">
+                    <input type="text" id="shareLink" class="fb-input" readonly>
+                    <button class="fb-btn fb-btn-outline" onclick="copyShareLink()">Copier</button>
                 </div>
+            </div>
+        </div>
+        <div class="fb-modal-footer">
+            <button class="fb-btn fb-btn-ghost" onclick="closeShareModal()">Fermer</button>
+            <button class="fb-btn fb-btn-primary" id="shareCreateBtn" onclick="createShare()">Créer le lien</button>
+        </div>
+    </div>
+</div>
+
+<!-- Move Modal -->
+<div class="fb-modal" id="moveModal" style="display:none;">
+    <div class="fb-modal-overlay" onclick="closeMoveModal()"></div>
+    <div class="fb-modal-content fb-modal-sm">
+        <div class="fb-modal-header">
+            <h3>Déplacer vers...</h3>
+            <button class="fb-modal-close" onclick="closeMoveModal()">×</button>
+        </div>
+        <div class="fb-modal-body">
+            <div class="fb-move-list">
+                <div class="fb-move-item" onclick="moveFilesTo(null)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                    Racine
+                </div>
+                <?php foreach ($folders as $f): ?>
+                <div class="fb-move-item" onclick="moveFilesTo(<?= $f['id'] ?>)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                    <?= htmlspecialchars($f['name']) ?>
+                </div>
+                <?php endforeach; ?>
             </div>
         </div>
     </div>
 </div>
 
 <style>
-@keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-.page-footer {
-    margin-top: var(--space-6); font-size: 12px; color: var(--text-muted);
-    border-top: 1px solid var(--border-subtle); padding-top: var(--space-4);
-    display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2);
+/* ══════════════════════════════════════════════════════════════
+   FILE BROWSER — Desktop-style
+   ══════════════════════════════════════════════════════════════ */
+.file-browser {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 80px);
+    overflow: hidden;
 }
-.footer-badge {
-    display: inline-flex; align-items: center; gap: var(--space-2);
-    padding: var(--space-1) var(--space-3); border-radius: var(--radius-full);
-    background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2);
-    font-family: var(--font-mono); font-size: 10px; font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.08em; color: var(--emerald-400);
+
+/* Toolbar */
+.fb-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-card);
+    flex-shrink: 0;
 }
+.fb-toolbar-left { display: flex; align-items: center; gap: 12px; }
+.fb-toolbar-right { display: flex; align-items: center; gap: 8px; }
+.fb-breadcrumb { display: flex; align-items: center; gap: 4px; font-size: 13px; }
+.fb-bc-item { color: var(--text-secondary); text-decoration: none; padding: 4px 8px; border-radius: 6px; transition: all 0.15s; }
+.fb-bc-item:hover { color: var(--accent); background: rgba(0,255,136,0.06); }
+.fb-bc-item:last-child { color: var(--text-primary); font-weight: 600; }
+.fb-bc-sep { color: var(--text-muted); font-size: 16px; }
+.fb-view-toggle { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.fb-view-btn { background: none; border: none; color: var(--text-muted); padding: 6px 10px; cursor: pointer; transition: all 0.15s; }
+.fb-view-btn.active { background: var(--accent); color: #000; }
+.fb-view-btn:hover:not(.active) { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+.fb-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; border: none; font-family: inherit; }
+.fb-btn-primary { background: var(--accent); color: #000; }
+.fb-btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.fb-btn-outline { background: none; border: 1px solid var(--border); color: var(--text-secondary); }
+.fb-btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+.fb-btn-ghost { background: none; color: var(--text-secondary); }
+.fb-btn-ghost:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+.fb-btn-sm { padding: 5px 10px; font-size: 12px; }
+
+/* Storage */
+.fb-storage { display: flex; align-items: center; gap: 12px; padding: 10px 24px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.fb-storage-info { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.fb-storage-bar { flex: 1; height: 4px; background: rgba(255,255,255,0.06); border-radius: 4px; overflow: hidden; max-width: 200px; }
+.fb-storage-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.3s; }
+.fb-storage-fill.warning { background: #F59E0B; }
+.fb-storage-fill.danger { background: #EF4444; }
+
+/* Batch Bar */
+.fb-batch-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 24px; background: rgba(0,255,136,0.05); border-bottom: 1px solid rgba(0,255,136,0.15); flex-shrink: 0; font-size: 13px; color: var(--accent); }
+.fb-batch-actions { display: flex; gap: 4px; }
+.fb-batch-btn { background: none; border: 1px solid rgba(0,255,136,0.2); color: var(--accent); padding: 5px 10px; border-radius: 6px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; }
+.fb-batch-btn:hover { background: rgba(0,255,136,0.1); }
+.fb-batch-danger { color: #EF4444; border-color: rgba(239,68,68,0.3); }
+.fb-batch-danger:hover { background: rgba(239,68,68,0.1); }
+
+/* Content */
+.fb-content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+.fb-section { margin-bottom: 24px; }
+.fb-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.fb-section-title { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+.fb-section-count { font-size: 11px; color: var(--text-muted); background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 10px; }
+
+/* Grid View */
+.fb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.fb-grid[data-view="list"] { grid-template-columns: 1fr; }
+
+/* File/Folder Item */
+.fb-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+    cursor: default;
+    overflow: hidden;
+}
+.fb-item:hover { background: rgba(255,255,255,0.03); border-color: var(--border); }
+.fb-item.selected { background: rgba(0,255,136,0.06); border-color: rgba(0,255,136,0.3); }
+.fb-item-checkbox { position: absolute; top: 8px; left: 8px; opacity: 0; transition: opacity 0.15s; }
+.fb-item:hover .fb-item-checkbox, .fb-item.selected .fb-item-checkbox { opacity: 1; }
+.fb-select { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+.fb-item-icon { width: 44px; height: 44px; flex-shrink: 0; }
+.fb-item-icon svg { width: 100%; height: 100%; }
+.fb-item-info { flex: 1; min-width: 0; }
+.fb-item-name { font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fb-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.fb-item-actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
+.fb-item:hover .fb-item-actions { opacity: 1; }
+.fb-action-btn { background: none; border: none; color: var(--text-muted); padding: 6px; border-radius: 6px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; }
+.fb-action-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.08); }
+.fb-action-danger:hover { color: #EF4444; background: rgba(239,68,68,0.1); }
+.fb-item-link { position: absolute; inset: 0; z-index: 1; }
+.fb-folder { cursor: pointer; }
+
+/* List View */
+[data-view="list"] .fb-grid { display: flex; flex-direction: column; gap: 2px; }
+[data-view="list"] .fb-item { border-radius: 6px; padding: 10px 16px; }
+[data-view="list"] .fb-item-icon { width: 32px; height: 32px; }
+
+/* Empty */
+.fb-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; text-align: center; }
+.fb-empty-icon { margin-bottom: 16px; }
+.fb-empty h3 { font-size: 16px; color: var(--text-secondary); margin-bottom: 8px; }
+.fb-empty p { font-size: 13px; color: var(--text-muted); }
+
+/* Modals */
+.fb-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; }
+.fb-modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+.fb-modal-content { position: relative; background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; width: 90%; max-width: 520px; max-height: 80vh; display: flex; flex-direction: column; animation: modalIn 0.2s ease-out; }
+.fb-modal-sm { max-width: 400px; }
+.fb-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.fb-modal-header h3 { font-size: 15px; font-weight: 600; margin: 0; }
+.fb-modal-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+.fb-modal-close:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+.fb-modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+.fb-modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); }
+.fb-form-group { margin-bottom: 14px; }
+.fb-label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; }
+.fb-input { width: 100%; padding: 8px 12px; background: var(--bg-input, rgba(255,255,255,0.04)); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none; transition: border-color 0.15s; }
+.fb-input:focus { border-color: var(--accent); }
+.fb-select-input { width: 100%; padding: 8px 12px; background: var(--bg-input, rgba(255,255,255,0.04)); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none; }
+@keyframes modalIn { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+/* Upload Dropzone */
+.fb-upload-dropzone { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 40px 20px; border: 2px dashed var(--border); border-radius: 12px; text-align: center; transition: all 0.2s; }
+.fb-upload-dropzone.dragover { border-color: var(--accent); background: rgba(0,255,136,0.04); }
+.fb-upload-dropzone p { font-size: 14px; color: var(--text-secondary); margin: 0; }
+.fb-upload-dropzone span { font-size: 12px; color: var(--text-muted); }
+.fb-upload-dest { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+.fb-upload-dest label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.fb-upload-dest .fb-select-input { flex: 1; }
+.fb-upload-list { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
+.fb-upload-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; font-size: 13px; }
+.fb-upload-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fb-upload-item-size { color: var(--text-muted); font-size: 11px; }
+.fb-upload-item-status { font-size: 14px; }
+.fb-upload-progress { width: 60px; height: 3px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+.fb-upload-progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.2s; }
+
+/* Viewer */
+.fb-viewer { align-items: stretch; justify-content: stretch; }
+.fb-viewer-content { position: relative; background: var(--bg-card); display: flex; flex-direction: column; width: 100%; height: 100%; animation: modalIn 0.2s ease-out; }
+.fb-viewer-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.fb-viewer-title { font-size: 14px; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fb-viewer-actions { display: flex; align-items: center; gap: 4px; }
+.fb-viewer-close { background: none; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+.fb-viewer-close:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+.fb-viewer-body { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; }
+.fb-viewer-loading { color: var(--text-muted); font-size: 14px; }
+.fb-viewer-body img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.fb-viewer-body iframe { width: 100%; height: 100%; border: none; }
+.fb-viewer-body video { max-width: 100%; max-height: 100%; }
+.fb-viewer-body audio { width: 300px; }
+.fb-viewer-body pre { width: 100%; height: 100%; margin: 0; padding: 20px; overflow: auto; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.6; color: var(--text-primary); background: transparent; white-space: pre-wrap; word-break: break-word; }
+.fb-viewer-body textarea.fb-editor { width: 100%; height: 100%; margin: 0; padding: 20px; border: none; background: transparent; color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.6; resize: none; outline: none; white-space: pre; tab-size: 4; }
+
+/* Move Modal */
+.fb-move-list { display: flex; flex-direction: column; gap: 4px; }
+.fb-move-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--text-secondary); transition: all 0.15s; }
+.fb-move-item:hover { background: rgba(0,255,136,0.06); color: var(--accent); }
+
+/* Share */
+.fb-share-link-row { display: flex; gap: 8px; }
+.fb-share-link-row .fb-input { flex: 1; }
 </style>
 
 <script>
-<?php
-// Helper function for file icons
-function getFileIcon(string $mime): string {
-    $map = [
-        'application/pdf' => '📄',
-        'image/' => '🖼',
-        'video/' => '🎬',
-        'audio/' => '🎵',
-        'application/zip' => '📦',
-        'application/x-rar' => '📦',
-        'application/x-7z' => '📦',
-        'text/' => '📝',
-        'application/json' => '📝',
-        'application/vnd.ms-excel' => '📊',
-        'application/vnd.openxmlformats-officedocument' => '📊',
-        'application/msword' => '📄',
-        'application/vnd.ms-powerpoint' => '📊',
-    ];
-    foreach ($map as $prefix => $icon) {
-        if (str_starts_with($mime, $prefix)) return $icon;
-    }
-    return '📄';
-}
-?>
+const CSRF = '<?= $csrf ?>';
+const CURRENT_FOLDER = <?= json_encode($parentId) ?>;
+let selectedFiles = new Set();
+let currentViewerFileId = null;
+let currentViewerMime = '';
+let pendingUploads = [];
+let editingFileId = null;
 
-// Upload
-const uploadZone = document.getElementById('uploadZone');
-const fileInput = document.getElementById('fileInput');
-
-uploadZone.addEventListener('click', (e) => {
-    if (e.target.closest('.upload-actions')) return;
-    fileInput.click();
+/* ── View Toggle ── */
+document.getElementById('viewToggle')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.fb-view-btn');
+    if (!btn) return;
+    document.querySelectorAll('.fb-view-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const view = btn.dataset.view;
+    document.querySelectorAll('.fb-grid').forEach(g => g.setAttribute('data-view', view));
 });
 
-uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-uploadZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    uploadZone.classList.remove('dragover');
-    handleFiles(e.dataTransfer.files);
+/* ── Upload ── */
+document.getElementById('uploadBtn')?.addEventListener('click', () => {
+    document.getElementById('uploadModal').style.display = 'flex';
 });
-fileInput.addEventListener('change', (e) => { handleFiles(e.target.files); e.target.value = ''; });
-
-function handleFiles(files) {
-    if (!files.length) return;
-    const queue = document.getElementById('uploadQueue');
-    const queueList = document.getElementById('queueList');
-    const queueCount = document.getElementById('queueCount');
-    queue.style.display = 'block';
-
-    for (const file of files) {
-        uploadFile(file, queueList, queueCount);
-    }
+function closeUploadModal() {
+    document.getElementById('uploadModal').style.display = 'none';
+    pendingUploads = [];
+    document.getElementById('uploadList').innerHTML = '';
+    document.getElementById('uploadStartBtn').disabled = true;
 }
 
-async function uploadFile(file, queueList, queueCount) {
-    const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-    const item = document.createElement('div');
-    item.className = 'queue-item';
-    item.innerHTML = `
-        <div class="file-icon doc">📄</div>
-        <div class="file-info">
-            <div class="file-name">${file.name}</div>
-            <div class="file-meta">${sizeMB} MB</div>
-        </div>
-        <div class="file-progress">
-            <div class="progress-bar"><div class="fill" style="width:0%;"></div></div>
-            <div class="progress-label">0%</div>
-        </div>
-        <div class="file-status uploading">⏳</div>
-    `;
-    queueList.appendChild(item);
-    queueCount.textContent = queueList.children.length + ' files';
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const fill = item.querySelector('.fill');
-    const label = item.querySelector('.progress-label');
-    const status = item.querySelector('.file-status');
-
-    try {
-        const xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable) {
-                const pct = Math.round((e.loaded / e.total) * 100);
-                fill.style.width = pct + '%';
-                label.textContent = pct + '%';
-            }
-        });
-        xhr.onload = function() {
-            const data = JSON.parse(xhr.responseText);
-            if (data.success) {
-                fill.style.width = '100%';
-                label.textContent = '100%';
-                status.className = 'file-status done';
-                status.textContent = '✅';
-                if (typeof SaecToast !== 'undefined') SaecToast.success('<?= t('files.upload_success') ?>');
-                setTimeout(() => location.reload(), 800);
-            } else {
-                status.className = 'file-status error';
-                status.textContent = '❌';
-                label.textContent = data.error || 'Error';
-                if (typeof SaecToast !== 'undefined') SaecToast.error(data.error || 'Upload failed');
-            }
-        };
-        xhr.onerror = function() {
-            status.className = 'file-status error';
-            status.textContent = '❌';
-            if (typeof SaecToast !== 'undefined') SaecToast.error('Network error');
-        };
-        xhr.open('POST', '/files/upload');
-        xhr.send(formData);
-    } catch(e) {
-        status.className = 'file-status error';
-        status.textContent = '❌';
-        if (typeof SaecToast !== 'undefined') SaecToast.error('Upload failed');
-    }
+const dropzone = document.getElementById('uploadDropzone');
+const fileInput = document.getElementById('uploadFileInput');
+if (dropzone) {
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        addFilesToUploadQueue(e.dataTransfer.files);
+    });
 }
-
-// Download
-function downloadFile(id) { window.location.href = `/files/${id}/download`; }
-
-// Delete
-async function deleteFile(id) {
-    if (!confirm('Delete file?')) return;
-    const form = new FormData();
-    form.append('_token', '<?= \Saec\Core\Session::csrfToken() ?>');
-    const res = await fetch(`/files/${id}`, { method: 'DELETE', body: form });
-    const data = await res.json();
-    if (data.success) {
-        if (typeof SaecToast !== 'undefined') SaecToast.success('File deleted');
-        setTimeout(() => location.reload(), 600);
-    } else {
-        if (typeof SaecToast !== 'undefined') SaecToast.error(data.error || 'Delete failed');
-    }
-}
-
-// Share
-function shareFile(id) {
-    document.getElementById('shareFileId').value = id;
-    document.getElementById('shareResult').style.display = 'none';
-    document.getElementById('shareModal').style.display = 'flex';
-}
-document.getElementById('shareForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const form = new FormData(e.target);
-    form.append('_token', '<?= \Saec\Core\Session::csrfToken() ?>');
-    const res = await fetch(`/files/${form.get('file_id')}/share`, { method: 'POST', body: form });
-    const data = await res.json();
-    if (data.success) {
-        document.getElementById('shareLink').value = `${window.location.origin}/share/${data.share.share_token}`;
-        document.getElementById('shareResult').style.display = 'block';
-        if (typeof SaecToast !== 'undefined') SaecToast.success('Share link created');
-    } else {
-        if (typeof SaecToast !== 'undefined') SaecToast.error(data.error || 'Share failed');
-    }
-});
-function copyShareLink() {
-    const input = document.getElementById('shareLink');
-    input.select();
-    navigator.clipboard.writeText(input.value).then(() => {
-        if (typeof SaecToast !== 'undefined') SaecToast.success('<?= t('shares.link_copied') ?>');
-    }).catch(() => {
-        document.execCommand('copy');
-        if (typeof SaecToast !== 'undefined') SaecToast.success('<?= t('shares.link_copied') ?>');
+if (fileInput) {
+    fileInput.addEventListener('change', (e) => {
+        addFilesToUploadQueue(e.target.files);
+        e.target.value = '';
     });
 }
 
-// Folder
-document.getElementById('newFolderForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const form = new FormData(e.target);
-    form.append('_token', '<?= \Saec\Core\Session::csrfToken() ?>');
-    const res = await fetch('/folders', { method: 'POST', body: form });
-    const data = await res.json();
-    if (data.success) {
-        if (typeof SaecToast !== 'undefined') SaecToast.success('Folder created');
-        setTimeout(() => location.reload(), 600);
-    } else {
-        if (typeof SaecToast !== 'undefined') SaecToast.error(data.error || 'Erreur lors de la création');
+function addFilesToUploadQueue(files) {
+    const list = document.getElementById('uploadList');
+    for (const file of files) {
+        pendingUploads.push(file);
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        const item = document.createElement('div');
+        item.className = 'fb-upload-item';
+        item.innerHTML = `
+            <span class="fb-upload-item-status">📄</span>
+            <span class="fb-upload-item-name">${file.name}</span>
+            <span class="fb-upload-item-size">${sizeMB} MB</span>
+            <div class="fb-upload-progress" style="display:none;"><div class="fb-upload-progress-fill" style="width:0%"></div></div>
+            <span class="fb-upload-item-status"></span>
+        `;
+        list.appendChild(item);
     }
+    document.getElementById('uploadStartBtn').disabled = pendingUploads.length === 0;
+}
+
+document.getElementById('uploadStartBtn')?.addEventListener('click', () => {
+    if (!pendingUploads.length) return;
+    const folderId = document.getElementById('uploadFolderSelect').value;
+    const btn = document.getElementById('uploadStartBtn');
+    btn.disabled = true;
+    btn.textContent = 'Upload en cours...';
+
+    let done = 0;
+    const total = pendingUploads.length;
+
+    pendingUploads.forEach((file, i) => {
+        const items = document.querySelectorAll('.fb-upload-item');
+        const item = items[i];
+        const progress = item.querySelector('.fb-upload-progress');
+        const fill = item.querySelector('.fb-upload-progress-fill');
+        const status = item.querySelector('.fb-upload-item-status:last-child');
+        progress.style.display = 'block';
+
+        const fd = new FormData();
+        fd.append('file', file);
+        if (folderId) fd.append('folder_id', folderId);
+
+        const xhr = new XMLHttpRequest();
+        xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+                fill.style.width = Math.round((e.loaded / e.total) * 100) + '%';
+            }
+        };
+        xhr.onload = () => {
+            const data = JSON.parse(xhr.responseText);
+            status.textContent = data.success ? '✅' : '❌';
+            progress.style.display = 'none';
+            done++;
+            if (done === total) {
+                setTimeout(() => { location.reload(); }, 600);
+            }
+        };
+        xhr.onerror = () => {
+            status.textContent = '❌';
+            progress.style.display = 'none';
+            done++;
+            if (done === total) {
+                setTimeout(() => { location.reload(); }, 600);
+            }
+        };
+        xhr.open('POST', '/files/upload');
+        xhr.send(fd);
+    });
 });
-async function deleteFolder(id) {
-    if (!confirm('Delete folder?')) return;
-    const form = new FormData();
-    form.append('_token', '<?= \Saec\Core\Session::csrfToken() ?>');
-    const res = await fetch(`/folders/${id}`, { method: 'DELETE', body: form });
+
+/* ── New Folder ── */
+document.getElementById('newFolderBtn')?.addEventListener('click', () => {
+    document.getElementById('folderModal').style.display = 'flex';
+    document.getElementById('folderNameInput').value = '';
+    setTimeout(() => document.getElementById('folderNameInput').focus(), 100);
+});
+function closeFolderModal() { document.getElementById('folderModal').style.display = 'none'; }
+async function createFolder() {
+    const name = document.getElementById('folderNameInput').value.trim();
+    if (!name) return;
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('_token', CSRF);
+    if (CURRENT_FOLDER) fd.append('parent_id', CURRENT_FOLDER);
+    const res = await fetch('/folders', { method: 'POST', body: fd });
     const data = await res.json();
-    if (data.success) {
-        if (typeof SaecToast !== 'undefined') SaecToast.success('Folder deleted');
-        setTimeout(() => location.reload(), 600);
-    } else {
-        if (typeof SaecToast !== 'undefined') SaecToast.error(data.error || 'Delete failed');
-    }
+    if (data.success) { location.reload(); } else { alert(data.error); }
+}
+
+/* ── Folder Actions ── */
+async function deleteFolder(id) {
+    if (!confirm('Supprimer ce dossier ?')) return;
+    const fd = new FormData();
+    fd.append('_token', CSRF);
+    const res = await fetch('/folders/' + id, { method: 'DELETE', body: fd });
+    const data = await res.json();
+    if (data.success) location.reload(); else alert(data.error);
 }
 async function renameFolder(id, oldName) {
-    const name = prompt('New name:', oldName);
+    const name = prompt('Nouveau nom :', oldName);
     if (!name || name === oldName) return;
-    const form = new FormData();
-    form.append('name', name);
-    form.append('_token', '<?= \Saec\Core\Session::csrfToken() ?>');
-    const res = await fetch(`/folders/${id}/rename`, { method: 'POST', body: form });
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('_token', CSRF);
+    const res = await fetch('/folders/' + id + '/rename', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.success) location.reload(); else alert(data.error);
+}
+
+/* ── File Actions ── */
+function downloadFile(id) { window.location.href = '/files/' + id + '/download'; }
+
+async function deleteFile(id) {
+    if (!confirm('Supprimer ce fichier ?')) return;
+    const fd = new FormData();
+    fd.append('_token', CSRF);
+    const res = await fetch('/files/' + id, { method: 'DELETE', body: fd });
+    const data = await res.json();
+    if (data.success) location.reload(); else alert(data.error);
+}
+
+/* ── File Viewer ── */
+function viewFile(id, mime, name) {
+    currentViewerFileId = id;
+    currentViewerMime = mime;
+    document.getElementById('viewerTitle').textContent = name;
+    document.getElementById('viewerBody').innerHTML = '<div class="fb-viewer-loading">Chargement...</div>';
+    document.getElementById('viewerModal').style.display = 'flex';
+
+    const isText = mime.startsWith('text/') || ['application/json','application/javascript','application/xml'].includes(mime);
+    const isImage = mime.startsWith('image/');
+    const isVideo = mime.startsWith('video/');
+    const isAudio = mime.startsWith('audio/');
+    const isPdf = mime === 'application/pdf';
+
+    document.getElementById('viewerEditBtn').style.display = isText ? 'inline-flex' : 'none';
+    document.getElementById('viewerSaveBtn').style.display = 'none';
+    editingFileId = null;
+
+    if (isImage) {
+        document.getElementById('viewerBody').innerHTML = `<img src="/files/${id}/preview" alt="${name}">`;
+    } else if (isPdf) {
+        document.getElementById('viewerBody').innerHTML = `<iframe src="/files/${id}/preview"></iframe>`;
+    } else if (isVideo) {
+        document.getElementById('viewerBody').innerHTML = `<video controls autoplay src="/files/${id}/preview"></video>`;
+    } else if (isAudio) {
+        document.getElementById('viewerBody').innerHTML = `<audio controls autoplay src="/files/${id}/preview"></audio>`;
+    } else if (isText) {
+        fetch('/files/' + id + '/content')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('viewerBody').innerHTML = `<pre id="viewerContent">${escapeHtml(data.file.content)}</pre>`;
+                } else {
+                    document.getElementById('viewerBody').innerHTML = `<div class="fb-viewer-loading">${data.error}</div>`;
+                }
+            });
+    } else {
+        document.getElementById('viewerBody').innerHTML = `
+            <div style="text-align:center; padding:40px;">
+                <p style="color:var(--text-muted); margin-bottom:16px;">Aperçu non disponible pour ce type de fichier</p>
+                <button class="fb-btn fb-btn-primary" onclick="downloadFile(${id})">Télécharger</button>
+            </div>`;
+    }
+}
+function closeViewer() {
+    document.getElementById('viewerModal').style.display = 'none';
+    currentViewerFileId = null;
+}
+
+function toggleEditMode() {
+    if (editingFileId === currentViewerFileId) {
+        // Sortir du mode édition
+        editingFileId = null;
+        document.getElementById('viewerEditBtn').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Éditer';
+        document.getElementById('viewerSaveBtn').style.display = 'none';
+        // Recharger en mode lecture
+        viewFile(currentViewerFileId, currentViewerMime, document.getElementById('viewerTitle').textContent);
+    } else {
+        // Passer en mode édition
+        editingFileId = currentViewerFileId;
+        document.getElementById('viewerEditBtn').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Annuler';
+        document.getElementById('viewerSaveBtn').style.display = 'inline-flex';
+
+        const pre = document.getElementById('viewerContent');
+        if (pre) {
+            const text = pre.textContent;
+            const textarea = document.createElement('textarea');
+            textarea.className = 'fb-editor';
+            textarea.id = 'viewerContent';
+            textarea.value = text;
+            pre.replaceWith(textarea);
+            textarea.focus();
+        }
+    }
+}
+
+async function saveFileContent() {
+    const textarea = document.getElementById('viewerContent');
+    if (!textarea || !currentViewerFileId) return;
+    const btn = document.getElementById('viewerSaveBtn');
+    btn.textContent = 'Sauvegarde...';
+    btn.disabled = true;
+
+    const res = await fetch('/files/' + currentViewerFileId + '/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: textarea.value })
+    });
+    const data = await res.json();
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg> Sauvegarder';
+    if (data.success) {
+        editingFileId = null;
+        document.getElementById('viewerEditBtn').innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Éditer';
+        document.getElementById('viewerSaveBtn').style.display = 'none';
+        if (typeof SaecToast !== 'undefined') SaecToast.success('Fichier sauvegardé');
+    } else {
+        alert(data.error || 'Erreur sauvegarde');
+    }
+}
+
+function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ── Share ── */
+let shareFileId = null;
+function shareFile(id) {
+    shareFileId = id;
+    document.getElementById('shareResult').style.display = 'none';
+    document.getElementById('shareCreateBtn').style.display = 'inline-flex';
+    document.getElementById('shareModal').style.display = 'flex';
+}
+function closeShareModal() { document.getElementById('shareModal').style.display = 'none'; shareFileId = null; }
+async function createShare() {
+    if (!shareFileId) return;
+    const fd = new FormData();
+    fd.append('_token', CSRF);
+    const expiry = document.getElementById('shareExpiry').value;
+    const pass = document.getElementById('sharePassword').value;
+    if (expiry) fd.append('expires_at', expiry);
+    if (pass) fd.append('password', pass);
+    const res = await fetch('/files/' + shareFileId + '/share', { method: 'POST', body: fd });
     const data = await res.json();
     if (data.success) {
-        if (typeof SaecToast !== 'undefined') SaecToast.success('Folder renamed');
-        setTimeout(() => location.reload(), 600);
+        document.getElementById('shareLink').value = window.location.origin + '/share/' + data.share.share_token;
+        document.getElementById('shareResult').style.display = 'block';
+        document.getElementById('shareCreateBtn').style.display = 'none';
     } else {
-        if (typeof SaecToast !== 'undefined') SaecToast.error(data.error || 'Rename failed');
+        alert(data.error);
     }
+}
+function copyShareLink() {
+    const input = document.getElementById('shareLink');
+    input.select();
+    navigator.clipboard.writeText(input.value);
+}
+
+/* ── Selection ── */
+document.addEventListener('click', (e) => {
+    const checkbox = e.target.closest('.fb-select');
+    if (checkbox) {
+        e.stopPropagation();
+        const id = parseInt(checkbox.dataset.id);
+        if (checkbox.checked) { selectedFiles.add(id); checkbox.closest('.fb-item').classList.add('selected'); }
+        else { selectedFiles.delete(id); checkbox.closest('.fb-item').classList.remove('selected'); }
+        updateBatchBar();
+    }
+    // Click on file item = open viewer
+    const item = e.target.closest('.fb-file');
+    if (item && !e.target.closest('.fb-item-actions') && !e.target.closest('.fb-item-checkbox')) {
+        const id = item.dataset.id;
+        const mime = item.dataset.mime;
+        const name = item.dataset.name;
+        viewFile(parseInt(id), mime, name);
+    }
+});
+function updateBatchBar() {
+    const bar = document.getElementById('batchBar');
+    if (selectedFiles.size > 0) {
+        bar.style.display = 'flex';
+        document.getElementById('batchCount').textContent = selectedFiles.size + ' sélectionné' + (selectedFiles.size > 1 ? 's' : '');
+    } else {
+        bar.style.display = 'none';
+    }
+}
+function clearSelection() {
+    selectedFiles.clear();
+    document.querySelectorAll('.fb-select').forEach(c => { c.checked = false; c.closest('.fb-item')?.classList.remove('selected'); });
+    updateBatchBar();
+}
+function batchDownload() { selectedFiles.forEach(id => downloadFile(id)); }
+function batchDelete() {
+    if (!confirm('Supprimer ' + selectedFiles.size + ' fichier(s) ?')) return;
+    let done = 0;
+    selectedFiles.forEach(async (id) => {
+        const fd = new FormData(); fd.append('_token', CSRF);
+        await fetch('/files/' + id, { method: 'DELETE', body: fd });
+        done++;
+        if (done === selectedFiles.size) location.reload();
+    });
+}
+
+/* ── Move ── */
+let moveTargets = [];
+function batchMove() {
+    moveTargets = [...selectedFiles];
+    document.getElementById('moveModal').style.display = 'flex';
+}
+function closeMoveModal() { document.getElementById('moveModal').style.display = 'none'; moveTargets = []; }
+async function moveFilesTo(folderId) {
+    let done = 0;
+    const total = moveTargets.length;
+    moveTargets.forEach(async (id) => {
+        await fetch('/files/' + id + '/move', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder_id: folderId })
+        });
+        done++;
+        if (done === total) location.reload();
+    });
 }
 </script>

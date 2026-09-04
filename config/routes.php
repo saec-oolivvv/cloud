@@ -74,6 +74,10 @@ $router->get('/files', [FolderController::class, 'index'], [AuthMiddleware::clas
 $router->post('/files/upload', [FileController::class, 'upload'], [AuthMiddleware::class]);
 $router->get('/files/{id}/download', [FileController::class, 'download'], [AuthMiddleware::class]);
 $router->get('/files/{id}/preview', [FileController::class, 'preview'], [AuthMiddleware::class]);
+$router->get('/files/{id}/view', [FileController::class, 'view'], [AuthMiddleware::class]);
+$router->get('/files/{id}/content', [FileController::class, 'getContent'], [AuthMiddleware::class]);
+$router->post('/files/{id}/save', [FileController::class, 'saveContent'], [AuthMiddleware::class]);
+$router->post('/files/{id}/move', [FileController::class, 'move'], [AuthMiddleware::class]);
 $router->delete('/files/{id}', [FileController::class, 'delete'], [AuthMiddleware::class]);
 $router->post('/files/{id}/restore', [FileController::class, 'restore'], [AuthMiddleware::class]);
 $router->get('/trash', [FileController::class, 'trash'], [AuthMiddleware::class]);
