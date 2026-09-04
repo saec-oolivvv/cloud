@@ -21,7 +21,7 @@ $plans = [
             'Corbeille 30 jours',
             'Support email',
         ],
-        'not_included' => ['Dossiers team', 'Versions fichiers', 'API access', 'Audit logs'],
+        'not_included' => ['Dossiers team', 'Versions fichiers', 'API access', 'Audit logs', 'Branding custom', 'SLA 99.99%'],
         'extra_user_price' => 2,
     ],
     [
@@ -44,7 +44,7 @@ $plans = [
             'API access',
             'Audit logs (90j)',
         ],
-        'not_included' => ['Branding custom', 'SLA 99.99%'],
+        'not_included' => [],
         'extra_user_price' => 1.50,
     ],
     [

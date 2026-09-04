@@ -379,9 +379,9 @@ $availableLangs = $lang ? Saec\Core\Translation::getAvailable() : [];
         </div>
         <?php
         $previewPlans = [
-            ['name' => 'Starter', 'price' => '€9', 'color' => '#06b6d4', 'features' => ['10 GB de stockage', '1 utilisateur', 'Partages externes', 'Chiffrement AES-256']],
-            ['name' => 'Professional', 'price' => '€29', 'color' => '#8B5CF6', 'popular' => true, 'features' => ['100 GB de stockage', '5 utilisateurs', 'Dossiers team', 'Versions fichiers', 'API access']],
-            ['name' => 'Enterprise', 'price' => 'Sur devis', 'color' => '#10B981', 'features' => ['Stockage illimité', '15+ utilisateurs', 'Branding custom', 'SLA 99.99%']],
+            ['name' => 'Starter', 'price' => '€9', 'color' => '#06b6d4', 'features' => ['10 GB de stockage', '1 utilisateur', '500 fichiers', 'Chiffrement AES-256']],
+            ['name' => 'Professional', 'price' => '€29', 'color' => '#8B5CF6', 'popular' => true, 'features' => ['100 GB de stockage', '5 utilisateurs', 'Dossiers team', 'Versions fichiers (30j)', 'API access']],
+            ['name' => 'Enterprise', 'price' => 'Sur devis', 'color' => '#10B981', 'features' => ['Stockage illimité', '15 utilisateurs', 'Branding custom', 'SLA 99.99%']],
         ];
         ?>
         <div class="lp-pricing-grid" data-stagger>
