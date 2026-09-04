@@ -250,12 +250,12 @@ function formatBytes(int $bytes): string {
                     </div>
                     <div class="s-field">
                         <label>Nouveau mot de passe</label>
-                        <input type="password" name="new_password" class="s-input" required minlength="8" autocomplete="new-password" placeholder="••••••••">
-                        <div class="s-hint">Minimum 8 caractères</div>
+                        <input type="password" name="new_password" class="s-input" required minlength="12" autocomplete="new-password" placeholder="••••••••••••">
+                        <div class="s-hint">12+ caractères : majuscule, minuscule, chiffre, caractère spécial</div>
                     </div>
                     <div class="s-field">
                         <label>Confirmer</label>
-                        <input type="password" name="confirm_password" class="s-input" required minlength="8" autocomplete="new-password" placeholder="••••••••">
+                        <input type="password" name="confirm_password" class="s-input" required minlength="12" autocomplete="new-password" placeholder="••••••••••••">
                     </div>
                     <button type="submit" class="s-btn s-btn-warning" style="width:100%;">
                         <i class="fas fa-key" style="font-size:12px;"></i> Changer le mot de passe
@@ -331,6 +331,26 @@ function formatBytes(int $bytes): string {
             </div>
         </div>
 
+        <!-- RGPD -->
+        <div class="s-card settings-full">
+            <div class="s-head">
+                <div class="s-icon emerald"><i class="fas fa-shield-halved"></i></div>
+                <div class="s-head-text">
+                    <h3>Mes données (RGPD)</h3>
+                    <p>Export et gestion de vos données personnelles</p>
+                </div>
+            </div>
+            <div class="s-body" style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+                <div>
+                    <div style="font-size:14px; font-weight:600; color:#F1F5F9;">Exporter mes données</div>
+                    <div style="font-size:12px; color:#64748B; margin-top:2px;">Télécharger un fichier JSON avec votre profil, fichiers et logs d'audit.</div>
+                </div>
+                <a href="/config/export" class="s-btn s-btn-primary" style="text-decoration:none;">
+                    <i class="fas fa-download" style="font-size:12px;"></i> Exporter (JSON)
+                </a>
+            </div>
+        </div>
+
         <!-- Danger Zone -->
         <div class="s-card settings-full s-danger">
             <div class="s-head">
@@ -340,14 +360,37 @@ function formatBytes(int $bytes): string {
                     <p>Actions irréversibles sur votre compte</p>
                 </div>
             </div>
-            <div class="s-body" style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
-                <div>
-                    <div style="font-size:14px; font-weight:600; color:#F1F5F9;">Supprimer le compte</div>
-                    <div style="font-size:12px; color:#64748B; margin-top:2px;">Toutes vos données seront définitivement effacées.</div>
+            <div class="s-body">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+                    <div>
+                        <div style="font-size:14px; font-weight:600; color:#F1F5F9;">Supprimer le compte</div>
+                        <div style="font-size:12px; color:#64748B; margin-top:2px;">Toutes vos données seront définitivement effacées. Cette action est irréversible.</div>
+                    </div>
+                    <button type="button" class="s-btn s-btn-danger" id="deleteAccountBtn">
+                        <i class="fas fa-trash" style="font-size:12px;"></i> Supprimer mon compte
+                    </button>
                 </div>
-                <button type="button" class="s-btn s-btn-danger" onclick="if(confirm('Supprimer définitivement votre compte ? Cette action est irréversible.')) { /* TODO */ }">
-                    <i class="fas fa-trash" style="font-size:12px;"></i> Supprimer
-                </button>
+                <!-- Delete confirmation (hidden by default) -->
+                <div id="deleteConfirm" style="display:none; padding:16px; background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.2); border-radius:10px; margin-top:12px;">
+                    <div style="font-size:13px; font-weight:600; color:#F87171; margin-bottom:8px;">
+                        <i class="fas fa-triangle-exclamation"></i> Confirmer la suppression
+                    </div>
+                    <div style="font-size:12px; color:#94A3B8; margin-bottom:12px;">
+                        Entrez votre mot de passe pour confirmer. Toutes vos données seront supprimées.
+                    </div>
+                    <form id="deleteAccountForm" enctype="multipart/form-data">
+                        <input type="hidden" name="_token" value="<?= $csrf ?>">
+                        <input type="password" name="password" class="s-input" placeholder="Mot de passe de confirmation" required style="margin-bottom:12px;">
+                        <div style="display:flex; gap:8px;">
+                            <button type="submit" class="s-btn s-btn-danger">
+                                <i class="fas fa-trash" style="font-size:12px;"></i> Confirmer la suppression
+                            </button>
+                            <button type="button" class="s-btn s-btn-danger" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1);" onclick="document.getElementById('deleteConfirm').style.display='none'">
+                                Annuler
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
 
@@ -395,5 +438,24 @@ document.getElementById('destroySessionsForm').addEventListener('submit', async 
     if (!confirm('Déconnecter toutes les autres sessions ?')) return;
     const data = await safeFetch('/config/sessions/destroy', new FormData(e.target));
     sToast(data.message || data.error, data.success ? 'ok' : 'err');
+});
+
+// Delete account
+document.getElementById('deleteAccountBtn').addEventListener('click', () => {
+    document.getElementById('deleteConfirm').style.display = 'block';
+    document.getElementById('deleteConfirm').scrollIntoView({ behavior: 'smooth' });
+});
+
+document.getElementById('deleteAccountForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!confirm('DERNIÈRE CHANCE : Supprimer définitivement votre compte ? Cette action est IRRÉVERSIBLE.')) return;
+    const btn = e.target.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Suppression...'; }
+    const data = await safeFetch('/config/delete-account', new FormData(e.target));
+    sToast(data.message || data.error, data.success ? 'ok' : 'err');
+    if (data.success) {
+        setTimeout(() => { window.location.href = '/login'; }, 1500);
+    }
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash" style="font-size:12px;"></i> Confirmer la suppression'; }
 });
 </script>

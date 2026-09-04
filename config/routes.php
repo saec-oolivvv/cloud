@@ -33,6 +33,14 @@ $router->get('/subscribe', function() {
     require __DIR__ . '/../app/Views/pricing/subscribe.php';
     exit;
 });
+$router->get('/privacy', function() {
+    require __DIR__ . '/../app/Views/legal/privacy.php';
+    exit;
+});
+$router->get('/terms', function() {
+    require __DIR__ . '/../app/Views/legal/terms.php';
+    exit;
+});
 
 // ─────────────────────────────────────────────────────────────
 // AUTH
@@ -56,6 +64,8 @@ $router->get('/config', [SettingsController::class, 'index'], [AuthMiddleware::c
 $router->post('/config/profile', [SettingsController::class, 'updateProfile'], [AuthMiddleware::class]);
 $router->post('/config/password', [SettingsController::class, 'changePassword'], [AuthMiddleware::class]);
 $router->post('/config/sessions/destroy', [SettingsController::class, 'destroySessions'], [AuthMiddleware::class]);
+$router->get('/config/export', [SettingsController::class, 'exportData'], [AuthMiddleware::class]);
+$router->post('/config/delete-account', [SettingsController::class, 'deleteAccount'], [AuthMiddleware::class]);
 
 // ─────────────────────────────────────────────────────────────
 // FILES

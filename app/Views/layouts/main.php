@@ -205,6 +205,36 @@
 
     </div> <!-- /.app-layout -->
 
+    <!-- Cookie Consent RGPD -->
+    <div id="cookieConsent" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:10000; padding:16px 24px; background:rgba(15,17,26,0.95); border-top:1px solid var(--border-subtle); backdrop-filter:blur(20px);">
+        <div style="max-width:1100px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:200px;">
+                <div style="font-size:13px; font-weight:600; color:var(--text-primary); margin-bottom:4px;">
+                    <i class="fas fa-cookie-bite" style="color:var(--amber-400); margin-right:6px;"></i> Cookies & Confidentialité
+                </div>
+                <div style="font-size:12px; color:var(--text-muted); line-height:1.5;">
+                    Ce site utilise des cookies strictement nécessaires au fonctionnement.
+                    Consultez notre <a href="/privacy" style="color:var(--blue-400);">politique de confidentialité</a> pour en savoir plus.
+                </div>
+            </div>
+            <div style="display:flex; gap:8px; flex-shrink:0;">
+                <a href="/privacy" style="padding:8px 16px; border-radius:8px; font-size:12px; font-weight:500; color:var(--text-secondary); border:1px solid var(--border-subtle); text-decoration:none; transition:all 0.15s;">En savoir plus</a>
+                <button onclick="acceptCookies()" style="padding:8px 16px; border-radius:8px; font-size:12px; font-weight:600; color:#fff; background:var(--blue-500); border:none; cursor:pointer; transition:all 0.15s;">Accepter</button>
+            </div>
+        </div>
+    </div>
+    <script>
+    (function() {
+        if (!localStorage.getItem('saec_cookies_consent')) {
+            document.getElementById('cookieConsent').style.display = 'block';
+        }
+    })();
+    function acceptCookies() {
+        localStorage.setItem('saec_cookies_consent', '1');
+        document.getElementById('cookieConsent').style.display = 'none';
+    }
+    </script>
+
     <style>
         /* Dropdown menus */
         .notif-menu, .user-menu {
