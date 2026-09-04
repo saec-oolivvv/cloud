@@ -128,7 +128,7 @@ class Mailer
 
     private function render(string $template, array $data): string
     {
-        $templatePath = __DIR__ . '/../app/views/emails/' . $template . '.php';
+        $templatePath = __DIR__ . '/../app/Views/emails/' . $template . '.php';
         
         if (!file_exists($templatePath)) {
             return $this->fallbackTemplate($template, $data);
