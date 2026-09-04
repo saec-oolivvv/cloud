@@ -29,7 +29,7 @@ class DashboardController extends Controller
         $folders = $db->fetch(
             "SELECT COUNT(*) as total_folders
              FROM folders
-             WHERE tenant_id = ? AND deleted_at IS NULL",
+             WHERE tenant_id = ?",
             [$tenantId]
         );
 
