@@ -160,6 +160,48 @@ $availableLangs = $lang ? Saec\Core\Translation::getAvailable() : [];
         .pricing-section {
             padding: var(--space-16) var(--space-6);
         }
+        .pricing-section .section-title {
+            font-size: clamp(24px, 3vw, 32px);
+        }
+        .lp-pricing-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+            max-width: 1000px; margin: 0 auto;
+        }
+        .lp-pricing-card {
+            background: var(--bg-card); border-radius: 16px; padding: 36px 28px;
+            text-align: left; position: relative; border: 1px solid var(--border-subtle);
+            transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            display: flex; flex-direction: column;
+        }
+        .lp-pricing-card:hover {
+            border-color: rgba(37, 99, 235, 0.4); transform: translateY(-4px);
+            box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+        }
+        .lp-pricing-card.popular {
+            border-color: var(--blue-500);
+            box-shadow: 0 8px 40px rgba(37, 99, 235, 0.15);
+            background: linear-gradient(180deg, rgba(37, 99, 235, 0.06) 0%, var(--bg-card) 100%);
+        }
+        .lp-pricing-badge {
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+            background: linear-gradient(135deg, var(--blue-500), var(--cyan-400));
+            color: #fff; padding: 4px 16px; border-radius: 9999px;
+            font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        .lp-pricing-name { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+        .lp-pricing-price { display: flex; align-items: baseline; gap: 4px; margin-bottom: 24px; }
+        .lp-pricing-amount { font-size: 40px; font-weight: 800; letter-spacing: -0.03em; color: var(--text-primary); line-height: 1; }
+        .lp-pricing-period { font-size: 14px; color: var(--text-muted); }
+        .lp-pricing-features { list-style: none; margin: 0 0 28px 0; flex: 1; }
+        .lp-pricing-feature {
+            padding: 8px 0; font-size: 13px; color: var(--text-secondary);
+            display: flex; align-items: center; gap: 10px;
+            border-top: 1px solid var(--border-subtle);
+        }
+        .lp-pricing-feature:first-child { border-top: none; padding-top: 0; }
+        .lp-pricing-feature i { color: var(--emerald-400); font-size: 12px; width: 16px; text-align: center; flex-shrink: 0; }
+        .lp-pricing-card .btn { width: 100%; }
 
         /* ── Trust ── */
         .trust-section {
@@ -206,6 +248,7 @@ $availableLangs = $lang ? Saec\Core\Translation::getAvailable() : [];
 
         @media (max-width: 768px) {
             .features-grid { grid-template-columns: 1fr; }
+            .lp-pricing-grid { grid-template-columns: 1fr; max-width: 380px; }
             .hero-stats { flex-direction: column; gap: var(--space-6); }
             .landing-nav .nav-links { display: none; }
             .trust-grid { gap: var(--space-6); }
@@ -341,27 +384,25 @@ $availableLangs = $lang ? Saec\Core\Translation::getAvailable() : [];
             ['name' => 'Enterprise', 'price' => 'Sur devis', 'color' => '#10B981', 'features' => ['Stockage illimité', '15+ utilisateurs', 'Branding custom', 'SLA 99.99%']],
         ];
         ?>
-        <div class="pricing-grid" data-stagger>
+        <div class="lp-pricing-grid" data-stagger>
             <?php foreach ($previewPlans as $plan): ?>
-            <div class="pricing-card <?= $plan['popular'] ?? false ? 'popular' : '' ?>">
+            <div class="lp-pricing-card <?= $plan['popular'] ?? false ? 'popular' : '' ?>">
                 <?php if ($plan['popular'] ?? false): ?>
-                <div class="pricing-badge">Populaire</div>
+                <div class="lp-pricing-badge">Populaire</div>
                 <?php endif; ?>
-                <div class="pricing-header">
-                    <h3 class="pricing-name" style="color: <?= $plan['color'] ?>"><?= $plan['name'] ?></h3>
-                    <div class="pricing-price">
-                        <span class="pricing-amount"><?= $plan['price'] ?></span>
-                        <?php if ($plan['price'] !== 'Sur devis'): ?>
-                        <span class="pricing-period">/mois</span>
-                        <?php endif; ?>
-                    </div>
+                <div class="lp-pricing-name" style="color: <?= $plan['color'] ?>"><?= $plan['name'] ?></div>
+                <div class="lp-pricing-price">
+                    <span class="lp-pricing-amount"><?= $plan['price'] ?></span>
+                    <?php if ($plan['price'] !== 'Sur devis'): ?>
+                    <span class="lp-pricing-period">/mois</span>
+                    <?php endif; ?>
                 </div>
-                <ul class="pricing-features">
+                <ul class="lp-pricing-features">
                     <?php foreach ($plan['features'] as $f): ?>
-                    <li class="pricing-feature included"><i class="fas fa-check"></i> <?= $f ?></li>
+                    <li class="lp-pricing-feature"><i class="fas fa-check"></i> <?= $f ?></li>
                     <?php endforeach; ?>
                 </ul>
-                <a href="/subscribe?plan=<?= strtolower($plan['name']) ?>" class="btn <?= $plan['popular'] ?? false ? 'btn-primary' : 'btn-outline' ?>" style="width:100%;">
+                <a href="/subscribe?plan=<?= strtolower($plan['name']) ?>" class="btn <?= $plan['popular'] ?? false ? 'btn-primary' : 'btn-outline' ?>">
                     Commencer →
                 </a>
             </div>
