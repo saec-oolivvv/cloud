@@ -66,10 +66,15 @@ class Response
         header('Permissions-Policy: geolocation=(), camera=(), microphone=()');
         header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
 
-        if (($_ENV['APP_ENV'] ?? 'production') === 'development') {
-            header("Content-Security-Policy: default-src 'self' 'unsafe-inline' 'unsafe-evals'");
-        } else {
-            header("Content-Security-Policy: default-src 'self'");
-        }
+        $csp = [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            "font-src 'self' https://fonts.gstatic.com",
+            "img-src 'self' data: https:",
+            "connect-src 'self'",
+            "frame-ancestors 'none'",
+        ];
+        header("Content-Security-Policy: " . implode('; ', $csp));
     }
 }

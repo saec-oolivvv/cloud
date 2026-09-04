@@ -101,7 +101,6 @@ class AuthController extends Controller
     private function completeLogin(array $user): void
     {
         Session::start();
-        session_regenerate_id(true);
 
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
@@ -113,7 +112,7 @@ class AuthController extends Controller
             'role' => $user['role'],
         ];
 
-        Session::set('user', $userData);
+        Session::login($userData);
 
         $token = JWTHandler::generate(
             $userData['id'],

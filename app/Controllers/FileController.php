@@ -361,7 +361,7 @@ class FileController extends Controller
     /**
      * Vue inline du fichier — affiche le contenu dans le SaaS
      */
-    public function view(string $id): void
+    public function viewer(string $id): void
     {
         $user = $this->requireAuth();
         $db = Database::getInstance();
