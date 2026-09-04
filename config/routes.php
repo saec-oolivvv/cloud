@@ -125,6 +125,43 @@ $router->post('/admin/modules/plans', [AdminController::class, 'updateModulePlan
 $router->post('/admin/modules/tenant-toggle', [AdminController::class, 'toggleTenantModule'], [AdminMiddleware::class]);
 
 // ─────────────────────────────────────────────────────────────
+// STORAGE (Octopus Arm)
+// ─────────────────────────────────────────────────────────────
+use Saec\Controllers\AdminStorageController;
+
+$router->get('/admin/storage', [AdminStorageController::class, 'index'], [AdminMiddleware::class]);
+
+// Providers
+$router->get('/admin/storage/providers', [AdminStorageController::class, 'providers'], [AdminMiddleware::class]);
+$router->post('/admin/storage/providers', [AdminStorageController::class, 'createProvider'], [AdminMiddleware::class]);
+$router->put('/admin/storage/providers/{id}', [AdminStorageController::class, 'updateProvider'], [AdminMiddleware::class]);
+$router->delete('/admin/storage/providers/{id}', [AdminStorageController::class, 'deleteProvider'], [AdminMiddleware::class]);
+$router->post('/admin/storage/providers/{id}/test', [AdminStorageController::class, 'testProvider'], [AdminMiddleware::class]);
+
+// Backups
+$router->get('/admin/storage/backups', [AdminStorageController::class, 'backups'], [AdminMiddleware::class]);
+$router->post('/admin/storage/backups', [AdminStorageController::class, 'createBackup'], [AdminMiddleware::class]);
+$router->post('/admin/storage/backups/{id}/restore', [AdminStorageController::class, 'restoreBackup'], [AdminMiddleware::class]);
+$router->delete('/admin/storage/backups/{id}', [AdminStorageController::class, 'deleteBackup'], [AdminMiddleware::class]);
+
+// Mounts
+$router->get('/admin/storage/mounts', [AdminStorageController::class, 'mounts'], [AdminMiddleware::class]);
+$router->post('/admin/storage/mounts', [AdminStorageController::class, 'createMount'], [AdminMiddleware::class]);
+$router->post('/admin/storage/mounts/{id}/sync', [AdminStorageController::class, 'syncMount'], [AdminMiddleware::class]);
+$router->delete('/admin/storage/mounts/{id}', [AdminStorageController::class, 'deleteMount'], [AdminMiddleware::class]);
+$router->get('/admin/storage/mounts/{id}/browse', [AdminStorageController::class, 'browseMount'], [AdminMiddleware::class]);
+
+// Schedules
+$router->get('/admin/storage/schedules', [AdminStorageController::class, 'schedules'], [AdminMiddleware::class]);
+$router->post('/admin/storage/schedules', [AdminStorageController::class, 'createSchedule'], [AdminMiddleware::class]);
+$router->put('/admin/storage/schedules/{id}', [AdminStorageController::class, 'updateSchedule'], [AdminMiddleware::class]);
+$router->delete('/admin/storage/schedules/{id}', [AdminStorageController::class, 'deleteSchedule'], [AdminMiddleware::class]);
+$router->post('/admin/storage/schedules/{id}/run', [AdminStorageController::class, 'runSchedule'], [AdminMiddleware::class]);
+
+// Cron tick (no auth, token-based)
+$router->get('/admin/storage/tick', [AdminStorageController::class, 'tick']);
+
+// ─────────────────────────────────────────────────────────────
 // API (pour client desktop futur)
 // ─────────────────────────────────────────────────────────────
 $router->post('/api/login', [AuthController::class, 'login']);
