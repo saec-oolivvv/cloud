@@ -195,6 +195,9 @@
         <?= $content ?>
     </main>
 
+    <!-- Global Toast -->
+    <div id="globalToast" class="toast" style="display:none; position:fixed; bottom:var(--space-6); right:var(--space-6); z-index:2000;"></div>
+
 </div> <!-- /.app-layout -->
 
 <script>
