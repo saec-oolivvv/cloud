@@ -15,10 +15,22 @@ use Saec\Middleware\AuthMiddleware;
 use Saec\Middleware\AdminMiddleware;
 
 // ─────────────────────────────────────────────────────────────
-// ROOT → REDIRECT
+// ROOT → LANDING PAGE
 // ─────────────────────────────────────────────────────────────
 $router->get('/', function() {
-    header('Location: /login');
+    require __DIR__ . '/../app/Views/landing/index.php';
+    exit;
+});
+
+// ─────────────────────────────────────────────────────────────
+// PUBLIC PAGES (no auth)
+// ─────────────────────────────────────────────────────────────
+$router->get('/pricing', function() {
+    require __DIR__ . '/../app/Views/pricing/index.php';
+    exit;
+});
+$router->get('/subscribe', function() {
+    require __DIR__ . '/../app/Views/pricing/subscribe.php';
     exit;
 });
 

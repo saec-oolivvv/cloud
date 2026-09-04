@@ -146,3 +146,4 @@
 [03-Sep-2026 13:22:47 Europe/Amsterdam] [ERROR] [2] Undefined variable $currentPage in /volume1/web/cloud/app/Views/layouts/main.php:96
 [03-Sep-2026 13:22:47 Europe/Amsterdam] PHP Warning:  http_response_code(): Cannot set response code - headers already sent (output started at /volume1/web/cloud/app/Views/layouts/main.php:1) in /volume1/web/cloud/public/index.php on line 17
 [03-Sep-2026 16:11:07 Europe/Amsterdam] [ERROR] [2] mkdir(): Permission denied in /volume1/web/cloud/app/Controllers/FolderController.php:146
+[04-Sep-2026 02:07:56 Europe/Amsterdam] [ERROR] [2] Undefined array key "billing_status" in /volume1/web/cloud/app/Views/admin/tenants.php:55
