@@ -142,6 +142,8 @@ $router->post('/admin/storage/providers', [AdminStorageController::class, 'creat
 $router->put('/admin/storage/providers/{id}', [AdminStorageController::class, 'updateProvider'], [AdminMiddleware::class]);
 $router->delete('/admin/storage/providers/{id}', [AdminStorageController::class, 'deleteProvider'], [AdminMiddleware::class]);
 $router->post('/admin/storage/providers/{id}/test', [AdminStorageController::class, 'testProvider'], [AdminMiddleware::class]);
+$router->get('/admin/storage/providers/{id}/dropbox-authorize', [AdminStorageController::class, 'dropboxAuthorize'], [AdminMiddleware::class]);
+$router->get('/admin/storage/providers/dropbox-callback', [AdminStorageController::class, 'dropboxCallback'], [AdminMiddleware::class]);
 
 // Backups
 $router->get('/admin/storage/backups', [AdminStorageController::class, 'backups'], [AdminMiddleware::class]);

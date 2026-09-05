@@ -13,6 +13,9 @@ namespace Saec\Services\Storage;
 class DropboxAdapter extends AbstractAdapter
 {
     private string $accessToken;
+    private string $refreshToken;
+    private string $appKey;
+    private string $appSecret;
     private string $rootDir;
 
     public function __construct(array $config)
@@ -20,15 +23,73 @@ class DropboxAdapter extends AbstractAdapter
         parent::__construct($config);
 
         $this->accessToken = $config['access_token'] ?? '';
+        $this->refreshToken = $config['refresh_token'] ?? '';
+        $this->appKey = $config['app_key'] ?? '';
+        $this->appSecret = $config['app_secret'] ?? '';
         $this->rootDir = $config['root_dir'] ?? '';
     }
 
     protected function connect(): void
     {
-        if (empty($this->accessToken)) {
-            throw new \RuntimeException("Dropbox access token not configured");
+        if (empty($this->accessToken) && empty($this->refreshToken)) {
+            throw new \RuntimeException("Dropbox non connecté. Utilisez le flow OAuth2.");
+        }
+        if (empty($this->accessToken) && !empty($this->refreshToken)) {
+            $this->refreshAccessToken();
         }
         $this->connected = true;
+    }
+
+    public function refreshAccessToken(): bool
+    {
+        if (empty($this->refreshToken) || empty($this->appKey) || empty($this->appSecret)) {
+            throw new \RuntimeException("Refresh token ou credentials manquants");
+        }
+
+        $ch = curl_init('https://api.dropbox.com/oauth2/token');
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POSTFIELDS => http_build_query([
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $this->refreshToken,
+                'client_id' => $this->appKey,
+                'client_secret' => $this->appSecret,
+            ]),
+            CURLOPT_TIMEOUT => 30,
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200) {
+            $data = json_decode($response, true);
+            throw new \RuntimeException("Refresh token failed: " . ($data['error_description'] ?? $response));
+        }
+
+        $data = json_decode($response, true);
+        $this->accessToken = $data['access_token'];
+
+        // Persister le nouveau token en DB
+        $db = \Saec\Core\Database::getInstance();
+        $db->execute(
+            "UPDATE storage_providers SET config = ? WHERE name = ?",
+            [json_encode(array_merge($this->getConfig(), ['access_token' => $this->accessToken])), $this->name]
+        );
+
+        return true;
+    }
+
+    private function getConfig(): array
+    {
+        return [
+            'app_key' => $this->appKey,
+            'app_secret' => $this->appSecret,
+            'refresh_token' => $this->refreshToken,
+            'access_token' => $this->accessToken,
+            'root_dir' => $this->rootDir,
+        ];
     }
 
     private function resolvePath(string $path): string
@@ -40,7 +101,7 @@ class DropboxAdapter extends AbstractAdapter
         return '/' . ltrim($path, '/');
     }
 
-    private function apiRequest(string $endpoint, array $args = [], ?string $body = null): array
+    private function apiRequest(string $endpoint, array $args = [], ?string $body = null, bool $retry = true): array
     {
         $this->connect();
 
@@ -66,6 +127,16 @@ class DropboxAdapter extends AbstractAdapter
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+
+        // Auto-refresh sur 401
+        if ($httpCode === 401 && $retry && !empty($this->refreshToken)) {
+            try {
+                $this->refreshAccessToken();
+                return $this->apiRequest($endpoint, $args, $body, false);
+            } catch (\Throwable $e) {
+                // Fall through to return error
+            }
+        }
 
         return [
             'status' => $httpCode,

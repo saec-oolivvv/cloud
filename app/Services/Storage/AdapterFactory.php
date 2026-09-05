@@ -114,7 +114,7 @@ class AdapterFactory
                 'label' => 'Dropbox',
                 'description' => 'Stockage Dropbox',
                 'icon' => '📦',
-                'fields' => ['access_token', 'root_dir'],
+                'fields' => ['app_key', 'app_secret', 'root_dir'],
             ],
             'onedrive' => [
                 'label' => 'OneDrive',

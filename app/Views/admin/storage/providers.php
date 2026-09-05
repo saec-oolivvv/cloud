@@ -122,6 +122,12 @@ $pageTitle = 'Storage — Providers';
                 </div>
             </div>
             <div class="provider-actions">
+                <?php if ($provider['type'] === 'dropbox'): ?>
+                <a href="/admin/storage/providers/<?= $provider['id'] ?>/dropbox-authorize" class="s-btn s-btn-sm" style="background:#0061FF; color:#fff; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                    <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px; height:14px;"><path d="M6 2l6 3.75L18 2l6 3.75L18 9.5l6 3.75-6 3.75 6 3.75L18 24l-6-3.75L6 24 0 20.25 6 16.5 0 12.75 6 9 0 5.25z"/></svg>
+                    Connecter
+                </a>
+                <?php endif; ?>
                 <button class="s-btn s-btn-sm s-btn-primary" onclick="testProvider(<?= $provider['id'] ?>)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                     Tester
@@ -277,7 +283,8 @@ const configFieldsMap = {
         { name: 'root_dir', label: 'Dossier racine ID', type: 'text', placeholder: 'root' }
     ],
     dropbox: [
-        { name: 'access_token', label: 'Access Token', type: 'password', placeholder: 'sl.XXXX...', required: true },
+        { name: 'app_key', label: 'App Key', type: 'text', placeholder: 'osxxwntzqi7o0d4', required: true },
+        { name: 'app_secret', label: 'App Secret', type: 'password', placeholder: '••••••••', required: true },
         { name: 'root_dir', label: 'Chemin racine', type: 'text', placeholder: '/' }
     ],
     onedrive: [

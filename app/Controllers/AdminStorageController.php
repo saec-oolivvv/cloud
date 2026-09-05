@@ -134,6 +134,114 @@ class AdminStorageController extends Controller
     }
 
     // ═══════════════════════════════════════════════════════════
+    // DROPBOX OAUTH2
+    // ═══════════════════════════════════════════════════════════
+
+    public function dropboxAuthorize(string $id): void
+    {
+        $user = $this->requireAdmin();
+        $provider = $this->storage->getProvider((int)$id);
+        $config = json_decode($provider['config'], true) ?? [];
+
+        $appKey = $config['app_key'] ?? '';
+        if (empty($appKey)) {
+            $this->withError('App key Dropbox manquante');
+            $this->redirect('/admin/storage/providers');
+            return;
+        }
+
+        $redirectUri = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/admin/storage/providers/dropbox-callback';
+        $state = bin2hex(random_bytes(16));
+
+        // Stocker le state + provider_id en session
+        $_SESSION['dropbox_oauth_state'] = $state;
+        $_SESSION['dropbox_provider_id'] = $id;
+
+        $params = http_build_query([
+            'response_type' => 'code',
+            'client_id' => $appKey,
+            'redirect_uri' => $redirectUri,
+            'state' => $state,
+            'scope' => 'files.metadata.read files.metadata.write files.content.read files.content.write sharing.read',
+        ]);
+
+        $this->redirect("https://www.dropbox.com/oauth2/authorize?{$params}");
+    }
+
+    public function dropboxCallback(): void
+    {
+        $user = $this->requireAdmin();
+
+        $code = $_GET['code'] ?? '';
+        $state = $_GET['state'] ?? '';
+        $error = $_GET['error'] ?? '';
+
+        if ($error) {
+            $this->withError("Erreur Dropbox: {$error}");
+            $this->redirect('/admin/storage/providers');
+            return;
+        }
+
+        if ($state !== ($_SESSION['dropbox_oauth_state'] ?? '')) {
+            $this->withError('State invalide — CSRF détecté');
+            $this->redirect('/admin/storage/providers');
+            return;
+        }
+
+        $providerId = $_SESSION['dropbox_provider_id'] ?? null;
+        unset($_SESSION['dropbox_oauth_state'], $_SESSION['dropbox_provider_id']);
+
+        if (!$providerId || empty($code)) {
+            $this->withError('Paramètres manquants');
+            $this->redirect('/admin/storage/providers');
+            return;
+        }
+
+        $provider = $this->storage->getProvider((int)$providerId);
+        $config = json_decode($provider['config'], true) ?? [];
+
+        // Échange code → tokens
+        $ch = curl_init('https://api.dropboxapi.com/oauth2/token');
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POSTFIELDS => http_build_query([
+                'code' => $code,
+                'grant_type' => 'authorization_code',
+                'client_id' => $config['app_key'],
+                'client_secret' => $config['app_secret'],
+                'redirect_uri' => (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/admin/storage/providers/dropbox-callback',
+            ]),
+            CURLOPT_TIMEOUT => 30,
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $data = json_decode($response, true);
+
+        if ($httpCode !== 200 || empty($data['access_token'])) {
+            $this->withError("Échec échange token: " . ($data['error_description'] ?? 'Erreur inconnue'));
+            $this->redirect('/admin/storage/providers');
+            return;
+        }
+
+        // Sauvegarder les tokens
+        $config['access_token'] = $data['access_token'];
+        $config['refresh_token'] = $data['refresh_token'] ?? $config['refresh_token'] ?? '';
+
+        $db = \Saec\Core\Database::getInstance();
+        $db->execute(
+            "UPDATE storage_providers SET config = ?, last_error = NULL WHERE id = ?",
+            [json_encode($config), $providerId]
+        );
+
+        $this->withSuccess('Dropbox connecté avec succès');
+        $this->redirect('/admin/storage/providers');
+    }
+
+    // ═══════════════════════════════════════════════════════════
     // BACKUPS
     // ═══════════════════════════════════════════════════════════
 
