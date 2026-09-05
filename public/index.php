@@ -88,10 +88,12 @@ if (!function_exists('t')) {
 // Language switch route (manual)
 if (isset($_GET['lang']) && preg_match('/^[a-z]{2}$/', $_GET['lang'])) {
     $translation->setLang($_GET['lang']);
+    $isSecure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'
+        || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
     setcookie('lang', $_GET['lang'], [
         'expires' => time() + 86400 * 365,
         'path' => '/',
-        'secure' => true,
+        'secure' => $isSecure,
         'httponly' => false,
         'samesite' => 'Lax',
     ]);

@@ -11,11 +11,15 @@ class Session
     public static function start(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
+            $isSecure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'
+                || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
+                || ($_SERVER['HTTP_CF_VISITOR'] ?? '') === '{"scheme":"https"}';
+
             session_set_cookie_params([
                 'lifetime' => 86400,
                 'path' => '/',
                 'domain' => '',
-                'secure' => true,
+                'secure' => $isSecure,
                 'httponly' => true,
                 'samesite' => 'None',
             ]);
