@@ -252,6 +252,12 @@ tr:hover { background: rgba(255,255,255,0.02); }
 <div class="toast" id="toast"></div>
 
 <script>
+// Move modal to body to escape .main stacking context
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('backupModal');
+    if (modal) document.body.appendChild(modal);
+});
+
 function openCreateModal() {
     document.getElementById('backupForm').reset();
     document.getElementById('backupModal').classList.add('active');

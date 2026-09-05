@@ -225,6 +225,12 @@ $pageTitle = 'Storage — Providers';
 <div class="toast" id="toast"></div>
 
 <script>
+// Move modal to body to escape .main stacking context
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('providerModal');
+    if (modal) document.body.appendChild(modal);
+});
+
 const supportedTypes = <?= json_encode($supportedTypes) ?>;
 const configFieldsMap = {
     local: [
