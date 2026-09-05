@@ -107,6 +107,14 @@ $pageTitle = 'Storage — Mounts';
 </div>
 
 <script>
+function showToast(msg, type) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;top:24px;right:24px;z-index:99999;padding:14px 20px;border-radius:10px;font-size:13px;font-weight:600;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.4);transition:opacity .3s;background:' + (type === 'error' ? '#ef4444' : '#10b981');
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
+}
+
 function createMount() {
     const data = new FormData();
     data.append('provider_id', document.getElementById('mountProvider').value);
