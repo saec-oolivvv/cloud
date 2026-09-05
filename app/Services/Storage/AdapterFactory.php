@@ -53,7 +53,7 @@ class AdapterFactory
         $db = \Saec\Core\Database::getInstance();
 
         $provider = $db->fetch(
-            "SELECT * FROM storage_providers WHERE id = ? AND deleted_at IS NULL",
+            "SELECT * FROM storage_providers WHERE id = ?",
             [$providerId]
         );
 

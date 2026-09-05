@@ -68,8 +68,12 @@ class AdminStorageController extends Controller
     public function getProvider(string $id): void
     {
         $this->requireAdmin();
-        $provider = $this->storage->getProvider((int)$id);
-        $this->json($provider);
+        try {
+            $provider = $this->storage->getProvider((int)$id);
+            $this->json($provider);
+        } catch (\Throwable $e) {
+            $this->json(['error' => $e->getMessage()], 404);
+        }
     }
 
     public function createProvider(): void
@@ -90,6 +94,7 @@ class AdminStorageController extends Controller
 
             $this->json(['success' => true, 'provider_id' => $providerId]);
         } catch (\Throwable $e) {
+            error_log("[CREATE PROVIDER] Error: " . $e->getMessage());
             $this->json(['error' => $e->getMessage()], 400);
         }
     }
@@ -120,8 +125,12 @@ class AdminStorageController extends Controller
     public function testProvider(string $id): void
     {
         $this->requireAdmin();
-        $result = $this->storage->testProvider((int)$id);
-        $this->json($result);
+        try {
+            $result = $this->storage->testProvider((int)$id);
+            $this->json($result);
+        } catch (\Throwable $e) {
+            $this->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════
