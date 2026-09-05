@@ -391,6 +391,10 @@ function saveProvider(e) {
     fetch(url, {
         method: method,
         credentials: 'include',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
         body: submitData
     })
     .then(r => r.json())
@@ -407,7 +411,14 @@ function saveProvider(e) {
 
 function testProvider(id) {
     showToast('Test en cours...', 'success');
-    fetch(`/admin/storage/providers/${id}/test`, { method: 'POST', credentials: 'include' })
+    fetch(`/admin/storage/providers/${id}/test`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
         .then(r => r.json())
         .then(result => {
             if (result.success) {
