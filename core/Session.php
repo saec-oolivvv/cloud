@@ -27,12 +27,9 @@ class Session
 
             error_log("[SESSION] Start: status=" . session_status() . " id=" . session_id() . " secure={$isSecure} keys=" . implode(',', array_keys($_SESSION)) . " cookie=" . ($_COOKIE['PHPSESSID'] ?? 'none'));
 
-            // Regenerate session ID periodically to prevent fixation
-            $lastRegen = self::get('_last_regenerate', 0);
-            if (time() - $lastRegen > self::$REGENERATE_INTERVAL) {
-                session_regenerate_id(true);
-                self::set('_last_regenerate', time());
-            }
+            // Regenerate session ID only on privilege change (login/admin)
+            // NOT periodically — breaks AJAX POST requests when cookie is stale
+            // session_regenerate_id is called explicitly in Session::login()
 
             // Validate session fingerprint
             // TEMP DISABLED — debug session loss
