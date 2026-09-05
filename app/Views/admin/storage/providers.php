@@ -304,7 +304,7 @@ function openCreateModal() {
 }
 
 function editProvider(id) {
-    fetch(`/admin/storage/providers/${id}/json`)
+    fetch(`/admin/storage/providers/${id}/json`, { credentials: 'include' })
         .then(r => r.json())
         .then(provider => {
             document.getElementById('modalTitle').textContent = 'Modifier le provider';
@@ -390,6 +390,7 @@ function saveProvider(e) {
 
     fetch(url, {
         method: method,
+        credentials: 'include',
         body: submitData
     })
     .then(r => r.json())
@@ -406,7 +407,7 @@ function saveProvider(e) {
 
 function testProvider(id) {
     showToast('Test en cours...', 'success');
-    fetch(`/admin/storage/providers/${id}/test`, { method: 'POST' })
+    fetch(`/admin/storage/providers/${id}/test`, { method: 'POST', credentials: 'include' })
         .then(r => r.json())
         .then(result => {
             if (result.success) {
@@ -421,7 +422,7 @@ function testProvider(id) {
 function deleteProvider(id, name) {
     if (!confirm(`Supprimer le provider "${name}" ?`)) return;
 
-    fetch(`/admin/storage/providers/${id}`, { method: 'DELETE' })
+    fetch(`/admin/storage/providers/${id}`, { method: 'DELETE', credentials: 'include' })
         .then(r => r.json())
         .then(result => {
             if (result.error) {

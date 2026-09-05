@@ -274,6 +274,7 @@ function createBackup(e) {
 
     fetch('/admin/storage/backups', {
         method: 'POST',
+        credentials: 'include',
         body: formData
     })
     .then(r => r.json())
@@ -292,7 +293,7 @@ function restoreBackup(id) {
     if (!confirm('Restaurer cette backup ? Les données actuelles seront écrasées.')) return;
 
     showToast('Restauration en cours...', 'success');
-    fetch(`/admin/storage/backups/${id}/restore`, { method: 'POST' })
+    fetch(`/admin/storage/backups/${id}/restore`, { method: 'POST', credentials: 'include' })
         .then(r => r.json())
         .then(result => {
             if (result.error) {
@@ -307,7 +308,7 @@ function restoreBackup(id) {
 function deleteBackup(id) {
     if (!confirm('Supprimer cette backup ?')) return;
 
-    fetch(`/admin/storage/backups/${id}`, { method: 'DELETE' })
+    fetch(`/admin/storage/backups/${id}`, { method: 'DELETE', credentials: 'include' })
         .then(r => r.json())
         .then(result => {
             if (result.error) {
