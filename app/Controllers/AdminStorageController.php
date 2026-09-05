@@ -152,11 +152,9 @@ class AdminStorageController extends Controller
         }
 
         $redirectUri = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/admin/storage/providers/dropbox-callback';
-        $state = bin2hex(random_bytes(16));
-
-        // Stocker le state + provider_id en session
-        $_SESSION['dropbox_oauth_state'] = $state;
-        $_SESSION['dropbox_provider_id'] = $id;
+        // State signé = provider_id + signature HMAC
+        $stateData = $id . '|' . time();
+        $state = $stateData . '|' . hash_hmac('sha256', $stateData, $_ENV['APP_KEY'] ?? 'saec-dropbox-oauth-secret');
 
         $params = http_build_query([
             'response_type' => 'code',
@@ -171,8 +169,6 @@ class AdminStorageController extends Controller
 
     public function dropboxCallback(): void
     {
-        $user = $this->requireAdmin();
-
         $code = $_GET['code'] ?? '';
         $state = $_GET['state'] ?? '';
         $error = $_GET['error'] ?? '';
@@ -183,16 +179,30 @@ class AdminStorageController extends Controller
             return;
         }
 
-        if ($state !== ($_SESSION['dropbox_oauth_state'] ?? '')) {
-            $this->withError('State invalide — CSRF détecté');
+        // Vérifier le state signé
+        $parts = explode('|', $state);
+        if (count($parts) !== 3) {
+            $this->withError('State invalide');
             $this->redirect('/admin/storage/providers');
             return;
         }
 
-        $providerId = $_SESSION['dropbox_provider_id'] ?? null;
-        unset($_SESSION['dropbox_oauth_state'], $_SESSION['dropbox_provider_id']);
+        [$providerId, $timestamp, $signature] = $parts;
+        $expectedSig = hash_hmac('sha256', $providerId . '|' . $timestamp, $_ENV['APP_KEY'] ?? 'saec-dropbox-oauth-secret');
 
-        if (!$providerId || empty($code)) {
+        if (!hash_equals($expectedSig, $signature)) {
+            $this->withError('State invalide — CSRF');
+            $this->redirect('/admin/storage/providers');
+            return;
+        }
+
+        if (time() - (int)$timestamp > 600) {
+            $this->withError('Session OAuth expirée (>10min)');
+            $this->redirect('/admin/storage/providers');
+            return;
+        }
+
+        if (empty($providerId) || empty($code)) {
             $this->withError('Paramètres manquants');
             $this->redirect('/admin/storage/providers');
             return;
