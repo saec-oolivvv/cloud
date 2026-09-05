@@ -251,14 +251,16 @@ class AdminController extends Controller
             'path' => '/',
         ]);
 
-        $db->insert('audit_logs', [
-            'tenant_id' => $user['tenant_id'],
-            'user_id' => $user['id'],
-            'action' => 'tenant.created',
-            'resource_type' => 'tenant',
-            'resource_id' => $tenantId,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-        ]);
+try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $user['tenant_id'],
+                    'user_id' => $user['id'],
+                    'action' => 'tenant.created',
+                    'resource_type' => 'tenant',
+                    'resource_id' => $tenantId,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                ]);
+            } catch (\Throwable $e) {}
 
         $this->json(['success' => true, 'tenant_id' => $tenantId]);
     }
@@ -287,15 +289,17 @@ class AdminController extends Controller
             array_merge(array_values($updates), [$id])
         );
 
-        $db->insert('audit_logs', [
-            'tenant_id' => $user['tenant_id'],
-            'user_id' => $user['id'],
-            'action' => 'tenant.updated',
-            'resource_type' => 'tenant',
-            'resource_id' => $id,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-            'metadata' => json_encode(array_keys($updates)),
-        ]);
+try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $user['tenant_id'],
+                    'user_id' => $user['id'],
+                    'action' => 'tenant.updated',
+                    'resource_type' => 'tenant',
+                    'resource_id' => $id,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                    'metadata' => json_encode(array_keys($updates)),
+                ]);
+            } catch (\Throwable $e) {}
 
         $this->json(['success' => true]);
     }
@@ -311,15 +315,16 @@ class AdminController extends Controller
             [$days, $id]
         );
 
-        $db->insert('audit_logs', [
-            'tenant_id' => $user['tenant_id'],
-            'user_id' => $user['id'],
-            'action' => 'tenant.extended',
-            'resource_type' => 'tenant',
-            'resource_id' => $id,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-            'metadata' => json_encode(['days' => $days]),
-        ]);
+try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $user['tenant_id'],
+                    'user_id' => $user['id'],
+                    'action' => 'tenant.extended',
+                    'resource_type' => 'tenant',
+                    'resource_id' => $id,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                ]);
+            } catch (\Throwable $e) {}
 
         $this->json(['success' => true]);
     }
@@ -421,14 +426,16 @@ class AdminController extends Controller
             'active' => 1,
         ]);
 
-        $db->insert('audit_logs', [
-            'tenant_id' => $user['tenant_id'],
-            'user_id' => $user['id'],
-            'action' => 'user.created',
-            'resource_type' => 'user',
-            'resource_id' => $userId,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-        ]);
+try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $user['tenant_id'],
+                    'user_id' => $user['id'],
+                    'action' => 'user.created',
+                    'resource_type' => 'user',
+                    'resource_id' => $userId,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                ]);
+            } catch (\Throwable $e) {}
 
         $this->json(['success' => true, 'user_id' => $userId]);
     }

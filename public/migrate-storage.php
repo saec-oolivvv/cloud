@@ -1,0 +1,126 @@
+<?php
+declare(strict_types=1);
+error_reporting(E_ALL);
+ini_set('display_errors', '1');
+
+$configFiles = glob(__DIR__ . '/../storage/x*.conf');
+if (empty($configFiles)) { die('Config non trouvée'); }
+
+$config = json_decode(file_get_contents($configFiles[0]), true);
+$dsn = "mysql:host={$config['db']['host']};port={$config['db']['port']};charset={$config['db']['charset']}";
+
+echo "<pre style='font-family:monospace;background:#111;color:#0f0;padding:20px;'>";
+echo "═══ Migration Storage Tables ═══\n\n";
+
+try {
+    $pdo = new PDO($dsn, $config['db']['user'], $config['db']['pass'], [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    ]);
+    $pdo->exec("USE {$config['db']['name']}");
+    echo "[OK] Connexion MySQL\n\n";
+
+    // Check existing tables
+    $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+    $storageTables = ['storage_providers', 'storage_backups', 'storage_mounts', 'storage_backup_schedules'];
+    foreach ($storageTables as $t) {
+        echo in_array($t, $tables) ? "[=] {$t} existe\n" : "[?] {$t} manquante\n";
+    }
+
+    echo "\n── Création des tables ──\n";
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS storage_providers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        type ENUM('s3','sftp','ftp','webdav','gdrive','dropbox','onedrive') NOT NULL,
+        config JSON NOT NULL,
+        is_active TINYINT(1) DEFAULT 1,
+        is_default TINYINT(1) DEFAULT 0,
+        last_sync_at DATETIME NULL,
+        last_error TEXT NULL,
+        created_by INT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        deleted_at DATETIME NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    echo "[OK] storage_providers\n";
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS storage_backups (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        provider_id INT NOT NULL,
+        tenant_id INT NULL,
+        type ENUM('full','incremental','files_only','db_only') NOT NULL DEFAULT 'full',
+        status ENUM('pending','running','completed','failed') DEFAULT 'pending',
+        remote_path VARCHAR(500) NOT NULL,
+        file_name VARCHAR(255) NOT NULL,
+        file_size BIGINT DEFAULT 0,
+        file_checksum VARCHAR(64) NULL,
+        encrypted TINYINT(1) DEFAULT 1,
+        compression VARCHAR(20) DEFAULT 'gzip',
+        started_at DATETIME NULL,
+        completed_at DATETIME NULL,
+        duration_seconds INT NULL,
+        error_message TEXT NULL,
+        metadata JSON NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (provider_id) REFERENCES storage_providers(id) ON DELETE CASCADE,
+        INDEX idx_backup_status (status),
+        INDEX idx_backup_date (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    echo "[OK] storage_backups\n";
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS storage_mounts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        provider_id INT NOT NULL,
+        tenant_id INT NOT NULL,
+        remote_path VARCHAR(500) NOT NULL,
+        local_alias VARCHAR(255) NOT NULL,
+        mount_type ENUM('readonly','readwrite','backup_only') DEFAULT 'readwrite',
+        sync_enabled TINYINT(1) DEFAULT 0,
+        sync_interval_minutes INT DEFAULT 60,
+        last_sync_at DATETIME NULL,
+        last_sync_status ENUM('ok','error','syncing') NULL,
+        last_sync_message TEXT NULL,
+        is_active TINYINT(1) DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (provider_id) REFERENCES storage_providers(id) ON DELETE CASCADE,
+        INDEX idx_mount_tenant (tenant_id),
+        INDEX idx_mount_provider (provider_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    echo "[OK] storage_mounts\n";
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS storage_backup_schedules (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        provider_id INT NOT NULL,
+        tenant_id INT NULL,
+        name VARCHAR(255) NOT NULL DEFAULT 'Auto Backup',
+        type ENUM('full','incremental','files_only','db_only') NOT NULL DEFAULT 'full',
+        frequency ENUM('hourly','daily','weekly','monthly') DEFAULT 'daily',
+        time_of_day TIME DEFAULT '02:00:00',
+        day_of_week TINYINT NULL,
+        day_of_month TINYINT NULL,
+        retention_days INT DEFAULT 30,
+        is_active TINYINT(1) DEFAULT 1,
+        last_run_at DATETIME NULL,
+        next_run_at DATETIME NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (provider_id) REFERENCES storage_providers(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    echo "[OK] storage_backup_schedules\n";
+
+    // Verify
+    echo "\n── Vérification ──\n";
+    $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($storageTables as $t) {
+        echo in_array($t, $tables) ? "[OK] {$t}\n" : "[FAIL] {$t}\n";
+    }
+
+    echo "\n═══ Terminé ═══\n</pre>";
+
+    // Auto-destruct
+    unlink(__FILE__);
+
+} catch (\Throwable $e) {
+    echo "\n[ERREUR] " . $e->getMessage() . "\n</pre>";
+    exit(1);
+}

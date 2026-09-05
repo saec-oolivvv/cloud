@@ -18,9 +18,9 @@ class ShareController extends Controller
             "SELECT s.*, f.original_name, f.size
              FROM shares s
              JOIN files f ON s.file_id = f.id
-             WHERE s.tenant_id = ? AND s.user_id = ?
+             WHERE s.tenant_id = ?
              ORDER BY s.created_at DESC",
-            [$user['tenant_id'], $user['id']]
+            [$user['tenant_id']]
         );
 
         $data = [
@@ -50,10 +50,11 @@ class ShareController extends Controller
         $shareId = $db->insert('shares', [
             'tenant_id' => $user['tenant_id'],
             'file_id' => $fileId,
-            'user_id' => $user['id'],
-            'name' => $file['original_name'],
-            'share_token' => bin2hex(random_bytes(32)),
+            'created_by' => $user['id'],
+            'shared_with' => !empty($_POST['share_with_email']) ? $_POST['share_with_email'] : null,
+            'link_token' => bin2hex(random_bytes(32)),
             'expires_at' => $_POST['expires_at'] ?? null,
+            'access_count' => 0,
         ]);
 
         // Envoyer email si partage avec un email
@@ -69,14 +70,16 @@ class ShareController extends Controller
             );
         }
 
-        $db->insert('audit_logs', [
-            'tenant_id' => $user['tenant_id'],
-            'user_id' => $user['id'],
-            'action' => 'share.created',
-            'resource_type' => 'share',
-            'resource_id' => $shareId,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-        ]);
+        try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $user['tenant_id'],
+                    'user_id' => $user['id'],
+                    'action' => 'share.created',
+                    'resource_type' => 'share',
+                    'resource_id' => $shareId,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                ]);
+            } catch (\Throwable $e) {}
 
         $share = $db->fetch("SELECT * FROM shares WHERE id = ?", [$shareId]);
 
@@ -92,7 +95,7 @@ class ShareController extends Controller
         $db = Database::getInstance();
 
         $share = $db->fetch(
-            "SELECT * FROM shares WHERE id = ? AND tenant_id = ? AND user_id = ?",
+            "SELECT * FROM shares WHERE id = ? AND tenant_id = ? AND created_by = ?",
             [$id, $user['tenant_id'], $user['id']]
         );
 
@@ -103,14 +106,16 @@ class ShareController extends Controller
 
         $db->delete('shares', 'id = ?', [$id]);
 
-        $db->insert('audit_logs', [
-            'tenant_id' => $user['tenant_id'],
-            'user_id' => $user['id'],
-            'action' => 'share.revoked',
-            'resource_type' => 'share',
-            'resource_id' => $id,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-        ]);
+        try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $user['tenant_id'],
+                    'user_id' => $user['id'],
+                    'action' => 'share.revoked',
+                    'resource_type' => 'share',
+                    'resource_id' => $id,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                ]);
+            } catch (\Throwable $e) {}
 
         $this->json(['success' => true]);
     }

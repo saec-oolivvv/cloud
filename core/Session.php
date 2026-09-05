@@ -25,29 +25,23 @@ class Session
             ]);
             session_start();
 
-            error_log("[SESSION] Start: status=" . session_status() . " id=" . session_id() . " secure={$isSecure} keys=" . implode(',', array_keys($_SESSION)) . " cookie=" . ($_COOKIE['PHPSESSID'] ?? 'none'));
-
             // Regenerate session ID only on privilege change (login/admin)
             // NOT periodically — breaks AJAX POST requests when cookie is stale
             // session_regenerate_id is called explicitly in Session::login()
 
             // Validate session fingerprint
-            // TEMP DISABLED — debug session loss
-            // if (self::has('_fingerprint')) {
-            //     $currentFingerprint = self::generateFingerprint();
-            //     if (!hash_equals(self::get('_fingerprint', ''), $currentFingerprint)) {
-            //         self::destroy();
-            //         header('Location: /login');
-            //         exit;
-            //     }
-            // }
+            if (self::has('_fingerprint')) {
+                $currentFingerprint = self::generateFingerprint();
+                if (!hash_equals(self::get('_fingerprint', ''), $currentFingerprint)) {
+                    self::destroy();
+                    header('Location: /login');
+                    exit;
+                }
+            }
 
             // Validate session token cookie if user is logged in
             if (self::has('user') && !empty($_COOKIE['session_token'])) {
-                if (!self::validateSessionToken()) {
-                    error_log("[SESSION] Token validation failed for user " . (self::get('user_id', '?')));
-                    // Don't destroy session — fallback to fingerprint only
-                }
+                self::validateSessionToken();
             }
         }
     }
@@ -156,7 +150,7 @@ class Session
                 [$tokenHash, $userId, $_SERVER['HTTP_X_FORWARDED_FOR'] ?? ($_SERVER['REMOTE_ADDR'] ?? ''), $_SERVER['HTTP_USER_AGENT'] ?? '']
             );
         } catch (\Throwable $e) {
-            error_log("[SESSION] Failed to create session token: " . $e->getMessage());
+            // Table may not exist — non-critical
         }
 
         $isSecure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'
@@ -198,7 +192,6 @@ class Session
                 [$tokenHash]
             );
         } catch (\Throwable $e) {
-            error_log("[SESSION] Token validation failed: " . $e->getMessage());
             return false;
         }
 

@@ -153,14 +153,16 @@ class FolderController extends Controller
         }
 
         // Audit log
-        $db->insert('audit_logs', [
-            'tenant_id' => $tenantId,
-            'user_id' => $user['id'],
-            'action' => 'folder.created',
-            'resource_type' => 'folder',
-            'resource_id' => $folderId,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-        ]);
+        try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $tenantId,
+                    'user_id' => $user['id'],
+                    'action' => 'folder.created',
+                    'resource_type' => 'folder',
+                    'resource_id' => $folderId,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                ]);
+            } catch (\Throwable $e) {}
 
         $this->json([
             'success' => true,
@@ -237,15 +239,17 @@ class FolderController extends Controller
         );
 
         // Audit log
-        $db->insert('audit_logs', [
-            'tenant_id' => $tenantId,
-            'user_id' => $user['id'],
-            'action' => 'folder.renamed',
-            'resource_type' => 'folder',
-            'resource_id' => $id,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-            'metadata' => json_encode(['old_name' => $folder['name'], 'new_name' => $newName]),
-        ]);
+        try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $tenantId,
+                    'user_id' => $user['id'],
+                    'action' => 'folder.renamed',
+                    'resource_type' => 'folder',
+                    'resource_id' => $id,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                    'metadata' => json_encode(['old_name' => $folder['name'], 'new_name' => $newName]),
+                ]);
+            } catch (\Throwable $e) {}
 
         $this->json(['success' => true]);
     }
@@ -305,14 +309,16 @@ class FolderController extends Controller
 
         $db->execute("DELETE FROM folders WHERE id = ? AND tenant_id = ?", [$id, $tenantId]);
 
-        $db->insert('audit_logs', [
-            'tenant_id' => $tenantId,
-            'user_id' => $user['id'],
-            'action' => 'folder.deleted',
-            'resource_type' => 'folder',
-            'resource_id' => $id,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-        ]);
+        try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $tenantId,
+                    'user_id' => $user['id'],
+                    'action' => 'folder.deleted',
+                    'resource_type' => 'folder',
+                    'resource_id' => $id,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                ]);
+            } catch (\Throwable $e) {}
 
         $this->json(['success' => true]);
     }

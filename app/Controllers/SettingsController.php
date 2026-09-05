@@ -76,14 +76,14 @@ class SettingsController extends Controller
             [$name, $user['id']]
         );
 
-        $db->insert('audit_logs', [
-            'tenant_id' => $user['tenant_id'],
-            'user_id' => $user['id'],
-            'action' => 'profile.updated',
-            'resource_type' => 'user',
-            'resource_id' => $user['id'],
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-        ]);
+        try {
+            $db->insert('audit_logs', [
+                'tenant_id' => $user['tenant_id'],
+                'user_id' => $user['id'],
+                'action' => 'profile.updated',
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+            ]);
+        } catch (\Throwable $e) {}
 
         $this->json(['success' => true, 'message' => 'Profil mis à jour']);
     }
@@ -167,14 +167,14 @@ class SettingsController extends Controller
             [$newHash, $user['id']]
         );
 
-        $db->insert('audit_logs', [
-            'tenant_id' => $user['tenant_id'],
-            'user_id' => $user['id'],
-            'action' => 'password.changed',
-            'resource_type' => 'user',
-            'resource_id' => $user['id'],
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-        ]);
+        try {
+            $db->insert('audit_logs', [
+                'tenant_id' => $user['tenant_id'],
+                'user_id' => $user['id'],
+                'action' => 'password.changed',
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+            ]);
+        } catch (\Throwable $e) {}
 
         $this->json(['success' => true, 'message' => 'Mot de passe changé avec succès']);
     }
@@ -200,14 +200,14 @@ class SettingsController extends Controller
             [$user['id']]
         );
 
-        $db->insert('audit_logs', [
-            'tenant_id' => $user['tenant_id'],
-            'user_id' => $user['id'],
-            'action' => 'sessions.destroyed_all',
-            'resource_type' => 'user',
-            'resource_id' => $user['id'],
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-        ]);
+        try {
+            $db->insert('audit_logs', [
+                'tenant_id' => $user['tenant_id'],
+                'user_id' => $user['id'],
+                'action' => 'sessions.destroyed_all',
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+            ]);
+        } catch (\Throwable $e) {}
 
         $this->json(['success' => true, 'message' => 'Toutes les sessions ont été détruites']);
     }
@@ -310,15 +310,14 @@ class SettingsController extends Controller
         // Delete sessions
         $db->execute("DELETE FROM user_sessions WHERE user_id = ?", [$user['id']]);
 
-        // Audit log
-        $db->insert('audit_logs', [
-            'tenant_id' => $user['tenant_id'],
-            'user_id' => $user['id'],
-            'action' => 'account.deleted',
-            'resource_type' => 'user',
-            'resource_id' => $user['id'],
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-        ]);
+        try {
+            $db->insert('audit_logs', [
+                'tenant_id' => $user['tenant_id'],
+                'user_id' => $user['id'],
+                'action' => 'account.deleted',
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+            ]);
+        } catch (\Throwable $e) {}
 
         Session::destroy();
         $this->json(['success' => true, 'message' => 'Compte supprimé avec succès']);

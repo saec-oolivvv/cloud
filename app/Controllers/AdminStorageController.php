@@ -172,46 +172,44 @@ class AdminStorageController extends Controller
         $code = $_GET['code'] ?? '';
         $state = $_GET['state'] ?? '';
         $error = $_GET['error'] ?? '';
+        $base = (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
+
+        // --- Stateless: pas de session, pas de $this->withXxx, pas de $this->redirect ---
 
         if ($error) {
-            $this->withError("Erreur Dropbox: {$error}");
-            $this->redirect('/admin/storage/providers');
-            return;
+            header("Location: {$base}/admin/storage/providers?error=" . urlencode("Dropbox: {$error}"));
+            exit;
         }
 
-        // Vérifier le state signé
         $parts = explode('|', $state);
         if (count($parts) !== 3) {
-            $this->withError('State invalide');
-            $this->redirect('/admin/storage/providers');
-            return;
+            header("Location: {$base}/admin/storage/providers?error=" . urlencode('State invalide'));
+            exit;
         }
 
         [$providerId, $timestamp, $signature] = $parts;
         $expectedSig = hash_hmac('sha256', $providerId . '|' . $timestamp, $_ENV['APP_KEY'] ?? 'saec-dropbox-oauth-secret');
 
         if (!hash_equals($expectedSig, $signature)) {
-            $this->withError('State invalide — CSRF');
-            $this->redirect('/admin/storage/providers');
-            return;
+            header("Location: {$base}/admin/storage/providers?error=" . urlencode('CSRF'));
+            exit;
         }
 
         if (time() - (int)$timestamp > 600) {
-            $this->withError('Session OAuth expirée (>10min)');
-            $this->redirect('/admin/storage/providers');
-            return;
+            header("Location: {$base}/admin/storage/providers?error=" . urlencode('OAuth expiré'));
+            exit;
         }
 
         if (empty($providerId) || empty($code)) {
-            $this->withError('Paramètres manquants');
-            $this->redirect('/admin/storage/providers');
-            return;
+            header("Location: {$base}/admin/storage/providers?error=" . urlencode('Paramètres manquants'));
+            exit;
         }
 
         $provider = $this->storage->getProvider((int)$providerId);
         $config = json_decode($provider['config'], true) ?? [];
 
-        // Échange code → tokens
+        $redirectUri = "{$base}/admin/storage/providers/dropbox-callback";
+
         $ch = curl_init('https://api.dropboxapi.com/oauth2/token');
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
@@ -221,7 +219,7 @@ class AdminStorageController extends Controller
                 'grant_type' => 'authorization_code',
                 'client_id' => $config['app_key'],
                 'client_secret' => $config['app_secret'],
-                'redirect_uri' => (isset($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/admin/storage/providers/dropbox-callback',
+                'redirect_uri' => $redirectUri,
             ]),
             CURLOPT_TIMEOUT => 30,
         ]);
@@ -233,12 +231,11 @@ class AdminStorageController extends Controller
         $data = json_decode($response, true);
 
         if ($httpCode !== 200 || empty($data['access_token'])) {
-            $this->withError("Échec échange token: " . ($data['error_description'] ?? 'Erreur inconnue'));
-            $this->redirect('/admin/storage/providers');
-            return;
+            $msg = $data['error_description'] ?? 'Erreur inconnue';
+            header("Location: {$base}/admin/storage/providers?error=" . urlencode("Échec token: {$msg}"));
+            exit;
         }
 
-        // Sauvegarder les tokens
         $config['access_token'] = $data['access_token'];
         $config['refresh_token'] = $data['refresh_token'] ?? $config['refresh_token'] ?? '';
 
@@ -248,8 +245,8 @@ class AdminStorageController extends Controller
             [json_encode($config), $providerId]
         );
 
-        $this->withSuccess('Dropbox connecté avec succès');
-        $this->redirect('/admin/storage/providers');
+        header("Location: {$base}/admin/storage/providers?success=" . urlencode('Dropbox connecté avec succès'));
+        exit;
     }
 
     // ═══════════════════════════════════════════════════════════

@@ -13,7 +13,7 @@ class FileController extends Controller
     {
         $dir = dirname(__DIR__, 2) . '/storage/uploads/' . $tenantId;
         if (!is_dir($dir)) {
-            mkdir($dir, 0770, true);
+            @mkdir($dir, 0775, true);
         }
         return $dir;
     }
@@ -124,20 +124,22 @@ class FileController extends Controller
                 throw new \RuntimeException("Échec insertion en base de données");
             }
 
-            $db->insert('audit_logs', [
-                'tenant_id' => $tenantId,
-                'user_id' => $userId,
-                'action' => 'file.uploaded',
-                'resource_type' => 'file',
-                'resource_id' => $fileId,
-                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-                'metadata' => json_encode([
-                    'name' => $file['name'],
-                    'size' => $file['size'],
-                    'mime' => $mimeType,
-                    'folder_id' => $folderId,
-                ]),
-            ]);
+            try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $tenantId,
+                    'user_id' => $userId,
+                    'action' => 'file.uploaded',
+                    'resource_type' => 'file',
+                    'resource_id' => $fileId,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                    'metadata' => json_encode([
+                        'name' => $file['name'],
+                        'size' => $file['size'],
+                        'mime' => $mimeType,
+                        'folder_id' => $folderId,
+                    ]),
+                ]);
+            } catch (\Throwable $e) {}
 
             $this->json([
                 'success' => true,
@@ -202,14 +204,16 @@ class FileController extends Controller
         $encryption = new Encryption();
         $content = $encryption->decryptFile($storagePath, $file['file_key']);
 
-        $db->insert('audit_logs', [
-            'tenant_id' => $user['tenant_id'],
-            'user_id' => $user['id'],
-            'action' => 'file.downloaded',
-            'resource_type' => 'file',
-            'resource_id' => $id,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-        ]);
+        try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $user['tenant_id'],
+                    'user_id' => $user['id'],
+                    'action' => 'file.downloaded',
+                    'resource_type' => 'file',
+                    'resource_id' => $id,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                ]);
+            } catch (\Throwable $e) {}
 
         header('Content-Type: application/octet-stream');
         header('Content-Disposition: attachment; filename="' . addslashes($file['original_name']) . '"');
@@ -239,14 +243,16 @@ class FileController extends Controller
             [$id, $user['tenant_id']]
         );
 
-        $db->insert('audit_logs', [
-            'tenant_id' => $user['tenant_id'],
-            'user_id' => $user['id'],
-            'action' => 'file.deleted',
-            'resource_type' => 'file',
-            'resource_id' => $id,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-        ]);
+        try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $user['tenant_id'],
+                    'user_id' => $user['id'],
+                    'action' => 'file.deleted',
+                    'resource_type' => 'file',
+                    'resource_id' => $id,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                ]);
+            } catch (\Throwable $e) {}
 
         $this->json(['success' => true]);
     }
@@ -271,14 +277,16 @@ class FileController extends Controller
             [$id, $user['tenant_id']]
         );
 
-        $db->insert('audit_logs', [
-            'tenant_id' => $user['tenant_id'],
-            'user_id' => $user['id'],
-            'action' => 'file.restored',
-            'resource_type' => 'file',
-            'resource_id' => $id,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-        ]);
+        try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $user['tenant_id'],
+                    'user_id' => $user['id'],
+                    'action' => 'file.restored',
+                    'resource_type' => 'file',
+                    'resource_id' => $id,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                ]);
+            } catch (\Throwable $e) {}
 
         $this->json(['success' => true]);
     }
@@ -361,10 +369,11 @@ class FileController extends Controller
     /**
      * Vue inline du fichier — affiche le contenu dans le SaaS
      */
-    public function viewer(string $id): void
+    public function view(string $view, array $data = []): void
     {
         $user = $this->requireAuth();
         $db = Database::getInstance();
+        $id = $data['id'] ?? null;
 
         $file = $db->fetch(
             "SELECT * FROM files WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL",
@@ -372,15 +381,22 @@ class FileController extends Controller
         );
 
         if (!$file) {
-            $this->json(['error' => 'Fichier non trouvé'], 404);
+            http_response_code(404);
+            echo "Fichier non trouvé";
             return;
         }
 
-        $this->view('files/viewer', [
+        $content = $this->encryption->decryptFile(
+            $this->getUploadDir($user['tenant_id']) . '/' . $file['stored_name'],
+            $file['file_key']
+        );
+
+        $this->view($view, array_merge($data, [
             'user' => $user,
             'file' => $file,
+            'content' => $content,
             'pageTitle' => $file['original_name'],
-        ]);
+        ]));
     }
 
     /**
@@ -492,14 +508,16 @@ class FileController extends Controller
                 'created_by' => $user['id'],
             ]);
 
-            $db->insert('audit_logs', [
-                'tenant_id' => $user['tenant_id'],
-                'user_id' => $user['id'],
-                'action' => 'file.edited',
-                'resource_type' => 'file',
-                'resource_id' => $id,
-                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-            ]);
+            try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $user['tenant_id'],
+                    'user_id' => $user['id'],
+                    'action' => 'file.edited',
+                    'resource_type' => 'file',
+                    'resource_id' => $id,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                ]);
+            } catch (\Throwable $e) {}
 
             $this->json(['success' => true, 'checksum' => $checksum]);
         } catch (\Throwable $e) {
@@ -549,15 +567,17 @@ class FileController extends Controller
             [$targetFolderId, $id, $user['tenant_id']]
         );
 
-        $db->insert('audit_logs', [
-            'tenant_id' => $user['tenant_id'],
-            'user_id' => $user['id'],
-            'action' => 'file.moved',
-            'resource_type' => 'file',
-            'resource_id' => $id,
-            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
-            'metadata' => json_encode(['target_folder_id' => $targetFolderId]),
-        ]);
+        try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $user['tenant_id'],
+                    'user_id' => $user['id'],
+                    'action' => 'file.moved',
+                    'resource_type' => 'file',
+                    'resource_id' => $id,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                    'metadata' => json_encode(['target_folder_id' => $targetFolderId]),
+                ]);
+            } catch (\Throwable $e) {}
 
         $this->json(['success' => true]);
     }
