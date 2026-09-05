@@ -82,12 +82,12 @@ class StorageService
             }
         }
 
-        // Tester la connexion
-        $adapter = AdapterFactory::create($data);
-        $testResult = $adapter->testConnection();
-
-        if (!$testResult['success']) {
-            throw new \RuntimeException("Connexion échouée: {$testResult['message']}");
+        // Tester la connexion (optionnel, ne bloque pas la création)
+        try {
+            $adapter = AdapterFactory::create($data);
+            $testResult = $adapter->testConnection();
+        } catch (\Throwable $e) {
+            $testResult = ['success' => false, 'message' => $e->getMessage()];
         }
 
         // Si default, désactiver les autres defaults
@@ -104,6 +104,7 @@ class StorageService
             'is_active' => $data['is_active'] ?? 1,
             'is_default' => $data['is_default'] ?? 0,
             'created_by' => $data['created_by'] ?? null,
+            'last_error' => $testResult['success'] ? null : $testResult['message'] ?? null,
         ]);
 
         // Audit log
