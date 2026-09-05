@@ -422,7 +422,11 @@ function testProvider(id) {
 function deleteProvider(id, name) {
     if (!confirm(`Supprimer le provider "${name}" ?`)) return;
 
-    fetch(`/admin/storage/providers/${id}`, { method: 'DELETE', credentials: 'include' })
+    fetch(`/admin/storage/providers/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
         .then(r => r.json())
         .then(result => {
             if (result.error) {
