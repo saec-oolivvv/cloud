@@ -42,6 +42,15 @@ class Session
                     exit;
                 }
             }
+
+            // Validate session token cookie if user is logged in
+            if (self::has('user') && !empty($_COOKIE['session_token'])) {
+                if (!self::validateSessionToken()) {
+                    self::destroy();
+                    header('Location: /login');
+                    exit;
+                }
+            }
         }
     }
 
@@ -132,6 +141,84 @@ class Session
 
         // Regenerate session ID on login
         session_regenerate_id(true);
+    }
+
+    /**
+     * Set secure session token cookie (random, per-user, DB-tracked)
+     */
+    public static function setSessionToken(int $userId): string
+    {
+        $token = bin2hex(random_bytes(32));
+        $tokenHash = hash('sha256', $token);
+
+        $db = Database::getInstance();
+        $db->execute(
+            "INSERT INTO user_sessions (id, user_id, ip_address, user_agent) VALUES (?, ?, ?, ?)",
+            [$tokenHash, $userId, $_SERVER['HTTP_X_FORWARDED_FOR'] ?? ($_SERVER['REMOTE_ADDR'] ?? ''), $_SERVER['HTTP_USER_AGENT'] ?? '']
+        );
+
+        $isSecure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'
+            || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+
+        setcookie('session_token', $token, [
+            'expires' => time() + 86400,
+            'path' => '/',
+            'secure' => $isSecure,
+            'httponly' => true,
+            'samesite' => 'None',
+        ]);
+
+        self::set('session_token_hash', $tokenHash);
+        return $token;
+    }
+
+    /**
+     * Validate session token cookie against DB
+     */
+    public static function validateSessionToken(): bool
+    {
+        $token = $_COOKIE['session_token'] ?? '';
+        if (empty($token)) return false;
+
+        $tokenHash = hash('sha256', $token);
+
+        $db = Database::getInstance();
+        $row = $db->fetch(
+            "SELECT id FROM user_sessions WHERE id = ? AND last_activity > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
+            [$tokenHash]
+        );
+
+        if (!$row) return false;
+
+        $db->execute(
+            "UPDATE user_sessions SET last_activity = NOW() WHERE id = ?",
+            [$tokenHash]
+        );
+
+        return true;
+    }
+
+    /**
+     * Destroy session token cookie + DB row
+     */
+    public static function destroySessionToken(): void
+    {
+        $tokenHash = self::get('session_token_hash', '');
+        if ($tokenHash) {
+            $db = Database::getInstance();
+            $db->execute("DELETE FROM user_sessions WHERE id = ?", [$tokenHash]);
+        }
+
+        $isSecure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'
+            || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+
+        setcookie('session_token', '', [
+            'expires' => time() - 3600,
+            'path' => '/',
+            'secure' => $isSecure,
+            'httponly' => true,
+            'samesite' => 'None',
+        ]);
     }
 
     /**

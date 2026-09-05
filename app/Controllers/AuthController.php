@@ -121,9 +121,8 @@ class AuthController extends Controller
         );
         Session::set('jwt', $token);
 
-        // Session tracking
-        $sessionId = Security::createSession($userData['id'], $ip, $ua);
-        Session::set('session_id', $sessionId);
+        // Session tracking — random token in cookie + DB
+        Session::setSessionToken($userData['id']);
 
         // Update last login
         $db = Database::getInstance();
@@ -143,11 +142,7 @@ class AuthController extends Controller
             $this->logActivity($user['id'], $user['tenant_id'], 'auth.logout');
         }
 
-        $sessionId = Session::get('session_id');
-        if ($sessionId) {
-            Security::destroySession($sessionId);
-        }
-
+        Session::destroySessionToken();
         Session::destroy();
         $this->redirect('/login');
     }
