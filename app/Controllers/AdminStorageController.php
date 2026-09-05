@@ -163,7 +163,7 @@ class AdminStorageController extends Controller
             'client_id' => $appKey,
             'redirect_uri' => $redirectUri,
             'state' => $state,
-            'scope' => 'files.metadata.read files.metadata.write files.content.read files.content.write sharing.read',
+            'token_access_type' => 'offline',
         ]);
 
         $this->redirect("https://www.dropbox.com/oauth2/authorize?{$params}");
