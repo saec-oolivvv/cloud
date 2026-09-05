@@ -232,7 +232,7 @@ class StorageService
 
         // Espace total utilisé (estimation)
         $totalUsed = 0;
-        $totalBackups = $this->db->fetch("SELECT COUNT(*) as c FROM storage_backups WHERE deleted_at IS NULL");
+        $totalBackups = $this->db->fetch("SELECT COUNT(*) as c FROM storage_backups");
         $totalMounts = $this->db->fetch("SELECT COUNT(*) as c FROM storage_mounts");
 
         return [
