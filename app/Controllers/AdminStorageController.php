@@ -22,6 +22,7 @@ class AdminStorageController extends Controller
 
     public function __construct()
     {
+        parent::__construct();
         $this->storage = StorageService::getInstance();
         $this->backup = BackupService::getInstance();
         $this->mount = MountService::getInstance();
