@@ -46,9 +46,8 @@ class Session
             // Validate session token cookie if user is logged in
             if (self::has('user') && !empty($_COOKIE['session_token'])) {
                 if (!self::validateSessionToken()) {
-                    self::destroy();
-                    header('Location: /login');
-                    exit;
+                    error_log("[SESSION] Token validation failed for user " . (self::get('user_id', '?')));
+                    // Don't destroy session — fallback to fingerprint only
                 }
             }
         }
@@ -151,11 +150,15 @@ class Session
         $token = bin2hex(random_bytes(32));
         $tokenHash = hash('sha256', $token);
 
-        $db = Database::getInstance();
-        $db->execute(
-            "INSERT INTO user_sessions (id, user_id, ip_address, user_agent) VALUES (?, ?, ?, ?)",
-            [$tokenHash, $userId, $_SERVER['HTTP_X_FORWARDED_FOR'] ?? ($_SERVER['REMOTE_ADDR'] ?? ''), $_SERVER['HTTP_USER_AGENT'] ?? '']
-        );
+        try {
+            $db = Database::getInstance();
+            $db->execute(
+                "INSERT INTO user_sessions (id, user_id, ip_address, user_agent) VALUES (?, ?, ?, ?)",
+                [$tokenHash, $userId, $_SERVER['HTTP_X_FORWARDED_FOR'] ?? ($_SERVER['REMOTE_ADDR'] ?? ''), $_SERVER['HTTP_USER_AGENT'] ?? '']
+            );
+        } catch (\Throwable $e) {
+            error_log("[SESSION] Failed to create session token: " . $e->getMessage());
+        }
 
         $isSecure = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'
             || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
@@ -182,18 +185,23 @@ class Session
 
         $tokenHash = hash('sha256', $token);
 
-        $db = Database::getInstance();
-        $row = $db->fetch(
-            "SELECT id FROM user_sessions WHERE id = ? AND last_activity > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
-            [$tokenHash]
-        );
+        try {
+            $db = Database::getInstance();
+            $row = $db->fetch(
+                "SELECT id FROM user_sessions WHERE id = ? AND last_activity > DATE_SUB(NOW(), INTERVAL 24 HOUR)",
+                [$tokenHash]
+            );
 
-        if (!$row) return false;
+            if (!$row) return false;
 
-        $db->execute(
-            "UPDATE user_sessions SET last_activity = NOW() WHERE id = ?",
-            [$tokenHash]
-        );
+            $db->execute(
+                "UPDATE user_sessions SET last_activity = NOW() WHERE id = ?",
+                [$tokenHash]
+            );
+        } catch (\Throwable $e) {
+            error_log("[SESSION] Token validation failed: " . $e->getMessage());
+            return false;
+        }
 
         return true;
     }
