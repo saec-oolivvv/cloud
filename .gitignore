@@ -1,0 +1,14 @@
+storage/logs/*.log
+storage/x*.conf
+public/debug-storage.php
+public/migrate-storage.php
+public/clear-cache.php
+public/fix-storage.php
+public/migrate-*.php
+vendor/
+.env
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
