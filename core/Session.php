@@ -17,7 +17,7 @@ class Session
                 'domain' => '',
                 'secure' => true,
                 'httponly' => true,
-                'samesite' => 'Strict',
+                'samesite' => 'Lax',
             ]);
             session_start();
 
