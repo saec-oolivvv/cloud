@@ -101,7 +101,6 @@ class Session
     private static function generateFingerprint(): string
     {
         $data = ($_SERVER['HTTP_USER_AGENT'] ?? '')
-            . '|' . ($_SERVER['REMOTE_ADDR'] ?? '')
             . '|' . ($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '');
         return hash('sha256', $data);
     }
