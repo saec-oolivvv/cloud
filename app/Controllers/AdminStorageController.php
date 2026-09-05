@@ -82,6 +82,7 @@ class AdminStorageController extends Controller
 
         try {
             $config = json_decode($_POST['config'] ?? '{}', true) ?? [];
+            error_log("[CREATE PROVIDER] type={$_POST['type'] ?? ''} name={$_POST['name'] ?? ''} config=" . json_encode($config));
 
             $providerId = $this->storage->createProvider([
                 'name' => $_POST['name'] ?? '',
@@ -89,12 +90,12 @@ class AdminStorageController extends Controller
                 'config' => $config,
                 'is_active' => (int)($_POST['is_active'] ?? 1),
                 'is_default' => (int)($_POST['is_default'] ?? 0),
-                'created_by' => $user['id'],
+                'created_by' => $user['id'] ?? null,
             ]);
 
             $this->json(['success' => true, 'provider_id' => $providerId]);
         } catch (\Throwable $e) {
-            error_log("[CREATE PROVIDER] Error: " . $e->getMessage());
+            error_log("[CREATE PROVIDER] Error: " . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
             $this->json(['error' => $e->getMessage()], 400);
         }
     }
