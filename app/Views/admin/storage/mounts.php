@@ -105,3 +105,30 @@ $pageTitle = 'Storage — Mounts';
         </div>
     </div>
 </div>
+
+<script>
+function createMount() {
+    const data = new FormData();
+    data.append('provider_id', document.getElementById('mountProvider').value);
+    data.append('mount_type', document.getElementById('mountType').value);
+    data.append('remote_path', document.getElementById('remotePath').value);
+    data.append('local_alias', document.getElementById('localAlias').value);
+
+    fetch('/admin/storage/mounts', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: data
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.error) {
+            showToast(result.error, 'error');
+        } else {
+            showToast('Mount créé', 'success');
+            setTimeout(() => location.reload(), 1000);
+        }
+    })
+    .catch(err => showToast('Erreur: ' + err.message, 'error'));
+}
+</script>
