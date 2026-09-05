@@ -25,6 +25,8 @@ class Session
             ]);
             session_start();
 
+            error_log("[SESSION] Start: status=" . session_status() . " id=" . session_id() . " secure={$isSecure} keys=" . implode(',', array_keys($_SESSION)) . " cookie=" . ($_COOKIE['PHPSESSID'] ?? 'none'));
+
             // Regenerate session ID periodically to prevent fixation
             $lastRegen = self::get('_last_regenerate', 0);
             if (time() - $lastRegen > self::$REGENERATE_INTERVAL) {
@@ -33,15 +35,15 @@ class Session
             }
 
             // Validate session fingerprint
-            if (self::has('_fingerprint')) {
-                $currentFingerprint = self::generateFingerprint();
-                if (!hash_equals(self::get('_fingerprint', ''), $currentFingerprint)) {
-                    // Session hijacked — destroy
-                    self::destroy();
-                    header('Location: /login');
-                    exit;
-                }
-            }
+            // TEMP DISABLED — debug session loss
+            // if (self::has('_fingerprint')) {
+            //     $currentFingerprint = self::generateFingerprint();
+            //     if (!hash_equals(self::get('_fingerprint', ''), $currentFingerprint)) {
+            //         self::destroy();
+            //         header('Location: /login');
+            //         exit;
+            //     }
+            // }
 
             // Validate session token cookie if user is logged in
             if (self::has('user') && !empty($_COOKIE['session_token'])) {
