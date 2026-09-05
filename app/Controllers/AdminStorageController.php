@@ -82,7 +82,7 @@ class AdminStorageController extends Controller
 
         try {
             $config = json_decode($_POST['config'] ?? '{}', true) ?? [];
-            error_log("[CREATE PROVIDER] type={$_POST['type'] ?? ''} name={$_POST['name'] ?? ''} config=" . json_encode($config));
+            error_log("[CREATE PROVIDER] type=" . ($_POST['type'] ?? '') . " name=" . ($_POST['name'] ?? '') . " config=" . json_encode($config));
 
             $providerId = $this->storage->createProvider([
                 'name' => $_POST['name'] ?? '',
