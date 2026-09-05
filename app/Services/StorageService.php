@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Saec\Services\Storage;
+namespace Saec\Services;
 
 use Saec\Core\Database;
+use Saec\Services\Storage\AdapterFactory;
+use Saec\Services\Storage\StorageAdapter;
 
 /**
  * Storage Service — Orchestrateur principal
