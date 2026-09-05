@@ -177,13 +177,14 @@ class AdminController extends Controller
             $params
         );
 
-        $data = [
+$data = [
             'user' => $user,
             'tenants' => $tenants,
             'filters' => ['status' => $status, 'search' => $search],
             'pageTitle' => 'Gestion Tenants',
         ];
-
+        $db = Database::getInstance();
+        $data['providers'] = $db->fetchAll("SELECT id, name, type FROM storage_providers WHERE is_active = 1 AND deleted_at IS NULL");
         $this->view('admin/tenants', $data);
     }
 
@@ -327,6 +328,125 @@ try {
             } catch (\Throwable $e) {}
 
         $this->json(['success' => true]);
+    }
+
+    // ═══════════════════════════════════════════
+    // TENANT STORAGE ASSIGNMENT
+    // ═══════════════════════════════════════════
+
+    public function tenantStorage(string $id): void
+    {
+        $this->requireAdmin();
+        $db = Database::getInstance();
+
+        $tenant = $db->fetch("SELECT * FROM tenants WHERE id = ?", [(int)$id]);
+        if (!$tenant) { $this->json(['error' => 'Tenant introuvable'], 404); return; }
+
+        $mounts = $db->fetchAll(
+            "SELECT m.*, p.name as provider_name, p.type as provider_type
+             FROM storage_mounts m
+             JOIN storage_providers p ON p.id = m.provider_id
+             WHERE m.tenant_id = ? AND p.deleted_at IS NULL",
+            [(int)$id]
+        );
+
+        $providers = $db->fetchAll(
+            "SELECT id, name, type FROM storage_providers WHERE is_active = 1 AND deleted_at IS NULL"
+        );
+
+        $this->json([
+            'tenant' => $tenant,
+            'mounts' => $mounts,
+            'providers' => $providers,
+        ]);
+    }
+
+    public function assignStorage(string $id): void
+    {
+        $user = $this->requireAdmin();
+        $db = Database::getInstance();
+
+        $providerId = (int)($_POST['provider_id'] ?? 0);
+        $remotePath = trim($_POST['remote_path'] ?? '/');
+        $localAlias = trim($_POST['local_alias'] ?? '');
+        $mountType = $_POST['mount_type'] ?? 'readwrite';
+
+        if ($providerId <= 0) {
+            $this->json(['error' => 'Provider requis'], 400);
+            return;
+        }
+
+        if (!in_array($mountType, ['readonly', 'readwrite', 'backup_only'])) {
+            $this->json(['error' => 'Type de mount invalide'], 400);
+            return;
+        }
+
+        $provider = $db->fetch("SELECT id, name, type FROM storage_providers WHERE id = ? AND deleted_at IS NULL", [$providerId]);
+        if (!$provider) {
+            $this->json(['error' => 'Provider introuvable'], 404);
+            return;
+        }
+
+        if (empty($localAlias)) {
+            $localAlias = '/' . $provider['type'] . '-' . $provider['id'];
+        }
+
+        $existing = $db->fetch(
+            "SELECT id FROM storage_mounts WHERE tenant_id = ? AND provider_id = ? AND remote_path = ?",
+            [(int)$id, $providerId, $remotePath]
+        );
+        if ($existing) {
+            $this->json(['error' => 'Ce provider est déjà assigné à ce chemin pour ce tenant'], 400);
+            return;
+        }
+
+        $db->execute(
+            "INSERT INTO storage_mounts (provider_id, tenant_id, remote_path, local_alias, mount_type) VALUES (?, ?, ?, ?, ?)",
+            [$providerId, (int)$id, $remotePath, $localAlias, $mountType]
+        );
+
+        try {
+            $db->insert('audit_logs', [
+                'tenant_id' => (int)$id,
+                'user_id' => $user['id'],
+                'action' => 'tenant.storage_assigned',
+                'resource_type' => 'storage_mount',
+                'resource_id' => (string)$providerId,
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+            ]);
+        } catch (\Throwable $e) {}
+
+        $this->json(['success' => true, 'message' => "Provider \"{$provider['name']}\" assigné"]);
+    }
+
+    public function removeStorage(string $id, string $mountId): void
+    {
+        $user = $this->requireAdmin();
+        $db = Database::getInstance();
+
+        $mount = $db->fetch(
+            "SELECT m.*, p.name as provider_name FROM storage_mounts m JOIN storage_providers p ON p.id = m.provider_id WHERE m.id = ? AND m.tenant_id = ?",
+            [(int)$mountId, (int)$id]
+        );
+        if (!$mount) {
+            $this->json(['error' => 'Mount introuvable'], 404);
+            return;
+        }
+
+        $db->execute("DELETE FROM storage_mounts WHERE id = ?", [(int)$mountId]);
+
+        try {
+            $db->insert('audit_logs', [
+                'tenant_id' => (int)$id,
+                'user_id' => $user['id'],
+                'action' => 'tenant.storage_removed',
+                'resource_type' => 'storage_mount',
+                'resource_id' => $mountId,
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+            ]);
+        } catch (\Throwable $e) {}
+
+        $this->json(['success' => true, 'message' => "Mount \"{$mount['provider_name']}\" retiré"]);
     }
 
     public function tenantUsage(string $id): void

@@ -111,6 +111,11 @@ $router->get('/admin/tenants/{id}/billing', [AdminController::class, 'tenantBill
 $router->get('/admin/tenants/{id}/billing/api', [AdminController::class, 'tenantBilling'], [AdminMiddleware::class]);
 $router->post('/admin/tenants/{id}/billing', [AdminController::class, 'tenantBilling'], [AdminMiddleware::class]);
 
+// Storage assignment
+$router->get('/admin/tenants/{id}/storage', [AdminController::class, 'tenantStorage'], [AdminMiddleware::class]);
+$router->post('/admin/tenants/{id}/storage', [AdminController::class, 'assignStorage'], [AdminMiddleware::class]);
+$router->delete('/admin/tenants/{id}/storage/{mountId}', [AdminController::class, 'removeStorage'], [AdminMiddleware::class]);
+
 // Users
 $router->get('/admin/tenants/{id}/users', [AdminController::class, 'tenantUsers'], [AdminMiddleware::class]);
 $router->post('/admin/tenants/{id}/users', [AdminController::class, 'createUser'], [AdminMiddleware::class]);
