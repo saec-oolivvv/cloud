@@ -229,6 +229,8 @@ $pageTitle = 'Storage — Providers';
 document.addEventListener('DOMContentLoaded', function() {
     const modal = document.getElementById('providerModal');
     if (modal) document.body.appendChild(modal);
+    const toast = document.getElementById('toast');
+    if (toast) document.body.appendChild(toast);
 });
 
 const supportedTypes = <?= json_encode($supportedTypes) ?>;
