@@ -64,15 +64,24 @@ class AdminStorageController extends Controller
         $this->view('admin/storage/providers', $data);
     }
 
+    public function getProvider(string $id): void
+    {
+        $this->requireAdmin();
+        $provider = $this->storage->getProvider((int)$id);
+        $this->json($provider);
+    }
+
     public function createProvider(): void
     {
         $user = $this->requireAdmin();
 
         try {
+            $config = json_decode($_POST['config'] ?? '{}', true) ?? [];
+
             $providerId = $this->storage->createProvider([
                 'name' => $_POST['name'] ?? '',
                 'type' => $_POST['type'] ?? '',
-                'config' => $_POST['config'] ?? [],
+                'config' => $config,
                 'is_active' => (int)($_POST['is_active'] ?? 1),
                 'is_default' => (int)($_POST['is_default'] ?? 0),
                 'created_by' => $user['id'],
@@ -89,7 +98,11 @@ class AdminStorageController extends Controller
         $this->requireAdmin();
 
         try {
-            $this->storage->updateProvider((int)$id, $_POST);
+            $data = $_POST;
+            if (isset($data['config']) && is_string($data['config'])) {
+                $data['config'] = json_decode($data['config'], true) ?? [];
+            }
+            $this->storage->updateProvider((int)$id, $data);
             $this->json(['success' => true]);
         } catch (\Throwable $e) {
             $this->json(['error' => $e->getMessage()], 400);

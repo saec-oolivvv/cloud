@@ -306,6 +306,15 @@ Super Admin (master)
 ### Tenant CRUD
 - [ ] Créer tenant (admin)
 - [ ] Modifier tenant (admin)
+  - [ ] Nom / raison sociale
+  - [ ] Email contact principal
+  - [ ] Quota stockage (correction erreurs)
+  - [ ] Nombre max users (ajustement)
+  - [ ] Plan (upgrade/downgrade)
+  - [ ] Date expiration abonnement
+  - [ ] Features activées/désactivées
+  - [ ] Config storage (changement provider)
+  - [ ] Notes internes admin (debug, suivi)
 - [ ] Suspendre tenant (admin)
 - [ ] Réactiver tenant (admin)
 - [ ] Supprimer tenant (admin, soft-delete)
