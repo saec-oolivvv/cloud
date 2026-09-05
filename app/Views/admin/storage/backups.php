@@ -189,8 +189,8 @@ tr:hover { background: rgba(255,255,255,0.02); }
 </div>
 
 <!-- Create Backup Modal -->
-<div class="modal-overlay" id="backupModal">
-    <div class="modal">
+<div id="backupModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;">
+    <div style="background:#232632; border:1px solid #3A4257; border-radius:16px; width:100%; max-width:500px;">
         <div class="modal-header">
             <h3 style="color: #F1F5F9; margin: 0;">Nouvelle backup</h3>
             <button onclick="closeModal()" style="background: none; border: none; color: #64748B; cursor: pointer; font-size: 20px;">&times;</button>
@@ -260,11 +260,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function openCreateModal() {
     document.getElementById('backupForm').reset();
-    document.getElementById('backupModal').classList.add('active');
+    document.getElementById('backupModal').style.display = 'flex';
 }
 
 function closeModal() {
-    document.getElementById('backupModal').classList.remove('active');
+    document.getElementById('backupModal').style.display = 'none';
 }
 
 function createBackup(e) {

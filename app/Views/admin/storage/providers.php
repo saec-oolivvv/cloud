@@ -165,8 +165,8 @@ $pageTitle = 'Storage — Providers';
 </div>
 
 <!-- Create/Edit Modal -->
-<div class="modal-overlay" id="providerModal">
-    <div class="modal">
+<div id="providerModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:10000; justify-content:center; align-items:center;">
+    <div style="background:#232632; border:1px solid #3A4257; border-radius:16px; width:100%; max-width:600px; max-height:80vh; overflow-y:auto;">
         <div class="modal-header">
             <h3 style="color: #F1F5F9; margin: 0;" id="modalTitle">Ajouter un provider</h3>
             <button onclick="closeModal()" style="background: none; border: none; color: #64748B; cursor: pointer; font-size: 20px;">&times;</button>
@@ -293,7 +293,7 @@ function openCreateModal() {
     document.getElementById('providerId').value = '';
     document.getElementById('providerForm').reset();
     document.getElementById('configFields').innerHTML = '<p style="color: #64748B; font-size: 13px;">Sélectionnez un type pour afficher les champs de configuration.</p>';
-    document.getElementById('providerModal').classList.add('active');
+    document.getElementById('providerModal').style.display = 'flex';
 }
 
 function editProvider(id) {
@@ -307,12 +307,12 @@ function editProvider(id) {
             document.querySelector('[name="is_active"]').checked = provider.is_active;
             document.querySelector('[name="is_default"]').checked = provider.is_default;
             updateConfigFields(provider.type, JSON.parse(provider.config || '{}'));
-            document.getElementById('providerModal').classList.add('active');
+            document.getElementById('providerModal').style.display = 'flex';
         });
 }
 
 function closeModal() {
-    document.getElementById('providerModal').classList.remove('active');
+    document.getElementById('providerModal').style.display = 'none';
 }
 
 function updateConfigFields(type, values = {}) {
