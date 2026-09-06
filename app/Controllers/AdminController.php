@@ -302,8 +302,19 @@ try {
         $fields = ['name', 'plan', 'storage_quota', 'max_file_size', 'max_users', 'start_date', 'end_date', 'active', 'auto_deactivate', 'extra_user_price'];
 
         foreach ($fields as $f) {
-            if (isset($input[$f])) {
-                $updates[$f] = $input[$f];
+            if (!array_key_exists($f, $input)) continue;
+            $v = $input[$f];
+            // Vide => NULL pour les champs date/décimaux
+            if ($v === '' || $v === null) {
+                if (in_array($f, ['start_date', 'end_date', 'extra_user_price'])) {
+                    $updates[$f] = null;
+                } elseif (!in_array($f, ['active', 'auto_deactivate'])) {
+                    continue; // skip strings vides
+                } else {
+                    $updates[$f] = 0;
+                }
+            } else {
+                $updates[$f] = $v;
             }
         }
 
