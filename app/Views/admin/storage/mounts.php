@@ -86,6 +86,7 @@ $pageTitle = 'Storage — Mounts';
                         <th>Remote Path</th>
                         <th>Local Alias</th>
                         <th>Status</th>
+                        <th style="width:120px; text-align:right;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -94,19 +95,71 @@ $pageTitle = 'Storage — Mounts';
                             <td><?= htmlspecialchars($m['id'] ?? '') ?></td>
                             <td><?= htmlspecialchars($m['provider_name'] ?? '') ?></td>
                             <td><?= htmlspecialchars($m['mount_type'] ?? '') ?></td>
-                            <td><?= htmlspecialchars($m['remote_path'] ?? '') ?></td>
-                            <td><?= htmlspecialchars($m['local_alias'] ?? '') ?></td>
-                            <td style="color: #10b981;">Actif</td>
+                            <td><code style="font-size:11px;"><?= htmlspecialchars($m['remote_path'] ?? '') ?></code></td>
+                            <td><code style="font-size:11px;"><?= htmlspecialchars($m['local_alias'] ?? '') ?></code></td>
+                            <td style="color: <?= $m['last_sync_status'] === 'error' ? '#ef4444' : '#10b981' ?>;">
+                                <?= $m['last_sync_status'] ?? 'actif' ?>
+                            </td>
+                            <td style="text-align:right;">
+                                <button class="s-btn s-btn-sm s-btn-primary" onclick="syncMount(<?= $m['id'] ?>)" title="Sync now" data-cfasync="false">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px; height:13px;"><path d="M23 4v6h-6M1 20v-6h6"/></svg>
+                                    Sync
+                                </button>
+                                <button class="s-btn s-btn-sm s-btn-danger" onclick="deleteMount(<?= $m['id'] ?>)" title="Supprimer">
+                                    ×
+                                </button>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
-            <p style="margin-top: 20px; color: #64748B; font-size: 13px;">Aucun mount trouvé</p>
+            <?php if (empty($mounts)): ?>
+            <p style="margin-top: 20px; color: #64748B; font-size: 13px;">Aucun mount trouvé. Assignez un provider à un tenant.</p>
+            <?php endif; ?>
         </div>
     </div>
 </div>
 
 <script>
+function deleteMount(id) {
+    if (!confirm('Supprimer ce mount ?')) return;
+    fetch(`/admin/storage/mounts/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.error) {
+            showToast(result.error, 'error');
+        } else {
+            showToast('Mount supprimé', 'success');
+            setTimeout(() => location.reload(), 500);
+        }
+    })
+    .catch(e => showToast('Erreur: ' + e.message, 'error'));
+}
+
+function syncMount(id) {
+    showToast('Sync en cours...', 'success');
+    fetch(`/admin/storage/mounts/${id}/sync`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.error) {
+            showToast('✗ ' + result.error, 'error');
+        } else {
+            const r = result.result || result;
+            showToast(`✓ Sync: ${r.downloaded ?? 0}↓ ${r.uploaded ?? 0}↑ ${r.updated ?? 0}~`, 'success');
+            setTimeout(() => location.reload(), 1500);
+        }
+    })
+    .catch(e => showToast('Erreur sync: ' + e.message, 'error'));
+}
+
 function showToast(msg, type) {
     const t = document.createElement('div');
     t.textContent = msg;
