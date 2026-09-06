@@ -292,10 +292,8 @@ try {
         // PUT: $_POST est vide — parser le body
         $input = $_POST;
         if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
-            $rawBody = file_get_contents('php://input');
-            parse_str($rawBody, $parsed);
+            parse_str(file_get_contents('php://input'), $parsed);
             $input = $parsed ?: $_POST;
-            error_log("[UPDATE TENANT] method=PUT raw=" . substr($rawBody, 0, 200) . " parsed=" . json_encode($input));
         }
 
         $updates = [];
