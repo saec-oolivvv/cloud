@@ -177,6 +177,24 @@ class AdminController extends Controller
             $params
         );
 
+        // Récupère les mounts par tenant pour affichage
+        $mountRows = $db->fetchAll(
+            "SELECT m.id, m.tenant_id, m.provider_id, m.remote_path, m.local_alias, m.mount_type, m.is_active,
+                    p.name AS provider_name, p.type AS provider_type
+             FROM storage_mounts m
+             JOIN storage_providers p ON p.id = m.provider_id AND p.deleted_at IS NULL
+             WHERE m.is_active = 1
+             ORDER BY m.tenant_id, m.id"
+        );
+        $mountsByTenant = [];
+        foreach ($mountRows as $m) {
+            $mountsByTenant[(int)$m['tenant_id']][] = $m;
+        }
+        foreach ($tenants as &$t) {
+            $t['mounts'] = $mountsByTenant[(int)$t['id']] ?? [];
+        }
+        unset($t);
+
 $data = [
             'user' => $user,
             'tenants' => $tenants,
@@ -271,12 +289,19 @@ try {
         $user = $this->requireAdmin();
         $db = Database::getInstance();
 
+        // PUT: $_POST est vide — parser le body
+        $input = $_POST;
+        if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+            parse_str(file_get_contents('php://input'), $parsed);
+            $input = $parsed ?: $_POST;
+        }
+
         $updates = [];
-        $fields = ['name', 'storage_quota', 'max_file_size', 'max_users', 'start_date', 'end_date', 'active', 'auto_deactivate'];
+        $fields = ['name', 'plan', 'storage_quota', 'max_file_size', 'max_users', 'start_date', 'end_date', 'active', 'auto_deactivate', 'extra_user_price'];
 
         foreach ($fields as $f) {
-            if (isset($_POST[$f])) {
-                $updates[$f] = $_POST[$f];
+            if (isset($input[$f])) {
+                $updates[$f] = $input[$f];
             }
         }
 

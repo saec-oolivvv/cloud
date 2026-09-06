@@ -206,11 +206,63 @@ $csrf = $csrf ?? '';
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                 Billing
             </a>
+            <button onclick="openEditTenant(<?= $t['id'] ?>)" class="btn btn-outline btn-sm" title="Modifier" style="padding:var(--space-2) var(--space-3);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>
+                Modifier
+            </button>
             <button onclick="extendTenant(<?= $t['id'] ?>)" class="btn btn-outline btn-sm" title="Prolonger" style="padding:var(--space-2) var(--space-3);">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                 Prolonger
             </button>
-            <button onclick="editTenant(<?= \$t[id] ?>)" class="btn btn-outline btn-sm" title="Modifier" style="padding:var(--space-2) var(--space-3);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;"><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v14"/><path d="M9.5 14l-2.867-8.55a2.5 2.5 0 0 1 1.28-2.115H18a2.5 2.5 0 0 1 2.115 1.28l-8.55 2.867V19a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2"/><line x1="3" y1="3" x2="21" y2="21"/></svg>Modifier</button>
+        </div>
+    </div>
+
+    <!-- Storage Assignment -->
+    <div style="padding:var(--space-4) var(--space-6); border-top:1px solid var(--border-subtle);">
+        <div style="display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap;">
+            <span style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted);">Stockage :</span>
+            <?php foreach ($t['mounts'] as $m): ?>
+            <span style="display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:4px 10px; border-radius:999px; background:rgba(59,130,246,0.12); border:1px solid rgba(59,130,246,0.25); color:var(--blue-400);">
+                <?= htmlspecialchars($m['provider_name']) ?> → <code style="font-size:11px;"><?= htmlspecialchars($m['local_alias'] ?: $m['remote_path']) ?></code>
+                <span style="opacity:0.6; font-size:10px;">(<?= $m['mount_type'] ?>)</span>
+                <button onclick="removeTenantStorage(<?= $t['id'] ?>, <?= $m['id'] ?>)" style="border:none; background:none; color:var(--rose-500); cursor:pointer; font-size:14px; line-height:1; padding:0 0 0 4px;" title="Retirer">×</button>
+            </span>
+            <?php endforeach; ?>
+            <?php if (empty($t['mounts'])): ?>
+            <span style="font-size:12px; color:var(--text-muted); font-style:italic;">Aucun provider assigné — utilise le stockage local</span>
+            <?php endif; ?>
+            <button onclick="toggleAssignForm(<?= $t['id'] ?>)" class="btn btn-ghost btn-sm" style="font-size:11px; padding:4px 10px; margin-left:auto;">
+                <i class="fas fa-plus"></i> Assigner
+            </button>
+        </div>
+        <div id="assignForm<?= $t['id'] ?>" style="display:none; margin-top:var(--space-3); padding:var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md); border:1px solid var(--border-subtle);">
+            <div style="display:grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap:var(--space-2); align-items:end;">
+                <div>
+                    <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:4px;">Provider</label>
+                    <select id="asProvider<?= $t['id'] ?>" class="form-input" style="font-size:12px; padding:6px 10px;">
+                        <?php foreach ($providers as $p): ?>
+                        <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['name']) ?> (<?= $p['type'] ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:4px;">Chemin distant</label>
+                    <input type="text" id="asPath<?= $t['id'] ?>" class="form-input" value="/" style="font-size:12px; padding:6px 10px;">
+                </div>
+                <div>
+                    <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:4px;">Alias local</label>
+                    <input type="text" id="asAlias<?= $t['id'] ?>" class="form-input" placeholder="/dropbox" style="font-size:12px; padding:6px 10px;">
+                </div>
+                <div>
+                    <label style="font-size:10px; color:var(--text-muted); display:block; margin-bottom:4px;">Mode</label>
+                    <select id="asMode<?= $t['id'] ?>" class="form-input" style="font-size:12px; padding:6px 10px;">
+                        <option value="readwrite">Lecture/Écriture</option>
+                        <option value="readonly">Lecture seule</option>
+                        <option value="backup_only">Backup</option>
+                    </select>
+                </div>
+                <button onclick="assignTenantStorage(<?= $t['id'] ?>)" class="btn btn-primary btn-sm" style="font-size:12px;">OK</button>
+            </div>
         </div>
     </div>
 </div>
@@ -343,6 +395,73 @@ $csrf = $csrf ?? '';
 }
 </style>
 
+<!-- Modal Edit Tenant -->
+<div id="editTenantModal" class="modal" style="display:none;">
+    <div class="modal-content" style="max-width:560px;">
+        <div style="background:var(--bg-secondary); border-radius:var(--radius-lg); border:1px solid var(--border-subtle); overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,0.5); animation: modalIn 0.2s ease-out;">
+            <div style="padding:var(--space-5) var(--space-6); border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:space-between;">
+                <div style="font-size:15px; font-weight:600;">Modifier le tenant</div>
+                <button onclick="document.getElementById('editTenantModal').style.display='none'" style="width:32px; height:32px; border-radius:var(--radius-sm); border:none; background:transparent; color:var(--text-muted); cursor:pointer; font-size:18px;">×</button>
+            </div>
+            <div style="padding:var(--space-6); display:flex; flex-direction:column; gap:var(--space-4);">
+                <div class="form-group">
+                    <label class="form-label">Nom</label>
+                    <input type="text" id="editName" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Plan</label>
+                    <select id="editPlan" class="form-input">
+                        <option value="starter">Starter</option>
+                        <option value="professional">Professional</option>
+                        <option value="enterprise">Enterprise</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--space-3);">
+                    <div class="form-group">
+                        <label class="form-label">Quota stockage (Go)</label>
+                        <input type="number" id="editQuota" class="form-input" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Max file (Mo)</label>
+                        <input type="number" id="editMaxFile" class="form-input" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Max users</label>
+                        <input type="number" id="editMaxUsers" class="form-input" min="1">
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-3);">
+                    <div class="form-group">
+                        <label class="form-label">Date de fin</label>
+                        <input type="date" id="editEndDate" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Prix user extra (€/mois)</label>
+                        <input type="number" step="0.01" id="editExtraPrice" class="form-input" min="0">
+                    </div>
+                </div>
+                <div style="display:flex; gap:var(--space-6); align-items:center;">
+                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary); cursor:pointer;">
+                        <input type="checkbox" id="editActive" style="accent-color:var(--blue-500);"> Actif
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary); cursor:pointer;">
+                        <input type="checkbox" id="editAutoDeact" style="accent-color:var(--blue-500);"> Auto-désactivation à expiration
+                    </label>
+                </div>
+            </div>
+            <div style="padding:var(--space-4) var(--space-6); border-top:1px solid var(--border-subtle); display:flex; justify-content:flex-end; gap:var(--space-3); background:rgba(0,0,0,0.15);">
+                <button type="button" onclick="document.getElementById('editTenantModal').style.display='none'" class="btn btn-ghost" style="font-size:13px;">Annuler</button>
+                <button type="button" onclick="saveTenant()" class="btn btn-primary" style="font-size:13px;">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+window.TENANTS = <?= json_encode(array_column($tenants, null, 'id')) ?>;
+</script>
+
 <script>
 const planLimits = {
     starter:     { storage_quota_gb: 10,   max_file_size_gb: 1,   max_users: 1,  extra_user_price: 2.00 },
@@ -395,6 +514,87 @@ async function extendTenant(id) {
     form.append('days', days);
     form.append('_token', '<?= $csrf ?>');
     const res = await fetch(`/admin/tenants/${id}/extend`, { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.success) location.reload();
+    else alert(data.error || 'Erreur');
+}
+
+// ═══ Edit Tenant ═══
+let editTenantId = null;
+
+function openEditTenant(id) {
+    const t = window.TENANTS[id];
+    if (!t) return;
+    editTenantId = id;
+    document.getElementById('editName').value = t.name || '';
+    document.getElementById('editPlan').value = t.plan || 'custom';
+    document.getElementById('editQuota').value = Math.round((t.storage_quota || 0) / 1073741824);
+    document.getElementById('editMaxFile').value = Math.round((t.max_file_size || 0) / 1048576);
+    document.getElementById('editMaxUsers').value = t.max_users || 1;
+    document.getElementById('editEndDate').value = t.end_date || '';
+    document.getElementById('editExtraPrice').value = t.extra_user_price || 0;
+    document.getElementById('editActive').checked = !!parseInt(t.active);
+    document.getElementById('editAutoDeact').checked = !!parseInt(t.auto_deactivate);
+    const modal = document.getElementById('editTenantModal');
+    document.body.appendChild(modal); // escape stacking context
+    modal.style.display = 'flex';
+}
+
+async function saveTenant() {
+    if (!editTenantId) return;
+    const form = new FormData();
+    form.append('name', document.getElementById('editName').value);
+    form.append('plan', document.getElementById('editPlan').value);
+    form.append('storage_quota', parseInt(document.getElementById('editQuota').value || 0) * 1073741824);
+    form.append('max_file_size', parseInt(document.getElementById('editMaxFile').value || 0) * 1048576);
+    form.append('max_users', document.getElementById('editMaxUsers').value);
+    form.append('end_date', document.getElementById('editEndDate').value);
+    form.append('extra_user_price', document.getElementById('editExtraPrice').value);
+    form.append('active', document.getElementById('editActive').checked ? '1' : '0');
+    form.append('auto_deactivate', document.getElementById('editAutoDeact').checked ? '1' : '0');
+    form.append('_token', '<?= $csrf ?>');
+    const res = await fetch(`/admin/tenants/${editTenantId}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: new URLSearchParams(form)
+    });
+    const data = await res.json();
+    if (data.success) location.reload();
+    else alert(data.error || 'Erreur');
+}
+
+// ═══ Storage Assignment ═══
+function toggleAssignForm(tenantId) {
+    const el = document.getElementById('assignForm' + tenantId);
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function assignTenantStorage(tenantId) {
+    const form = new FormData();
+    form.append('provider_id', document.getElementById('asProvider' + tenantId).value);
+    form.append('remote_path', document.getElementById('asPath' + tenantId).value || '/');
+    form.append('local_alias', document.getElementById('asAlias' + tenantId).value);
+    form.append('mount_type', document.getElementById('asMode' + tenantId).value);
+    form.append('_token', '<?= $csrf ?>');
+    const res = await fetch(`/admin/tenants/${tenantId}/storage`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: form
+    });
+    const data = await res.json();
+    if (data.success) location.reload();
+    else alert(data.error || 'Erreur');
+}
+
+async function removeTenantStorage(tenantId, mountId) {
+    if (!confirm('Retirer ce mount ?')) return;
+    const res = await fetch(`/admin/tenants/${tenantId}/storage/${mountId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    });
     const data = await res.json();
     if (data.success) location.reload();
     else alert(data.error || 'Erreur');
