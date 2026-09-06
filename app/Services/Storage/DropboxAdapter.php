@@ -108,24 +108,22 @@ class DropboxAdapter extends AbstractAdapter
         $url = "https://api.dropboxapi.com/2/{$endpoint}";
 
         $ch = curl_init($url);
-        $headers = ['Authorization: Bearer ' . $this->accessToken];
-        $payload = null;
-
         if ($body !== null) {
             $payload = $body;
         } elseif (!empty($args)) {
             $payload = json_encode($args);
-        }
-
-        if ($payload !== null) {
-            $headers[] = 'Content-Type: application/json';
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        } else {
+            $payload = 'null';
         }
 
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_POSTFIELDS => $payload,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $this->accessToken,
+                'Content-Type: application/json',
+            ],
             CURLOPT_TIMEOUT => 30,
         ]);
 
