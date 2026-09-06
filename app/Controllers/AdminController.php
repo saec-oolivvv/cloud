@@ -6,6 +6,7 @@ namespace Saec\Controllers;
 
 use Saec\Core\Database;
 use Saec\Core\Security;
+use Saec\Services\Storage\AdapterFactory;
 
 class AdminController extends Controller
 {
@@ -441,6 +442,14 @@ try {
             [$providerId, (int)$id, $remotePath, $localAlias, $mountType]
         );
 
+        // Créer le dossier sur le storage distant
+        try {
+            $adapter = AdapterFactory::fromDatabase($providerId);
+            $adapter->mkdir($remotePath);
+        } catch (\Throwable $e) {
+            error_log("[STORAGE] mkdir failed for mount tenant={$id} provider={$providerId} path={$remotePath}: " . $e->getMessage());
+        }
+
         try {
             $db->insert('audit_logs', [
                 'tenant_id' => (int)$id,
@@ -541,10 +550,13 @@ try {
         $this->view('admin/users', $data);
     }
 
-    public function createUser(string $tenantId): void
+    public function createUser(string $id): void
     {
         $user = $this->requireAdmin();
         $db = Database::getInstance();
+        $tenantId = (int)$id;
+
+        $email = strtolower(trim($_POST['email'] ?? ''));
 
         $email = strtolower(trim($_POST['email'] ?? ''));
         $password = $_POST['password'] ?? '';
@@ -601,16 +613,61 @@ try {
         $user = $this->requireAdmin();
         $db = Database::getInstance();
 
-        $updates = [];
-        if (isset($_POST['role'])) $updates['role'] = $_POST['role'];
-        if (isset($_POST['active'])) $updates['active'] = (int) $_POST['active'];
-
-        if (!empty($updates)) {
-            $db->execute(
-                "UPDATE users SET " . implode(', ', array_map(fn($k) => "{$k} = ?", array_keys($updates))) . " WHERE id = ?",
-                array_merge(array_values($updates), [$id])
-            );
+        // PUT: $_POST est vide — parser le body
+        $input = $_POST;
+        if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+            parse_str(file_get_contents('php://input'), $input);
         }
+
+        $updates = [];
+        if (isset($input['email'])) {
+            $email = strtolower(trim($input['email']));
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $this->json(['error' => 'Email invalide'], 400); return;
+            }
+            $updates['email'] = $email;
+        }
+        if (isset($input['role'])) {
+            if (!in_array($input['role'], ['admin','user','viewer'], true)) {
+                $this->json(['error' => 'Rôle invalide'], 400); return;
+            }
+            $updates['role'] = $input['role'];
+        }
+        if (isset($input['active'])) {
+            $updates['active'] = (int)$input['active'];
+        }
+        if (!empty($input['password'])) {
+            if (strlen($input['password']) < 8) {
+                $this->json(['error' => 'Mot de passe trop court'], 400); return;
+            }
+            $updates['password_hash'] = password_hash($input['password'], PASSWORD_ARGON2ID);
+        }
+
+        if (empty($updates)) {
+            $this->json(['error' => 'Rien à modifier'], 400); return;
+        }
+
+        // Ne pas laisser modifier soi-même si on retire admin
+        if ((int)$id === (int)$user['id'] && isset($updates['role']) && $updates['role'] !== 'admin') {
+            $this->json(['error' => 'Impossible de retirer ton propre rôle admin'], 409); return;
+        }
+
+        $db->execute(
+            "UPDATE users SET " . implode(', ', array_map(fn($k) => "{$k} = ?", array_keys($updates))) . " WHERE id = ?",
+            array_merge(array_values($updates), [$id])
+        );
+
+        try {
+            $db->insert('audit_logs', [
+                'tenant_id' => $user['tenant_id'],
+                'user_id' => $user['id'],
+                'action' => 'user.updated',
+                'resource_type' => 'user',
+                'resource_id' => $id,
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                'metadata' => json_encode(array_keys($updates)),
+            ]);
+        } catch (\Throwable $e) {}
 
         $this->json(['success' => true]);
     }

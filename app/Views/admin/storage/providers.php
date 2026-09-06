@@ -37,7 +37,10 @@ $pageTitle = 'Storage — Providers';
 .provider-type-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
 .provider-name { font-size: 15px; font-weight: 600; color: #F1F5F9; }
 .provider-meta { font-size: 12px; color: #64748B; margin-top: 2px; }
-.provider-actions { display: flex; gap: 8px; margin-top: 16px; }
+.provider-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; align-items: stretch; }
+.provider-actions .s-btn { flex: 1 1 0; min-width: 0; justify-content: center; padding: 8px 10px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.provider-actions .s-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+.provider-actions a.s-btn { padding: 8px 10px; }
 .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
 .status-active { background: rgba(16,185,129,0.12); color: #34D399; }
 .status-inactive { background: rgba(239,68,68,0.12); color: #F87171; }
