@@ -264,6 +264,49 @@ function formatBytes(int $bytes): string {
             </div>
         </div>
 
+        <!-- 2FA -->
+        <div class="s-card">
+            <div class="s-head">
+                <div class="s-icon purple"><i class="fas fa-shield-halved"></i></div>
+                <div class="s-head-text">
+                    <h3>Double Authentification</h3>
+                    <p>Sécurité renforcée avec TOTP</p>
+                </div>
+                <?php if (!empty($profile['mfa_enabled'])): ?>
+                <span class="s-head-badge" style="background:rgba(16,185,129,0.1); color:#34D399; border-color:rgba(16,185,129,0.2);">Activée</span>
+                <?php else: ?>
+                <span class="s-head-badge" style="background:rgba(245,158,11,0.1); color:#FBBF24; border-color:rgba(245,158,11,0.2);">Désactivée</span>
+                <?php endif; ?>
+            </div>
+            <div class="s-body">
+                <?php if (!empty($profile['mfa_enabled'])): ?>
+                <div style="display:flex; align-items:center; gap:12px; padding:12px; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.15); border-radius:8px; margin-bottom:16px;">
+                    <i class="fas fa-check-circle" style="color:#34D399; font-size:16px;"></i>
+                    <div style="font-size:13px; color:#CBD5E1;">La double authentification est <strong style="color:#34D399;">activée</strong>. Votre compte est protégé.</div>
+                </div>
+                <form id="disable2faForm" class="s-fields" style="margin-top:16px;">
+                    <div class="s-field">
+                        <label>Code de vérification (pour désactiver)</label>
+                        <input type="text" name="code" class="s-input" placeholder="000000" maxlength="6" pattern="[0-9]{6}" required autocomplete="one-time-code" inputmode="numeric" style="text-align:center; letter-spacing:0.3em; font-family:'JetBrains Mono',monospace;">
+                    </div>
+                    <button type="submit" class="s-btn s-btn-danger" style="width:100%;">
+                        <i class="fas fa-shield-halved" style="font-size:12px;"></i> Désactiver la 2FA
+                    </button>
+                </form>
+                <?php else: ?>
+                <div style="text-align:center; padding:16px;">
+                    <div style="width:56px; height:56px; border-radius:50%; background:rgba(139,92,246,0.1); color:#A78BFA; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; font-size:22px;">
+                        <i class="fas fa-shield-halved"></i>
+                    </div>
+                    <p style="color:#CBD5E1; font-size:14px; margin-bottom:16px;">Protégez votre compte avec une <strong>double authentification</strong> (Google Authenticator, Authy...)</p>
+                    <a href="/2fa/setup" class="s-btn s-btn-primary" style="text-decoration:none;">
+                        <i class="fas fa-shield-halved" style="font-size:12px;"></i> Activer la 2FA
+                    </a>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
         <!-- Sessions -->
         <div class="s-card">
             <div class="s-head">
@@ -439,6 +482,21 @@ document.getElementById('destroySessionsForm').addEventListener('submit', async 
     const data = await safeFetch('/config/sessions/destroy', new FormData(e.target));
     sToast(data.message || data.error, data.success ? 'ok' : 'err');
 });
+
+// 2FA Disable
+const disable2faForm = document.getElementById('disable2faForm');
+if (disable2faForm) {
+    disable2faForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!confirm('Désactiver la double authentification ? Votre compte sera moins sécurisé.')) return;
+        const btn = e.target.querySelector('button[type="submit"]');
+        if (btn) { btn.disabled = true; btn.textContent = 'Désactivation...'; }
+        const data = await safeFetch('/2fa/disable', new FormData(e.target));
+        sToast(data.message || data.error, data.success ? 'ok' : 'err');
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-shield-halved" style="font-size:12px;"></i> Désactiver la 2FA'; }
+        if (data.success) setTimeout(() => location.reload(), 1000);
+    });
+}
 
 // Delete account
 document.getElementById('deleteAccountBtn').addEventListener('click', () => {

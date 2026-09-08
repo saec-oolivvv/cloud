@@ -259,6 +259,157 @@ class Security
         return $row && !empty($row['email_verified_at']);
     }
 
+    // ── 2FA / TOTP ──
+    private static string $totpIssuer = 'SAEC Cloud';
+    private static int $totpDigits = 6;
+    private static int $totpPeriod = 30;
+    private static int $totpWindow = 1; // allow ±1 step
+
+    /**
+     * Generate a new TOTP secret (base32 encoded)
+     */
+    public static function generateTotpSecret(): string
+    {
+        $bytes = random_bytes(20);
+        return self::base32Encode($bytes);
+    }
+
+    /**
+     * Get TOTP provisioning URI for QR code
+     */
+    public static function getTotpProvisioningUri(string $secret, string $email): string
+    {
+        $issuer = rawurlencode(self::$totpIssuer);
+        $account = rawurlencode($email);
+        $params = http_build_query([
+            'secret' => $secret,
+            'issuer' => self::$totpIssuer,
+            'algorithm' => 'SHA1',
+            'digits' => self::$totpDigits,
+            'period' => self::$totpPeriod,
+        ]);
+        return "otpauth://totp/{$issuer}:{$account}?{$params}";
+    }
+
+    /**
+     * Verify a TOTP code against stored secret
+     */
+    public static function verifyTotpCode(string $secret, string $code): bool
+    {
+        $secret = strtoupper($secret);
+        $time = (int) floor(time() / self::$totpPeriod);
+
+        for ($i = -self::$totpWindow; $i <= self::$totpWindow; $i++) {
+            $counter = $time + $i;
+            $expected = self::generateTotpCode($secret, $counter);
+            if (hash_equals($expected, $code)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Generate TOTP code for a given counter
+     */
+    private static function generateTotpCode(string $secret, int $counter): string
+    {
+        $key = self::base32Decode($secret);
+        $counterBytes = pack('N*', 0, $counter);
+        $hash = hash_hmac('sha1', $counterBytes, $key, true);
+        $offset = ord($hash[19]) & 0x0f;
+        $binary = (
+            ((ord($hash[$offset]) & 0x7f) << 24) |
+            ((ord($hash[$offset + 1]) & 0xff) << 16) |
+            ((ord($hash[$offset + 2]) & 0xff) << 8) |
+            (ord($hash[$offset + 3]) & 0xff)
+        ) % pow(10, self::$totpDigits);
+        return str_pad((string) $binary, self::$totpDigits, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Enable 2FA for a user (store secret)
+     */
+    public static function enableTotp(int $userId, string $secret): void
+    {
+        $db = Database::getInstance();
+        $db->execute(
+            "UPDATE users SET mfa_secret = ?, mfa_enabled = 1 WHERE id = ?",
+            [$secret, $userId]
+        );
+    }
+
+    /**
+     * Disable 2FA for a user
+     */
+    public static function disableTotp(int $userId): void
+    {
+        $db = Database::getInstance();
+        $db->execute(
+            "UPDATE users SET mfa_secret = NULL, mfa_enabled = 0 WHERE id = ?",
+            [$userId]
+        );
+    }
+
+    /**
+     * Check if user has 2FA enabled
+     */
+    public static function isTotpEnabled(int $userId): bool
+    {
+        $db = Database::getInstance();
+        $row = $db->fetch(
+            "SELECT mfa_enabled FROM users WHERE id = ?",
+            [$userId]
+        );
+        return $row && (int)($row['mfa_enabled'] ?? 0) === 1;
+    }
+
+    /**
+     * Get user's TOTP secret
+     */
+    public static function getTotpSecret(int $userId): ?string
+    {
+        $db = Database::getInstance();
+        $row = $db->fetch(
+            "SELECT mfa_secret FROM users WHERE id = ?",
+            [$userId]
+        );
+        return $row['mfa_secret'] ?? null;
+    }
+
+    // ── Base32 helpers ──
+    private static function base32Encode(string $data): string
+    {
+        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        $bits = '';
+        for ($i = 0; $i < strlen($data); $i++) {
+            $bits .= str_pad(decbin(ord($data[$i])), 8, '0', STR_PAD_LEFT);
+        }
+        $result = '';
+        for ($i = 0; $i + 5 <= strlen($bits); $i += 5) {
+            $chunk = substr($bits, $i, 5);
+            $result .= $chars[bindec($chunk)];
+        }
+        return $result;
+    }
+
+    private static function base32Decode(string $data): string
+    {
+        $data = strtoupper($data);
+        $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+        $bits = '';
+        for ($i = 0; $i < strlen($data); $i++) {
+            $val = strpos($chars, $data[$i]);
+            if ($val === false) continue;
+            $bits .= str_pad(decbin($val), 5, '0', STR_PAD_LEFT);
+        }
+        $result = '';
+        for ($i = 0; $i + 8 <= strlen($bits); $i += 8) {
+            $result .= chr(bindec(substr($bits, $i, 8)));
+        }
+        return $result;
+    }
+
     // ── Sanitize ──
     public static function sanitize(string $input): string
     {

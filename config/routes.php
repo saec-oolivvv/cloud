@@ -51,6 +51,13 @@ $router->get('/logout', [AuthController::class, 'logout']);
 $router->get('/verify-email', [AuthController::class, 'verifyEmail']);
 $router->post('/resend-verification', [AuthController::class, 'resendVerification'], [AuthMiddleware::class]);
 
+// 2FA / TOTP
+$router->get('/2fa/setup', [AuthController::class, 'totpSetup'], [AuthMiddleware::class]);
+$router->post('/2fa/enable', [AuthController::class, 'totpEnable'], [AuthMiddleware::class]);
+$router->post('/2fa/disable', [AuthController::class, 'totpDisable'], [AuthMiddleware::class]);
+$router->get('/2fa/verify', [AuthController::class, 'totpVerifyForm']);
+$router->post('/2fa/verify', [AuthController::class, 'totpVerify']);
+
 // ─────────────────────────────────────────────────────────────
 // DASHBOARD
 // ─────────────────────────────────────────────────────────────

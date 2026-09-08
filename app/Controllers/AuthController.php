@@ -101,6 +101,14 @@ class AuthController extends Controller
             return;
         }
 
+        // Check 2FA
+        if (Security::isTotpEnabled($user['id'])) {
+            Session::set('totp_pending_user_id', $user['id']);
+            Security::recordLoginAttempt($email, $ip, true);
+            $this->redirect('/2fa/verify');
+            return;
+        }
+
         Security::recordLoginAttempt($email, $ip, true);
         $this->completeLogin($user);
     }
@@ -195,6 +203,141 @@ class AuthController extends Controller
 
         $this->withSuccess('Email de vérification renvoyé.');
         $this->redirect('/dashboard');
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 2FA / TOTP
+    // ═══════════════════════════════════════════════════════════
+
+    public function totpSetup(): void
+    {
+        $user = Session::get('user');
+        if (!$user) {
+            $this->redirect('/login');
+            return;
+        }
+
+        // Generate new secret
+        $secret = Security::generateTotpSecret();
+        $provisioningUri = Security::getTotpProvisioningUri($secret, $user['email']);
+
+        // Store secret temporarily in session (not enabled yet)
+        Session::set('totp_pending_secret', $secret);
+
+        $data = [
+            'user' => $user,
+            'secret' => $secret,
+            'provisioning_uri' => $provisioningUri,
+            'pageTitle' => 'Double Authentification — Setup',
+        ];
+
+        require __DIR__ . '/../Views/auth/totp-setup.php';
+    }
+
+    public function totpEnable(): void
+    {
+        $user = Session::get('user');
+        if (!$user) {
+            $this->json(['error' => 'Non autorisé'], 401);
+            return;
+        }
+
+        $code = $_POST['code'] ?? '';
+        $secret = Session::get('totp_pending_secret');
+
+        if (empty($secret) || empty($code)) {
+            $this->json(['error' => 'Code requis'], 400);
+            return;
+        }
+
+        if (!Security::verifyTotpCode($secret, $code)) {
+            $this->json(['error' => 'Code invalide'], 400);
+            return;
+        }
+
+        // Enable 2FA
+        Security::enableTotp($user['id'], $secret);
+        Session::remove('totp_pending_secret');
+
+        $this->logActivity($user['id'], $user['tenant_id'], 'auth.2fa_enabled');
+        $this->json(['success' => true, 'message' => '2FA activée avec succès']);
+    }
+
+    public function totpDisable(): void
+    {
+        $user = Session::get('user');
+        if (!$user) {
+            $this->json(['error' => 'Non autorisé'], 401);
+            return;
+        }
+
+        $code = $_POST['code'] ?? '';
+        if (empty($code)) {
+            $this->json(['error' => 'Code requis'], 400);
+            return;
+        }
+
+        $secret = Security::getTotpSecret($user['id']);
+        if (!$secret || !Security::verifyTotpCode($secret, $code)) {
+            $this->json(['error' => 'Code invalide'], 400);
+            return;
+        }
+
+        Security::disableTotp($user['id']);
+        $this->logActivity($user['id'], $user['tenant_id'], 'auth.2fa_disabled');
+        $this->json(['success' => true, 'message' => '2FA désactivée']);
+    }
+
+    public function totpVerifyForm(): void
+    {
+        // During login — show TOTP verification form
+        $pendingUserId = Session::get('totp_pending_user_id');
+        if (!$pendingUserId) {
+            $this->redirect('/login');
+            return;
+        }
+
+        $pageTitle = 'Vérification — 2FA';
+        require __DIR__ . '/../Views/auth/totp-verify.php';
+    }
+
+    public function totpVerify(): void
+    {
+        $pendingUserId = Session::get('totp_pending_user_id');
+        if (!$pendingUserId) {
+            $this->redirect('/login');
+            return;
+        }
+
+        $code = $_POST['code'] ?? '';
+        if (empty($code)) {
+            $this->withError('Code requis');
+            $this->redirect('/2fa/verify');
+            return;
+        }
+
+        $secret = Security::getTotpSecret($pendingUserId);
+        if (!$secret || !Security::verifyTotpCode($secret, $code)) {
+            $this->withError('Code invalide');
+            $this->redirect('/2fa/verify');
+            return;
+        }
+
+        // Code valid — complete login
+        Session::remove('totp_pending_user_id');
+
+        $db = Database::getInstance();
+        $user = $db->fetch(
+            "SELECT id, tenant_id, email, role FROM users WHERE id = ?",
+            [$pendingUserId]
+        );
+
+        if (!$user) {
+            $this->redirect('/login');
+            return;
+        }
+
+        $this->completeLogin($user);
     }
 
     public function forgotPassword(): void
