@@ -249,6 +249,7 @@ CSP: strict (self, fonts, cloudflare only)
 - [x] Architecture modulaire (interfaces, DI, modules)
 - [x] Tenant isolation (storage/uploads/{tenant_id}/)
 - [x] Email verification (confirmation link 24h)
+- [x] 2FA TOTP (Google Authenticator / Authy)
 
 ### En Cours
 - [ ] Migration complète (folders + security)
