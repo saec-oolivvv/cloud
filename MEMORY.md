@@ -257,6 +257,12 @@ CSP: strict (self, fonts, cloudflare only)
 - [x] Trash retention (auto-purge per tenant)
 - [x] Audit log retention (configurable per tenant)
 - [x] IP whitelist per tenant
+- [x] Password reset (email link, 1h expiry)
+- [x] Email templates: welcome, password-reset, email-verification, 2fa, share-notification, tenant-expiry, quota-alert, backup-success, backup-failure, new-login
+- [x] Notifications system (in-app + email)
+- [x] Storage metrics API (per tenant, by type, recent uploads)
+- [x] S3 provider presets (AWS, Cloudflare R2, MinIO, DigitalOcean, Wasabi, Backblaze, Scaleway, OVH, Linode, Hetzner)
+- [x] Storage providers: Local, S3, SFTP, FTP, WebDAV, Google Drive, Dropbox, OneDrive
 
 ### En Cours
 - [ ] Migration complète (folders + security)

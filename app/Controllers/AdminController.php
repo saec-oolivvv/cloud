@@ -521,6 +521,59 @@ try {
         ]);
     }
 
+    public function storageMetrics(): void
+    {
+        $user = $this->requireAdmin();
+        $db = Database::getInstance();
+
+        // Total storage used across all tenants
+        $totalUsed = $db->fetch(
+            "SELECT COALESCE(SUM(size), 0) as total FROM files WHERE deleted_at IS NULL"
+        );
+
+        // Per-tenant usage
+        $tenantUsage = $db->fetchAll(
+            "SELECT t.id, t.name, t.plan, t.storage_quota,
+                    (SELECT COALESCE(SUM(size), 0) FROM files WHERE tenant_id = t.id AND deleted_at IS NULL) as used,
+                    (SELECT COUNT(*) FROM files WHERE tenant_id = t.id AND deleted_at IS NULL) as file_count,
+                    (SELECT COUNT(*) FROM users WHERE tenant_id = t.id AND active = 1) as user_count
+             FROM tenants t
+             WHERE t.deleted_at IS NULL
+             ORDER BY used DESC"
+        );
+
+        // Storage by file type
+        $byType = $db->fetchAll(
+            "SELECT 
+                CASE 
+                    WHEN mime_type LIKE 'image/%' THEN 'Images'
+                    WHEN mime_type LIKE 'video/%' THEN 'Vidéos'
+                    WHEN mime_type LIKE 'audio/%' THEN 'Audio'
+                    WHEN mime_type LIKE 'application/pdf' THEN 'PDF'
+                    WHEN mime_type LIKE 'text/%' THEN 'Texte'
+                    ELSE 'Autres'
+                END as type_name,
+                COUNT(*) as count,
+                COALESCE(SUM(size), 0) as total_size
+             FROM files WHERE deleted_at IS NULL
+             GROUP BY type_name
+             ORDER BY total_size DESC"
+        );
+
+        // Recent uploads (last 7 days)
+        $recentUploads = $db->fetch(
+            "SELECT COUNT(*) as count, COALESCE(SUM(size), 0) as size
+             FROM files WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND deleted_at IS NULL"
+        );
+
+        $this->json([
+            'total_used' => (int) ($totalUsed['total'] ?? 0),
+            'tenant_usage' => $tenantUsage,
+            'by_type' => $byType,
+            'recent_uploads' => $recentUploads,
+        ]);
+    }
+
     // ═══════════════════════════════════════════════════
     // USERS
     // ═══════════════════════════════════════════════════

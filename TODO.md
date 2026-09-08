@@ -45,32 +45,30 @@
 ## 💾 STORAGE OCTOPUS ARM — Hébergement Cloud/Remote
 
 ### Providers Object Storage (S3-compatible)
-- [ ] **Amazon S3** — Adapter natif, SDK PHP
-- [ ] **Cloudflare R2** — S3-compatible, zero egress, region=auto
-- [ ] **MinIO** — Self-hosted, pathStyle=true
-- [ ] **DigitalOcean Spaces** — Endpoint-based
-- [ ] **Wasabi** — Endpoint-based, zero egress fee
-- [ ] **Backblaze B2** — S3-compatible endpoint
-- [ ] **Scaleway Object Storage** — EU datacenter
-- [ ] **OVH Object Storage** — EU datacenter
-- [ ] **Linode Object Storage** — S3-compatible
-- [ ] **Vultr Object Storage** — S3-compatible
-- [ ] **Hetzner Object Storage** — S3-compatible
-- [ ] **IBM Cloud Object Storage** — S3-compatible
-- [ ] **Seagate Lyve Cloud** — S3-compatible
+- [x] **Amazon S3** — Adapter natif, SDK PHP → fixé
+- [x] **Cloudflare R2** — S3-compatible, zero egress, region=auto → fixé
+- [x] **MinIO** — Self-hosted, pathStyle=true → fixé
+- [x] **DigitalOcean Spaces** — Endpoint-based → fixé
+- [x] **Wasabi** — Endpoint-based, zero egress fee → fixé
+- [x] **Backblaze B2** — S3-compatible endpoint → fixé
+- [x] **Scaleway Object Storage** — EU datacenter → fixé
+- [x] **OVH Object Storage** — EU datacenter → fixé
+- [x] **Linode Object Storage** — S3-compatible → fixé
+- [x] **Vultr Object Storage** — S3-compatible → fixé
+- [x] **Hetzner Object Storage** — S3-compatible → fixé
 
 ### Providers Remote File Systems
-- [ ] **SFTP/SSH** — phpseclib3, clés SSH/Ed25519
-- [ ] **FTP** — natif PHP, passive mode
+- [x] **SFTP/SSH** — phpseclib3, clés SSH/Ed25519 → fixé
+- [x] **FTP** — natif PHP, passive mode → fixé
 - [ ] **FTPS** — FTP + SSL/TLS
-- [ ] **WebDAV** — sabre/dav, HTTP/HTTPS
+- [x] **WebDAV** — sabre/dav, HTTP/HTTPS → fixé
 - [ ] **NFS** — montage réseau local
 - [ ] **CIFS/SMB** — montage Windows/Samba
 
 ### Providers Cloud APIs
-- [ ] **Google Drive** — Google API PHP Client, OAuth2
-- [ ] **Dropbox** — API v2, OAuth2
-- [ ] **OneDrive** — Microsoft Graph API, OAuth2
+- [x] **Google Drive** — Google API PHP Client, OAuth2 → fixé
+- [x] **Dropbox** — API v2, OAuth2 → fixé
+- [x] **OneDrive** — Microsoft Graph API, OAuth2 → fixé
 - [ ] **Box.com** — REST API, OAuth2
 - [ ] **pCloud** — REST API
 - [ ] **Mega.nz** — REST API (protocole propriétaire)
@@ -392,15 +390,15 @@ Super Admin (master)
 ## 🔧 EMAIL SYSTEM OCTOPUS ARM
 
 ### Emails Transactionnels
-- [x] **Welcome email** — Credentials lors création user (MailerSend)
-- [ ] **Password reset** — Lien réinitialisation
-- [ ] **Email verification** — Confirmation adresse email
-- [ ] **2FA codes** — Code TOTP par email (backup)
-- [ ] **Share notification** — "X a partagé un fichier avec vous"
-- [ ] **Tenant expiry** — "Votre accès expire dans N jours"
-- [ ] **Quota alert** — "Votre espace est utilisé à X%"
-- [ ] **Backup success/failure** — Notification status backup
-- [ ] **New login** — "Nouveau login depuis [device/IP]"
+- [x] **Welcome email** — Credentials lors création user (MailerSend) → fixé
+- [x] **Password reset** — Lien réinitialisation → fixé
+- [x] **Email verification** — Confirmation adresse email → fixé
+- [x] **2FA codes** — Code TOTP par email (backup) → fixé
+- [x] **Share notification** — "X a partagé un fichier avec vous" → fixé
+- [x] **Tenant expiry** — "Votre accès expire dans N jours" → fixé
+- [x] **Quota alert** — "Votre espace est utilisé à X%" → fixé
+- [x] **Backup success/failure** — Notification status backup → fixé
+- [x] **New login** — "Nouveau login depuis [device/IP]" → fixé
 - [ ] **Weekly digest** — Résumé activité hebdomadaire
 
 ### Email Templates

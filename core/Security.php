@@ -552,4 +552,24 @@ class Security
         }
         return hash_equals($_SESSION['csrf_token'] ?? '', $token);
     }
+
+    // ── Notifications ──
+    public static function createNotification(int $userId, int $tenantId, string $type, string $title, string $message, array $metadata = []): void
+    {
+        $db = Database::getInstance();
+        $db->execute(
+            "INSERT INTO notifications (user_id, tenant_id, type, title, message, metadata) VALUES (?, ?, ?, ?, ?, ?)",
+            [$userId, $tenantId, $type, $title, $message, !empty($metadata) ? json_encode($metadata) : null]
+        );
+    }
+
+    public static function getUnreadCount(int $userId): int
+    {
+        $db = Database::getInstance();
+        $row = $db->fetch(
+            "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0",
+            [$userId]
+        );
+        return (int) ($row['count'] ?? 0);
+    }
 }

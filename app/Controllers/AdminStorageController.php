@@ -76,6 +76,13 @@ class AdminStorageController extends Controller
         }
     }
 
+    public function s3Presets(): void
+    {
+        $this->requireAdmin();
+        $presets = \Saec\Services\Storage\S3ProviderPresets::all();
+        $this->json(['presets' => $presets]);
+    }
+
     public function createProvider(): void
     {
         $user = $this->requireAdmin();

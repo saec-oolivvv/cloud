@@ -153,6 +153,31 @@ class Mailer
         return $this->send($to, $subject, $html);
     }
 
+    public function sendBackupSuccess(string $to, string $tenantName, string $backupDate, string $backupSize, string $backupDuration): bool
+    {
+        $subject = 'Backup réussi — SAEC Cloud';
+        $html = $this->render('backup-success', [
+            'tenant_name' => $tenantName,
+            'backup_date' => $backupDate,
+            'backup_size' => $backupSize,
+            'backup_duration' => $backupDuration,
+        ]);
+
+        return $this->send($to, $subject, $html);
+    }
+
+    public function sendBackupFailure(string $to, string $tenantName, string $backupDate, string $errorMessage): bool
+    {
+        $subject = 'Échec du backup — SAEC Cloud';
+        $html = $this->render('backup-failure', [
+            'tenant_name' => $tenantName,
+            'backup_date' => $backupDate,
+            'error_message' => $errorMessage,
+        ]);
+
+        return $this->send($to, $subject, $html);
+    }
+
     private function render(string $template, array $data): string
     {
         $templatePath = __DIR__ . '/../app/Views/emails/' . $template . '.php';

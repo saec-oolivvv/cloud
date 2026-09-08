@@ -11,6 +11,7 @@ use Saec\Controllers\DashboardController;
 use Saec\Controllers\FileController;
 use Saec\Controllers\ShareController;
 use Saec\Controllers\AdminController;
+use Saec\Controllers\SettingsController;
 use Saec\Middleware\AuthMiddleware;
 use Saec\Middleware\AdminMiddleware;
 
@@ -58,13 +59,23 @@ $router->post('/2fa/disable', [AuthController::class, 'totpDisable'], [AuthMiddl
 $router->get('/2fa/verify', [AuthController::class, 'totpVerifyForm']);
 $router->post('/2fa/verify', [AuthController::class, 'totpVerify']);
 
+// PASSWORD RESET
+$router->get('/forgot-password', [AuthController::class, 'forgotPasswordForm']);
+$router->post('/forgot-password', [AuthController::class, 'forgotPassword']);
+$router->get('/reset-password', [AuthController::class, 'resetPasswordForm']);
+$router->post('/reset-password', [AuthController::class, 'resetPassword']);
+
+// NOTIFICATIONS
+$router->get('/notifications', [SettingsController::class, 'notifications'], [AuthMiddleware::class]);
+$router->post('/notifications/{id}/read', [SettingsController::class, 'markRead'], [AuthMiddleware::class]);
+$router->post('/notifications/read-all', [SettingsController::class, 'markAllRead'], [AuthMiddleware::class]);
+
 // ─────────────────────────────────────────────────────────────
 // DASHBOARD
 // ─────────────────────────────────────────────────────────────
 $router->get('/dashboard', [DashboardController::class, 'index'], [AuthMiddleware::class]);
 
 use Saec\Controllers\FolderController;
-use Saec\Controllers\SettingsController;
 
 // ─────────────────────────────────────────────────────────────
 // SETTINGS (User Account)
@@ -136,6 +147,9 @@ $router->get('/admin/audit', [AdminController::class, 'auditLogs'], [AdminMiddle
 $router->get('/admin/config', [AdminController::class, 'config'], [AdminMiddleware::class]);
 $router->put('/admin/config', [AdminController::class, 'updateConfig'], [AdminMiddleware::class]);
 
+// Storage Metrics
+$router->get('/admin/metrics/storage', [AdminController::class, 'storageMetrics'], [AdminMiddleware::class]);
+
 // Modules
 $router->get('/admin/modules', [AdminController::class, 'modules'], [AdminMiddleware::class]);
 $router->post('/admin/modules/toggle', [AdminController::class, 'toggleModule'], [AdminMiddleware::class]);
@@ -156,6 +170,7 @@ $router->post('/admin/storage/providers', [AdminStorageController::class, 'creat
 $router->put('/admin/storage/providers/{id}', [AdminStorageController::class, 'updateProvider'], [AdminMiddleware::class]);
 $router->delete('/admin/storage/providers/{id}', [AdminStorageController::class, 'deleteProvider'], [AdminMiddleware::class]);
 $router->post('/admin/storage/providers/{id}/test', [AdminStorageController::class, 'testProvider'], [AdminMiddleware::class]);
+$router->get('/admin/storage/providers/s3-presets', [AdminStorageController::class, 's3Presets'], [AdminMiddleware::class]);
 $router->get('/admin/storage/providers/{id}/dropbox-authorize', [AdminStorageController::class, 'dropboxAuthorize'], [AdminMiddleware::class]);
 $router->get('/admin/storage/providers/dropbox-callback', [AdminStorageController::class, 'dropboxCallback'], [AdminMiddleware::class]);
 

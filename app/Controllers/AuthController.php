@@ -367,6 +367,7 @@ class AuthController extends Controller
     public function forgotPassword(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $pageTitle = 'Mot de passe oublié';
             require __DIR__ . '/../Views/auth/forgot-password.php';
             return;
         }
@@ -393,6 +394,66 @@ class AuthController extends Controller
             $mailer = new Mailer();
             $mailer->sendPasswordReset($user['email'], $user['email'], $token);
         }
+    }
+
+    public function resetPasswordForm(): void
+    {
+        $token = $_GET['token'] ?? '';
+        if (empty($token)) {
+            $this->redirect('/login');
+            return;
+        }
+
+        $userId = Security::validatePasswordReset($token);
+        if (!$userId) {
+            $this->withError('Lien de réinitialisation invalide ou expiré.');
+            $this->redirect('/login');
+            return;
+        }
+
+        $pageTitle = 'Nouveau mot de passe';
+        require __DIR__ . '/../Views/auth/reset-password.php';
+    }
+
+    public function resetPassword(): void
+    {
+        $token = $_POST['token'] ?? '';
+        $password = $_POST['password'] ?? '';
+        $confirm = $_POST['confirm'] ?? '';
+
+        if (empty($token) || empty($password)) {
+            $this->withError('Champs requis manquants.');
+            $this->redirect('/reset-password?token=' . urlencode($token));
+            return;
+        }
+
+        if ($password !== $confirm) {
+            $this->withError('Les mots de passe ne correspondent pas.');
+            $this->redirect('/reset-password?token=' . urlencode($token));
+            return;
+        }
+
+        if (strlen($password) < 12) {
+            $this->withError('Le mot de passe doit faire au moins 12 caractères.');
+            $this->redirect('/reset-password?token=' . urlencode($token));
+            return;
+        }
+
+        $userId = Security::validatePasswordReset($token);
+        if (!$userId) {
+            $this->withError('Lien de réinitialisation invalide ou expiré.');
+            $this->redirect('/login');
+            return;
+        }
+
+        $db = Database::getInstance();
+        $hash = password_hash($password, PASSWORD_ARGON2ID);
+        $db->execute("UPDATE users SET password_hash = ? WHERE id = ?", [$hash, $userId]);
+        Security::usePasswordReset($token);
+        Security::destroyAllUserSessions($userId);
+
+        $this->withSuccess('Mot de passe réinitialisé. Connectez-vous.');
+        $this->redirect('/login');
     }
 
     private function logActivity(int $userId, int $tenantId, string $action): void

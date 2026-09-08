@@ -331,4 +331,49 @@ class SettingsController extends Controller
         Session::destroy();
         $this->json(['success' => true, 'message' => 'Compte supprimé avec succès']);
     }
+
+    public function notifications(): void
+    {
+        $user = $this->requireAuth();
+        $db = Database::getInstance();
+
+        $notifications = $db->fetchAll(
+            "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50",
+            [$user['id']]
+        );
+
+        $unreadCount = $db->fetch(
+            "SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0",
+            [$user['id']]
+        );
+
+        $pageTitle = 'Notifications';
+        require __DIR__ . '/../Views/settings/notifications.php';
+    }
+
+    public function markRead(string $id): void
+    {
+        $user = $this->requireAuth();
+        $db = Database::getInstance();
+
+        $db->execute(
+            "UPDATE notifications SET is_read = 1, read_at = NOW() WHERE id = ? AND user_id = ?",
+            [$id, $user['id']]
+        );
+
+        $this->json(['success' => true]);
+    }
+
+    public function markAllRead(): void
+    {
+        $user = $this->requireAuth();
+        $db = Database::getInstance();
+
+        $db->execute(
+            "UPDATE notifications SET is_read = 1, read_at = NOW() WHERE user_id = ? AND is_read = 0",
+            [$user['id']]
+        );
+
+        $this->json(['success' => true]);
+    }
 }
