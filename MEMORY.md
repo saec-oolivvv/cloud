@@ -250,6 +250,9 @@ CSP: strict (self, fonts, cloudflare only)
 - [x] Tenant isolation (storage/uploads/{tenant_id}/)
 - [x] Email verification (confirmation link 24h)
 - [x] 2FA TOTP (Google Authenticator / Authy)
+- [x] Session fingerprinting (user-agent + IP binding)
+- [x] Anomaly detection (login from new location = email alert)
+- [x] Password history (prevent reuse of last 5)
 
 ### En Cours
 - [ ] Migration complète (folders + security)

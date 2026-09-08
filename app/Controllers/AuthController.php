@@ -120,6 +120,10 @@ class AuthController extends Controller
         $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
         $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
 
+        // Check fingerprint for anomaly detection
+        $fingerprint = Security::generateFingerprint($ua, $ip);
+        $isAnomaly = Security::isAnomalyLogin($user['id'], $fingerprint);
+
         $userData = [
             'id' => (int) $user['id'],
             'tenant_id' => (int) $user['tenant_id'],
@@ -145,6 +149,19 @@ class AuthController extends Controller
             "UPDATE users SET last_login = NOW(), last_login_ip = ? WHERE id = ?",
             [$ip, $userData['id']]
         );
+
+        // Register device and send alert if anomaly
+        Security::registerDevice($user['id'], $fingerprint, $ip, $ua);
+
+        if ($isAnomaly) {
+            // Send new login alert email
+            try {
+                $mailer = new Mailer();
+                $mailer->sendNewLoginAlert($user['email'], $user['email'], $ip, $ua);
+            } catch (\Throwable $e) {
+                error_log("[AuthController] Failed to send new login alert: {$e->getMessage()}");
+            }
+        }
 
         $this->logActivity($userData['id'], $userData['tenant_id'], 'auth.login');
         $this->redirect('/dashboard');

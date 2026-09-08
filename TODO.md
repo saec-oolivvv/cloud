@@ -34,9 +34,9 @@
 - [x] Referrer-Policy header → fixé
 - [ ] IP blacklist/whitelist par tenant
 - [x] Brute force protection login (lockout après N tentatives) → fixé
-- [ ] Session fingerprinting (user-agent + IP binding)
-- [ ] Anomaly detection (login from new location = email alert)
-- [ ] Password history (interdire réutilisation des N derniers)
+- [x] Session fingerprinting (user-agent + IP binding) → fixé
+- [x] Anomaly detection (login from new location = email alert) → fixé
+- [x] Password history (interdire réutilisation des N derniers) → fixé
 - [ ] Account lockout après inactivité (configurable)
 - [x] Audit trail complet (qui a fait quoi, quand, d'où) → fixé
 

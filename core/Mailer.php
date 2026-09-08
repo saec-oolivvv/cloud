@@ -138,6 +138,21 @@ class Mailer
         return $this->send($to, $subject, $html);
     }
 
+    public function sendNewLoginAlert(string $to, string $name, string $ip, string $userAgent, string $location = ''): bool
+    {
+        $subject = 'Nouvelle connexion détectée — SAEC Cloud';
+        $html = $this->render('new-login', [
+            'name' => $name,
+            'ip' => $ip,
+            'user_agent' => $userAgent,
+            'location' => $location,
+            'time' => date('d/m/Y à H:i:s'),
+            'settings_url' => 'https://cloud.saec.me/config',
+        ]);
+
+        return $this->send($to, $subject, $html);
+    }
+
     private function render(string $template, array $data): string
     {
         $templatePath = __DIR__ . '/../app/Views/emails/' . $template . '.php';
@@ -221,6 +236,23 @@ class Mailer
                     <h1 style='color: #ff4444;'>⚠ Alerte quota</h1>
                     <p>Votre espace <strong>{$data['type']}</strong> est utilisé à <strong>{$data['percent']}%</strong>.</p>
                     <p>Tenant : {$data['tenant_name']}</p>
+                ";
+                break;
+
+            case 'new-login':
+                $location = $data['location'] ?: 'Inconnue';
+                $content = "
+                    <h1 style='color: #ffaa00;'>🔒 Nouvelle connexion</h1>
+                    <p>Bonjour {$data['name']},</p>
+                    <p>Une nouvelle connexion a été détectée sur votre compte SAEC Cloud :</p>
+                    <div style='background: {$surface}; padding: 16px; border-radius: 8px; margin: 16px 0;'>
+                        <p><strong>IP :</strong> {$data['ip']}</p>
+                        <p><strong>Appareil :</strong> " . htmlspecialchars(substr($data['user_agent'], 0, 80)) . "</p>
+                        <p><strong>Localisation :</strong> {$location}</p>
+                        <p><strong>Date :</strong> {$data['time']}</p>
+                    </div>
+                    <p>Si ce n'est pas vous, changez immédiatement votre mot de passe et activez la 2FA.</p>
+                    <p style='text-align: center; margin: 24px 0;'><a href='{$data['settings_url']}' style='background: #F59E0B; color: #000; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;'>Gérer la sécurité</a></p>
                 ";
                 break;
         }

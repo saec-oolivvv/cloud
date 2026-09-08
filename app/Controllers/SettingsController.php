@@ -161,11 +161,20 @@ class SettingsController extends Controller
             return;
         }
 
+        // Check password history (prevent reuse of last 5 passwords)
         $newHash = Encryption::hashPassword($newPassword);
+        if (\Saec\Core\Security::isPasswordReused($user['id'], $newHash)) {
+            $this->json(['error' => 'Ce mot de passe a déjà été utilisé. Choisissez un mot de passe différent.'], 400);
+            return;
+        }
+
         $db->execute(
             "UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?",
             [$newHash, $user['id']]
         );
+
+        // Record password in history
+        \Saec\Core\Security::recordPassword($user['id'], $newHash);
 
         try {
             $db->insert('audit_logs', [

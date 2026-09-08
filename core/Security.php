@@ -140,14 +140,15 @@ class Security
     }
 
     // ── Session Management ──
-    public static function createSession(int $userId, string $ip, string $userAgent): string
+    public static function createSession(int $userId, string $ip, string $userAgent, bool $isAnomaly = false): string
     {
         $db = Database::getInstance();
         $sessionId = bin2hex(random_bytes(32));
+        $fingerprint = self::generateFingerprint($userAgent, $ip);
 
         $db->execute(
-            "INSERT INTO user_sessions (id, user_id, ip_address, user_agent) VALUES (?, ?, ?, ?)",
-            [$sessionId, $userId, $ip, $userAgent]
+            "INSERT INTO user_sessions (id, user_id, ip_address, user_agent, fingerprint, is_anomaly) VALUES (?, ?, ?, ?, ?, ?)",
+            [$sessionId, $userId, $ip, $userAgent, $fingerprint, $isAnomaly ? 1 : 0]
         );
 
         return $sessionId;
@@ -182,6 +183,91 @@ class Security
     {
         $db = Database::getInstance();
         $db->execute("DELETE FROM user_sessions WHERE user_id = ?", [$userId]);
+    }
+
+    // ── Session Fingerprinting ──
+    public static function generateFingerprint(string $userAgent, string $ip): string
+    {
+        // Use /24 subnet for IP to handle dynamic IPs
+        $subnet = preg_replace('/\.\d+$/', '.0', $ip);
+        return hash('sha256', $userAgent . '|' . $subnet);
+    }
+
+    public static function isKnownDevice(int $userId, string $fingerprint): bool
+    {
+        $db = Database::getInstance();
+        $row = $db->fetch(
+            "SELECT id FROM known_devices WHERE user_id = ? AND fingerprint = ?",
+            [$userId, $fingerprint]
+        );
+        return (bool) $row;
+    }
+
+    public static function registerDevice(int $userId, string $fingerprint, string $ip, string $userAgent): void
+    {
+        $db = Database::getInstance();
+        $db->execute(
+            "INSERT INTO known_devices (user_id, fingerprint, ip_address, user_agent) 
+             VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE last_seen_at = NOW(), ip_address = VALUES(ip_address)",
+            [$userId, $fingerprint, $ip, $userAgent]
+        );
+    }
+
+    public static function isAnomalyLogin(int $userId, string $fingerprint): bool
+    {
+        // Anomaly if device not seen before
+        return !self::isKnownDevice($userId, $fingerprint);
+    }
+
+    // ── Password History ──
+    public static function recordPassword(int $userId, string $passwordHash): void
+    {
+        $db = Database::getInstance();
+        $db->execute(
+            "INSERT INTO password_history (user_id, password_hash) VALUES (?, ?)",
+            [$userId, $passwordHash]
+        );
+
+        // Keep only last 5 passwords
+        $db->execute(
+            "DELETE FROM password_history WHERE user_id = ? AND id NOT IN (
+                SELECT id FROM (
+                    SELECT id FROM password_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 5
+                ) AS keep_ids
+            )",
+            [$userId, $userId]
+        );
+    }
+
+    public static function isPasswordReused(int $userId, string $newPasswordHash): bool
+    {
+        $db = Database::getInstance();
+        $rows = $db->fetchAll(
+            "SELECT password_hash FROM password_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 5",
+            [$userId]
+        );
+
+        foreach ($rows as $row) {
+            if (password_verify(substr($newPasswordHash, 0, 60), $row['password_hash'])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ── Anomaly Detection ──
+    public static function getRecentLocations(int $userId, int $limit = 5): array
+    {
+        $db = Database::getInstance();
+        return $db->fetchAll(
+            "SELECT DISTINCT ip_address, user_agent, created_at 
+             FROM login_attempts 
+             WHERE user_id = ? AND success = 1 
+             ORDER BY created_at DESC 
+             LIMIT ?",
+            [$userId, $limit]
+        );
     }
 
     // ── Password Reset ──
