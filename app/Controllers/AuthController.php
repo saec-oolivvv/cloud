@@ -94,6 +94,13 @@ class AuthController extends Controller
             return;
         }
 
+        // Check email verification
+        if (!Security::isEmailVerified($user['id'])) {
+            $this->withError('Vérifiez votre email avant de vous connecter. Vérifiez votre boîte de réception.');
+            $this->redirect('/login');
+            return;
+        }
+
         Security::recordLoginAttempt($email, $ip, true);
         $this->completeLogin($user);
     }
@@ -145,6 +152,49 @@ class AuthController extends Controller
         Session::destroySessionToken();
         Session::destroy();
         $this->redirect('/login');
+    }
+
+    public function verifyEmail(): void
+    {
+        $token = $_GET['token'] ?? '';
+        if (empty($token)) {
+            $this->withError('Token de vérification invalide');
+            $this->redirect('/login');
+            return;
+        }
+
+        $userId = Security::validateEmailVerification($token);
+        if (!$userId) {
+            $this->withError('Lien de vérification invalide ou expiré');
+            $this->redirect('/login');
+            return;
+        }
+
+        Security::verifyEmail($userId);
+        $this->withSuccess('Email vérifié avec succès. Vous pouvez vous connecter.');
+        $this->redirect('/login');
+    }
+
+    public function resendVerification(): void
+    {
+        $user = Session::get('user');
+        if (!$user) {
+            $this->redirect('/login');
+            return;
+        }
+
+        if (Security::isEmailVerified($user['id'])) {
+            $this->withSuccess('Votre email est déjà vérifié.');
+            $this->redirect('/dashboard');
+            return;
+        }
+
+        $token = Security::createEmailVerification($user['id']);
+        $mailer = new Mailer();
+        $mailer->sendEmailVerification($user['email'], $user['email'], $token);
+
+        $this->withSuccess('Email de vérification renvoyé.');
+        $this->redirect('/dashboard');
     }
 
     public function forgotPassword(): void

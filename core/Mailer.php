@@ -89,6 +89,18 @@ class Mailer
         return $this->send($to, $subject, $html);
     }
 
+    public function sendEmailVerification(string $to, string $name, string $token): bool
+    {
+        $subject = 'Vérifiez votre adresse email — SAEC Cloud';
+        $html = $this->render('email-verification', [
+            'name' => $name,
+            'verify_url' => 'https://cloud.saec.me/verify-email?token=' . $token,
+            'expires' => '24 heures',
+        ]);
+
+        return $this->send($to, $subject, $html);
+    }
+
     public function sendShareNotification(string $to, string $sharedBy, string $fileName, string $shareLink): bool
     {
         $subject = $sharedBy . ' a partagé un fichier avec vous';
@@ -171,6 +183,16 @@ class Mailer
                     <p>Vous avez demandé la réinitialisation de votre mot de passe.</p>
                     <p><a href='{$data['reset_url']}' style='background: {$accent}; color: #000; padding: 12px 24px; text-decoration: none; border-radius: 6px;'>Réinitialiser</a></p>
                     <p style='color: {$muted}; font-size: 12px;'>Ce lien expire dans {$data['expires']}.</p>
+                ";
+                break;
+
+            case 'email-verification':
+                $content = "
+                    <h1 style='color: {$accent};'>Vérifiez votre email</h1>
+                    <p>Bonjour {$data['name']},</p>
+                    <p>Merci pour votre inscription sur {$appName}. Veuillez cliquer sur le bouton ci-dessous pour vérifier votre adresse email :</p>
+                    <p style='text-align: center; margin: 24px 0;'><a href='{$data['verify_url']}' style='background: {$accent}; color: #000; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600;'>Vérifier mon email</a></p>
+                    <p style='color: {$muted}; font-size: 12px;'>Ce lien expire dans {$data['expires']}. Si vous n'avez pas créé de compte, ignorez cet email.</p>
                 ";
                 break;
                 

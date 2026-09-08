@@ -216,6 +216,49 @@ class Security
         $db->execute("UPDATE password_resets SET used = 1 WHERE token = ?", [$token]);
     }
 
+    // ── Email Verification ──
+    public static function createEmailVerification(int $userId): string
+    {
+        $db = Database::getInstance();
+        $token = bin2hex(random_bytes(32));
+        $expiresAt = date('Y-m-d H:i:s', time() + 86400); // 24h
+
+        $db->execute(
+            "INSERT INTO email_verifications (user_id, token, expires_at) VALUES (?, ?, ?)",
+            [$userId, $token, $expiresAt]
+        );
+
+        return $token;
+    }
+
+    public static function validateEmailVerification(string $token): ?int
+    {
+        $db = Database::getInstance();
+        $row = $db->fetch(
+            "SELECT user_id FROM email_verifications 
+             WHERE token = ? AND used = 0 AND expires_at > NOW()",
+            [$token]
+        );
+        return $row ? (int) $row['user_id'] : null;
+    }
+
+    public static function verifyEmail(int $userId): void
+    {
+        $db = Database::getInstance();
+        $db->execute("UPDATE users SET email_verified_at = NOW() WHERE id = ?", [$userId]);
+        $db->execute("UPDATE email_verifications SET used = 1 WHERE user_id = ?", [$userId]);
+    }
+
+    public static function isEmailVerified(int $userId): bool
+    {
+        $db = Database::getInstance();
+        $row = $db->fetch(
+            "SELECT email_verified_at FROM users WHERE id = ?",
+            [$userId]
+        );
+        return $row && !empty($row['email_verified_at']);
+    }
+
     // ── Sanitize ──
     public static function sanitize(string $input): string
     {

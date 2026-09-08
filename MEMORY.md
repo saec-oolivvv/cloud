@@ -248,6 +248,7 @@ CSP: strict (self, fonts, cloudflare only)
 - [x] Migration auto-destruct system
 - [x] Architecture modulaire (interfaces, DI, modules)
 - [x] Tenant isolation (storage/uploads/{tenant_id}/)
+- [x] Email verification (confirmation link 24h)
 
 ### En Cours
 - [ ] Migration complète (folders + security)

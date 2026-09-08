@@ -21,7 +21,7 @@
 ## 🟠 HAUT — Sécurité & RGPD
 - [x] Rate limiting sur changement mot de passe (5/h max) → fixé
 - [x] Complexité mot de passe renforcée (12+ chars) → fixé
-- [ ] Vérification email nouvel utilisateur (email confirmation link)
+- [x] Vérification email nouvel utilisateur (email confirmation link) → fixé
 - [ ] 2FA / TOTP optionnel (Google Authenticator / Authy)
 - [ ] Rétention des logs audit configurables (par tenant)
 - [ ] Politique de rétention corbeille (auto-purge après N jours)

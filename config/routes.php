@@ -48,6 +48,8 @@ $router->get('/terms', function() {
 $router->get('/login', [AuthController::class, 'loginForm']);
 $router->post('/login', [AuthController::class, 'login']);
 $router->get('/logout', [AuthController::class, 'logout']);
+$router->get('/verify-email', [AuthController::class, 'verifyEmail']);
+$router->post('/resend-verification', [AuthController::class, 'resendVerification'], [AuthMiddleware::class]);
 
 // ─────────────────────────────────────────────────────────────
 // DASHBOARD

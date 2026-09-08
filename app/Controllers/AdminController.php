@@ -594,6 +594,15 @@ try {
             'active' => 1,
         ]);
 
+        // Send email verification
+        try {
+            $token = \Saec\Core\Security::createEmailVerification($userId);
+            $mailer = new \Saec\Core\Mailer();
+            $mailer->sendEmailVerification($email, $email, $token);
+        } catch (\Throwable $e) {
+            error_log("[AdminController] Failed to send verification email: {$e->getMessage()}");
+        }
+
 try {
                 $db->insert('audit_logs', [
                     'tenant_id' => $user['tenant_id'],
