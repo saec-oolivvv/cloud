@@ -298,7 +298,7 @@ try {
         }
 
         $updates = [];
-        $fields = ['name', 'plan', 'storage_quota', 'max_file_size', 'max_users', 'start_date', 'end_date', 'active', 'auto_deactivate', 'extra_user_price'];
+        $fields = ['name', 'plan', 'storage_quota', 'max_file_size', 'max_users', 'start_date', 'end_date', 'active', 'auto_deactivate', 'extra_user_price', 'trash_retention_days', 'audit_retention_days'];
 
         foreach ($fields as $f) {
             if (!array_key_exists($f, $input)) continue;
@@ -650,6 +650,9 @@ try {
                 $this->json(['error' => 'Mot de passe trop court'], 400); return;
             }
             $updates['password_hash'] = password_hash($input['password'], PASSWORD_ARGON2ID);
+        }
+        if (isset($input['lockout_after_inactive_minutes'])) {
+            $updates['lockout_after_inactive_minutes'] = max(0, (int)$input['lockout_after_inactive_minutes']);
         }
 
         if (empty($updates)) {

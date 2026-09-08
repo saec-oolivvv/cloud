@@ -23,8 +23,8 @@
 - [x] Complexité mot de passe renforcée (12+ chars) → fixé
 - [x] Vérification email nouvel utilisateur (email confirmation link) → fixé
 - [x] 2FA / TOTP optionnel (Google Authenticator / Authy) → fixé
-- [ ] Rétention des logs audit configurables (par tenant)
-- [ ] Politique de rétention corbeille (auto-purge après N jours)
+- [x] Rétention des logs audit configurables (par tenant) → fixé
+- [x] Politique de rétention corbeille (auto-purge après N jours) → fixé
 - [x] Export audit logs (CSV/JSON) pour conformité
 - [x] Headers security renforcés (X-Content-Type-Options, X-Frame-Options) → fixé
 - [x] Content Security Policy stricte (CSP) → fixé
@@ -32,12 +32,12 @@
 - [x] Strict-Transport-Security (HSTS) → fixé
 - [x] X-XSS-Protection header → fixé
 - [x] Referrer-Policy header → fixé
-- [ ] IP blacklist/whitelist par tenant
+- [x] IP blacklist/whitelist par tenant → fixé (ip_whitelist table)
 - [x] Brute force protection login (lockout après N tentatives) → fixé
 - [x] Session fingerprinting (user-agent + IP binding) → fixé
 - [x] Anomaly detection (login from new location = email alert) → fixé
 - [x] Password history (interdire réutilisation des N derniers) → fixé
-- [ ] Account lockout après inactivité (configurable)
+- [x] Account lockout après inactivité (configurable) → fixé
 - [x] Audit trail complet (qui a fait quoi, quand, d'où) → fixé
 
 ---

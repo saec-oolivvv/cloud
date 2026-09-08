@@ -185,6 +185,39 @@ class Security
         $db->execute("DELETE FROM user_sessions WHERE user_id = ?", [$userId]);
     }
 
+    // ── Account Lockout After Inactivity ──
+    public static function isLockedOutByInactivity(int $userId): bool
+    {
+        $db = Database::getInstance();
+        $user = $db->fetch(
+            "SELECT lockout_after_inactive_minutes, last_active_at FROM users WHERE id = ?",
+            [$userId]
+        );
+
+        if (!$user || (int)$user['lockout_after_inactive_minutes'] === 0) {
+            return false;
+        }
+
+        if (empty($user['last_active_at'])) {
+            return false;
+        }
+
+        $inactiveMinutes = (int)$user['lockout_after_inactive_minutes'];
+        $lastActive = strtotime($user['last_active_at']);
+        $now = time();
+
+        return ($now - $lastActive) > ($inactiveMinutes * 60);
+    }
+
+    public static function updateLastActive(int $userId): void
+    {
+        $db = Database::getInstance();
+        $db->execute(
+            "UPDATE users SET last_active_at = NOW() WHERE id = ?",
+            [$userId]
+        );
+    }
+
     // ── Session Fingerprinting ──
     public static function generateFingerprint(string $userAgent, string $ip): string
     {

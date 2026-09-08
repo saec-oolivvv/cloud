@@ -164,6 +164,8 @@ class SchedulerService
             'backups_executed' => 0,
             'mounts_synced' => 0,
             'cleanups_done' => 0,
+            'trash_purged' => 0,
+            'audit_purged' => 0,
             'errors' => [],
         ];
 
@@ -186,6 +188,20 @@ class SchedulerService
             $results['cleanups_done'] = $this->runCleanup();
         } catch (\Throwable $e) {
             $results['errors'][] = "Cleanup: {$e->getMessage()}";
+        }
+
+        // 4. Purge trashed files by tenant retention
+        try {
+            $results['trash_purged'] = $this->runTrashPurge();
+        } catch (\Throwable $e) {
+            $results['errors'][] = "Trash purge: {$e->getMessage()}";
+        }
+
+        // 5. Purge old audit logs by tenant retention
+        try {
+            $results['audit_purged'] = $this->runAuditPurge();
+        } catch (\Throwable $e) {
+            $results['errors'][] = "Audit purge: {$e->getMessage()}";
         }
 
         return $results;
@@ -289,6 +305,64 @@ class SchedulerService
                     error_log("[Scheduler] Cleanup failed for backup {$backup['id']}: {$e->getMessage()}");
                 }
             }
+        }
+
+        return $count;
+    }
+
+    /**
+     * Purge trashed files by tenant retention policy
+     */
+    private function runTrashPurge(): int
+    {
+        $tenants = $this->db->fetchAll(
+            "SELECT id, trash_retention_days FROM tenants 
+             WHERE trash_retention_days > 0 AND active = 1 AND deleted_at IS NULL"
+        );
+
+        $count = 0;
+        foreach ($tenants as $tenant) {
+            $cutoff = date('Y-m-d H:i:s', strtotime("-{$tenant['trash_retention_days']} days"));
+
+            // Permanent delete files in trash older than retention
+            $trashedFiles = $this->db->fetchAll(
+                "SELECT id, stored_name FROM files 
+                 WHERE tenant_id = ? AND deleted_at IS NOT NULL AND deleted_at < ?",
+                [$tenant['id'], $cutoff]
+            );
+
+            foreach ($trashedFiles as $file) {
+                $filePath = dirname(__DIR__, 2) . "/storage/uploads/{$tenant['id']}/{$file['stored_name']}";
+                if (file_exists($filePath)) {
+                    unlink($filePath);
+                }
+                $this->db->execute("DELETE FROM files WHERE id = ?", [$file['id']]);
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * Purge old audit logs by tenant retention policy
+     */
+    private function runAuditPurge(): int
+    {
+        $tenants = $this->db->fetchAll(
+            "SELECT id, audit_retention_days FROM tenants 
+             WHERE audit_retention_days > 0 AND active = 1 AND deleted_at IS NULL"
+        );
+
+        $count = 0;
+        foreach ($tenants as $tenant) {
+            $cutoff = date('Y-m-d H:i:s', strtotime("-{$tenant['audit_retention_days']} days"));
+
+            $stmt = $this->db->execute(
+                "DELETE FROM audit_logs WHERE tenant_id = ? AND created_at < ?",
+                [$tenant['id'], $cutoff]
+            );
+            $count += $stmt->rowCount();
         }
 
         return $count;

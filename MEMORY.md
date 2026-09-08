@@ -253,6 +253,10 @@ CSP: strict (self, fonts, cloudflare only)
 - [x] Session fingerprinting (user-agent + IP binding)
 - [x] Anomaly detection (login from new location = email alert)
 - [x] Password history (prevent reuse of last 5)
+- [x] Account lockout after inactivity (configurable per user)
+- [x] Trash retention (auto-purge per tenant)
+- [x] Audit log retention (configurable per tenant)
+- [x] IP whitelist per tenant
 
 ### En Cours
 - [ ] Migration complète (folders + security)

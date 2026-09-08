@@ -101,6 +101,13 @@ class AuthController extends Controller
             return;
         }
 
+        // Check account lockout after inactivity
+        if (Security::isLockedOutByInactivity($user['id'])) {
+            $this->withError('Compte verrouillé pour inactivité. Contactez l\'administrateur.');
+            $this->redirect('/login');
+            return;
+        }
+
         // Check 2FA
         if (Security::isTotpEnabled($user['id'])) {
             Session::set('totp_pending_user_id', $user['id']);
@@ -146,7 +153,7 @@ class AuthController extends Controller
         // Update last login
         $db = Database::getInstance();
         $db->execute(
-            "UPDATE users SET last_login = NOW(), last_login_ip = ? WHERE id = ?",
+            "UPDATE users SET last_login = NOW(), last_login_ip = ?, last_active_at = NOW() WHERE id = ?",
             [$ip, $userData['id']]
         );
 
