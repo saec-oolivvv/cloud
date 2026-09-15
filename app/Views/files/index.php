@@ -1149,7 +1149,7 @@ function contextPaste() {
             await fetch("/files/" + id + "/move", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ folder_id: targetFolder })
+                body: JSON.stringify({ folder_id: targetFolder, _token: CSRF })
             });
         }
         done++;
@@ -1281,7 +1281,7 @@ async function moveFilesTo(folderId) {
         await fetch('/files/' + id + '/move', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folder_id: folderId })
+            body: JSON.stringify({ folder_id: folderId, _token: CSRF })
         });
         done++;
         if (done === total) location.reload();
@@ -1342,12 +1342,10 @@ document.addEventListener('drop', async (e) => {
         break;
     }
     
-    const fd = new FormData();
-    fd.append('_token', CSRF);
     const res = await fetch('/folders/' + sourceId + '/move', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parent_id: targetId })
+        body: JSON.stringify({ parent_id: targetId, _token: CSRF })
     });
     const data = await res.json();
     if (data.success) {
