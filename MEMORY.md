@@ -414,3 +414,97 @@ chmod 644 /mnt/nas-web/cloud/storage/keys/master.key
 - `7c76287` — OCTOPUS MODE upload direct + deploy.php schema + admin tenant root
 - `935bf49` — drag&drop folders upload + backend recursive folder creation + remote push
 - `08e4a76` — sync client download page + fix upload folder select + remote push
+
+---
+
+## 14. SESSION 2026-09-15 (FIN) — SYNC API COMPLÈTE + FIX CRITIQUES
+
+> Commit: `7e31abf` — feat(sync): desktop sync API + device code auth + cron sync fix
+
+### Ce qui a été fait
+
+#### Sync Client API (tout nouveau)
+- **`SyncController`** (`app/Controllers/SyncController.php`) — API complète pour le client Tauri :
+  - `POST /api/auth/device` — génère device_code + user_code (ex: `ABCD-EFGH`)
+  - `POST /api/auth/token` — échange device_code ou refresh_token contre JWT access (15min) + refresh (7j)
+  - `GET /api/sync/mounts` — liste les mounts actifs du tenant (Bearer JWT)
+  - `GET /api/sync/mounts/{id}/files{path}` — lister les fichiers d'un dossier
+  - `GET /api/sync/mounts/{id}/files/{path}/content` — télécharger un fichier déchiffré
+  - `PUT /api/sync/mounts/{id}/files{path}` — uploader un fichier (chiffré AES-256-GCM avant stockage)
+  - `DELETE /api/sync/mounts/{id}/files{path}` — supprimer un fichier
+  - `POST /api/sync/mounts/{id}/files{path}` — créer un dossier
+- **`SyncApiMiddleware`** (`app/Middleware/SyncApiMiddleware.php`) — authentification Bearer JWT pour toutes les calls API
+- **`device_codes` table** + **`sync_files` table** — schéma dans `public/migrate-sync.php` (auto-destruct)
+- **Page `/device`** — vue d'approbation du device code (avec login redirect conserver le ?code=)
+- **Router** — extension: supporte `{name:regex}` pour les paths multi-segments (`/files/{path:.+}/content`)
+- **Route de contenu**: le client construit `/files{path}` SANS slash — le routeur matche les deux formes
+
+#### Upload fichiers — fix définitif
+- **`.user.ini`** ajouté dans `public/` : `upload_max_filesize=100M`, `post_max_size=110M`, `memory_limit=512M`
+- Précédemment bloqué à 2M côté PHP (config app = 100M mais PHP limitait à 2M)
+- X-CSRF-Token déjà envoyé côté frontend ; le serveur le vérifie déjà
+
+#### Cron sync — endpoint enfin fonctionnel
+- Le tick `/admin/storage/tick` retournait toujours 403 (token cron absent/vides)
+- **Cron token généré** (`ZaptSwchIkbjCRTUkezBclN3z3iz401E2UyA_aBjUp4`) et ajouté dans config (keys `cron.secret_token` + `scheduler.cron_token`)
+- `MountService.sync()` est désormais appelable via : `GET https://cloud.saec.me/admin/storage/tick?token=ZaptSwchIkbjCRTUkezBclN3z3iz401E2UyA_aBjUp4`
+- Planifier un cron job toutes les 5 minutes sur le NAS ou via Cloudflare Cron Trigger
+
+#### CSRF durci
+- **`Controller::extractCsrf()`** — helper qui lit le token depuis header, $_POST OU JSON body (forțé pour les call en JSON)
+- **`FileController::copy()`** — maintenant vérifie CSRF correctement (avant 403 systématique car frontend envoyait en JSON)
+- **`FileController::delete()`** — CSRF ajouté ; frontend mis à jour pour envoyer `X-CSRF-Token` header (plus de body FormData sur DELETE)
+
+#### Login redirect
+- `AuthController::loginForm()` accepte un paramètre `?redirect=` (uniquement chemins internes, pas d'URL externe)
+- Le flux `/device?code=XXXX` conserve le code après login 2FA
+
+### Étapes de déploiement (une seule fois)
+
+1. **Exécuter la migration** (table `device_codes` + `sync_files`):
+   ```
+   https://cloud.saec.me/migrate-sync.php
+   ```
+   (auto-destruct après exécution)
+
+2. **Appliquer `.user.ini`** — il est déjà dans `public/`. Vérifier que PHP-FPM lit les `.user.ini` :
+   ```bash
+   # Tester que la config est prise en compte :
+   php -i | grep upload_max_filesize
+   # Doit afficher 100M (pas 2M)
+   ```
+
+3. **Configurer le cron job** sur le NAS (toutes les 5 minutes):
+   ```
+   */5 * * * * curl -s "https://cloud.saec.me/admin/storage/tick?token=ZaptSwchIkbjCRTUkezBclN3z3iz401E2UyA_aBjUp4" > /dev/null
+   ```
+   Ou Cloudflare Cron Trigger (workers) pour attaquer l'endpoint directement.
+
+4. **Tester le client sync desktop** — lancer `SAEC Sync` sur l'ordinateur, le code s'affiche et la page de vérification s'ouvre automatiquement dans le navigateur.
+
+### Bugs marqués comme résolus
+- [x] Upload fichiers impossible (PHP limit 2M) — `.user.ini` 100M
+- [x] Cron sync dead (token absent) — token généré et ajouté en config
+- [x] Client sync AUCUN endpoint API — SyncController complet
+- [x] CSRF sur copy toujours 403 — extractCsrf() lit JSON body
+- [x] Page /device inexistante — page d'approbation créée
+
+### Bugs/en-cours toujours ouverts
+- [ ] Page `/download/` 403 Cloudflare — WAF bloque (à investiguer CSP/origin)
+- [ ] Architecture remote `/cloud/tenant_{id}/` — les mounts créés ne créent pas automatiquement la structure
+- [ ] Dropbox push non testé (mount non configuré sur la DB de test)
+- [ ] Conflict resolution avancée dans sync engine (last-write-wins seulement)
+
+### Fichiers ajoutés/modifiés (commit 7e31abf)
+- `app/Controllers/SyncController.php` — NOUVEAU (sync API complète)
+- `app/Middleware/SyncApiMiddleware.php` — NOUVEAU (auth Bearer JWT)
+- `app/Views/sync/verify.php` — NOUVEAU (page approbation device)
+- `public/.user.ini` — NOUVEAU (upload_max_filesize=100M)
+- `public/migrate-sync.php` — NOUVEAU (auto-destruct, table device_codes + sync_files)
+- `core/Router.php` — MODIFIÉ (support regex patterns dans {name:regex})
+- `config/routes.php` — MODIFIÉ (routes sync + device flow)
+- `app/Controllers/AuthController.php` — MODIFIÉ (login redirect support)
+- `app/Controllers/Controller.php` — MODIFIÉ (helper extractCsrf)
+- `app/Controllers/FileController.php` — MODIFIÉ (CSRF delete + copy fix)
+- `app/Views/files/index.php` — MODIFIÉ (delete CSRF header au lieu de body)
+- `app/Views/auth/login.php` — MODIFIÉ (champ hidden redirect)
