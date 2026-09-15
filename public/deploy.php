@@ -110,6 +110,9 @@ $config = [
         'jwt_secret' => bin2hex(random_bytes(32)),
         'encryption_key_path' => dirname(__DIR__) . '/storage/keys/master.key',
     ],
+    'scheduler' => [
+        'cron_token' => bin2hex(random_bytes(32)),
+    ],
     'upload' => [
         'max_file_size' => 3355443200,  // 3200MB
         'allowed_types' => [

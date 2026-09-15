@@ -128,6 +128,8 @@ class FileController extends Controller
 
     /**
      * Pousser la création d'un dossier vers les mounts distants
+     * Le mount.remote_path est le chemin COMPLET sur le remote (ex: /cloud/tenant_1/subfolder)
+     * On ne push que si folderPath est sous le chemin du mount
      */
     private function pushFolderToRemoteMounts(int $tenantId, string $folderPath): void
     {
@@ -139,9 +141,33 @@ class FileController extends Controller
                 if (!in_array($mount['mount_type'], ['readwrite', 'backup_only'])) continue;
                 if (empty($mount['is_active'])) continue;
                 
-                $remoteBase = rtrim($mount['remote_path'], '/');
-                $folderRel = ltrim($folderPath, '/');
-                $remotePath = $remoteBase . ($folderRel ? '/' . $folderRel : '');
+                $mountRemotePath = rtrim($mount['remote_path'], '/');
+                $tenantRoot = '/cloud/tenant_' . $tenantId;
+                
+                // Le mount doit être sous /cloud/tenant_{id}/
+                if (!str_starts_with($mountRemotePath, rtrim($tenantRoot, '/'))) {
+                    continue; // Mount n'appartient pas à ce tenant
+                }
+                
+                // Calculer le chemin relatif du mount par rapport à la racine tenant
+                $mountRelPath = ltrim(substr($mountRemotePath, strlen($tenantRoot)), '/');
+                
+                // Le folderPath doit commencer par mountRelPath (ou être le parent)
+                $folderRelPath = ltrim($folderPath, '/');
+                
+                if (!empty($mountRelPath)) {
+                    // Mount pointe vers un sous-dossier spécifique
+                    if (!str_starts_with($folderRelPath, $mountRelPath)) {
+                        continue; // Ce dossier n'est pas sous ce mount
+                    }
+                    // Chemin relatif au mount
+                    $remoteSubPath = substr($folderRelPath, strlen($mountRelPath));
+                    $remoteSubPath = ltrim($remoteSubPath, '/');
+                    $remotePath = $mountRemotePath . ($remoteSubPath ? '/' . $remoteSubPath : '');
+                } else {
+                    // Mount pointe à la racine du tenant
+                    $remotePath = $mountRemotePath . ($folderRelPath ? '/' . $folderRelPath : '');
+                }
                 
                 try {
                     $adapter = StorageService::getInstance()->getAdapter($mount['provider_id']);
@@ -156,7 +182,7 @@ class FileController extends Controller
         }
     }
 
-    /**
+/**
      * Pousser un fichier vers les mounts distants du tenant (si readwrite/backup)
      */
     private function pushToRemoteMounts(int $tenantId, string $storedName, int $fileId, string $originalName, string $folderPath): void
@@ -170,10 +196,33 @@ class FileController extends Controller
                 if (!in_array($mount['mount_type'], ['readwrite', 'backup_only'])) continue;
                 if (empty($mount['is_active'])) continue;
                 
-                // Construire le chemin distant: remote_path + folder_path + stored_name
-                $remoteBase = rtrim($mount['remote_path'], '/');
-                $folderRel = ltrim($folderPath, '/');
-                $remotePath = $remoteBase . ($folderRel ? '/' . $folderRel : '') . '/' . $storedName;
+                $mountRemotePath = rtrim($mount['remote_path'], '/');
+                $tenantRoot = '/cloud/tenant_' . $tenantId;
+                
+                // Le mount doit être sous /cloud/tenant_{id}/
+                if (!str_starts_with($mountRemotePath, rtrim($tenantRoot, '/'))) {
+                    continue; // Mount n'appartient pas à ce tenant
+                }
+                
+                // Calculer le chemin relatif du mount par rapport à la racine tenant
+                $mountRelPath = ltrim(substr($mountRemotePath, strlen($tenantRoot)), '/');
+                
+                // Le folderPath doit commencer par mountRelPath (ou être le parent)
+                $folderRelPath = ltrim($folderPath, '/');
+                
+                if (!empty($mountRelPath)) {
+                    // Mount pointe vers un sous-dossier spécifique
+                    if (!str_starts_with($folderRelPath, $mountRelPath)) {
+                        continue; // Ce dossier n'est pas sous ce mount
+                    }
+                    // Chemin relatif au mount
+                    $remoteSubPath = substr($folderRelPath, strlen($mountRelPath));
+                    $remoteSubPath = ltrim($remoteSubPath, '/');
+                    $remotePath = $mountRemotePath . ($remoteSubPath ? '/' . $remoteSubPath : '') . '/' . $storedName;
+                } else {
+                    // Mount pointe à la racine du tenant
+                    $remotePath = $mountRemotePath . ($folderRelPath ? '/' . $folderRelPath : '') . '/' . $storedName;
+                }
                 
                 // Upload fichier chiffré vers le mount
                 try {

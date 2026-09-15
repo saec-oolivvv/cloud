@@ -158,8 +158,17 @@ class SchedulerService
     /**
      * Exécuter les tâches planifiées (appelé par cron/CLI)
      */
-    public function tick(): array
+    public function tick(): void
     {
+        // Security: verify cron token
+        $token = $_GET['token'] ?? '';
+        $expected = $GLOBALS['SAEC_CONFIG']['scheduler']['cron_token'] ?? '';
+        if (empty($expected) || !hash_equals($expected, $token)) {
+            http_response_code(401);
+            echo "Unauthorized";
+            return;
+        }
+
         $results = [
             'backups_executed' => 0,
             'mounts_synced' => 0,
@@ -176,35 +185,67 @@ class SchedulerService
             $results['errors'][] = "Backup scheduler: {$e->getMessage()}";
         }
 
-        // 2. Sync les mounts actifs
+        // 2. Sync les mounts actifs (scheduled)
         try {
             $results['mounts_synced'] = $this->runScheduledSyncs();
         } catch (\Throwable $e) {
             $results['errors'][] = "Mount sync: {$e->getMessage()}";
         }
 
-        // 3. Nettoyer les anciens backups
+        // 3. Sync all pending mounts (sync_enabled=1) regardless of schedule
+        try {
+            $results['mounts_synced'] += $this->runPendingMountSyncs();
+        } catch (\Throwable $e) {
+            $results['errors'][] = "Pending mount sync: {$e->getMessage()}";
+        }
+
+        // 4. Nettoyer les anciens backups
         try {
             $results['cleanups_done'] = $this->runCleanup();
         } catch (\Throwable $e) {
             $results['errors'][] = "Cleanup: {$e->getMessage()}";
         }
 
-        // 4. Purge trashed files by tenant retention
+        // 5. Purge trashed files by tenant retention
         try {
             $results['trash_purged'] = $this->runTrashPurge();
         } catch (\Throwable $e) {
             $results['errors'][] = "Trash purge: {$e->getMessage()}";
         }
 
-        // 5. Purge old audit logs by tenant retention
+        // 6. Purge old audit logs by tenant retention
         try {
             $results['audit_purged'] = $this->runAuditPurge();
         } catch (\Throwable $e) {
             $results['errors'][] = "Audit purge: {$e->getMessage()}";
         }
 
-        return $results;
+        header('Content-Type: application/json');
+        echo json_encode($results);
+    }
+
+    /**
+     * Run sync for all mounts that have sync_enabled=1 and are due
+     */
+    private function runPendingMountSyncs(): int
+    {
+        $mounts = $this->db->fetchAll(
+            "SELECT id FROM storage_mounts 
+             WHERE sync_enabled = 1 AND is_active = 1 
+             AND (last_sync_at IS NULL OR DATE_ADD(last_sync_at, INTERVAL sync_interval_minutes MINUTE) <= ?)",
+            [date('Y-m-d H:i:s')]
+        );
+
+        $synced = 0;
+        foreach ($mounts as $mount) {
+            try {
+                $this->mount->sync($mount['id']);
+                $synced++;
+            } catch (\Throwable $e) {
+                error_log("[SCHEDULER] Mount sync failed for {$mount['id']}: {$e->getMessage()}");
+            }
+        }
+        return $synced;
     }
 
     /**

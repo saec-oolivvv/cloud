@@ -154,7 +154,7 @@ function formatSize(int $bytes): string {
             </div>
             <div class="fb-grid" id="foldersGrid">
                 <?php foreach ($folders as $folder): ?>
-                <div class="fb-item fb-folder" data-id="<?= $folder['id'] ?>" data-type="folder" data-name="<?= htmlspecialchars($folder['name']) ?>" data-path="<?= htmlspecialchars($folder['path'] ?? '/') ?>">
+                <div class="fb-item fb-folder" data-id="<?= $folder['id'] ?>" data-type="folder" data-name="<?= htmlspecialchars($folder['name']) ?>" data-path="<?= htmlspecialchars($folder['path'] ?? '/') ?>" draggable="true">
                     <div class="fb-item-icon">
                         <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M6 12C6 9.79 7.79 8 10 8H18L22 14H38C40.21 14 42 15.79 42 18V36C42 38.21 40.21 40 38 40H10C7.79 40 6 38.21 6 36V12Z" fill="#F59E0B" opacity="0.2"/>
@@ -656,6 +656,10 @@ function formatSize(int $bytes): string {
 .fb-context-danger { color: var(--rose-500); }
 .fb-context-danger:hover { background: rgba(239,68,68,0.1); color: var(--rose-400); }
 .fb-item.cut { opacity: 0.5; background: rgba(239,68,68,0.05); }
+
+/* Folder Drag & Drop */
+.fb-folder.dragging { opacity: 0.4; transform: scale(1.02); box-shadow: 0 4px 20px rgba(0,255,136,0.3); }
+.fb-folder.drag-over { background: rgba(0,255,136,0.1); border: 2px dashed var(--accent); border-radius: 8px; }
 </style>
 
 <script>
@@ -1282,4 +1286,130 @@ async function moveFilesTo(folderId) {
         if (done === total) location.reload();
     });
 }
+
+/* ── Folder Drag & Drop (move folder into folder) ── */
+let dragSourceFolder = null;
+
+document.addEventListener('dragstart', (e) => {
+    const folder = e.target.closest('.fb-folder');
+    if (!folder) return;
+    dragSourceFolder = folder;
+    folder.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', folder.dataset.id);
+});
+
+document.addEventListener('dragend', (e) => {
+    const folder = e.target.closest('.fb-folder');
+    if (folder) folder.classList.remove('dragging');
+    dragSourceFolder = null;
+});
+
+document.addEventListener('dragover', (e) => {
+    const folder = e.target.closest('.fb-folder');
+    if (!folder || folder === dragSourceFolder) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    folder.classList.add('drag-over');
+});
+
+document.addEventListener('dragleave', (e) => {
+    const folder = e.target.closest('.fb-folder');
+    if (folder) folder.classList.remove('drag-over');
+});
+
+document.addEventListener('drop', async (e) => {
+    const targetFolder = e.target.closest('.fb-folder');
+    if (!targetFolder || targetFolder === dragSourceFolder) return;
+    e.preventDefault();
+    targetFolder.classList.remove('drag-over');
+    
+    const sourceId = parseInt(dragSourceFolder.dataset.id);
+    const targetId = parseInt(targetFolder.dataset.id);
+    
+    if (sourceId === targetId) return;
+    
+    // Vérifier que target n'est pas un descendant de source
+    let current = targetId;
+    while (current) {
+        if (current === sourceId) {
+            alert('Impossible de déplacer un dossier dans son propre sous-dossier');
+            return;
+        }
+        // On aurait besoin de l'API pour vérifier la hiérarchie complète
+        // Pour l'instant, on fait confiance au backend
+        break;
+    }
+    
+    const fd = new FormData();
+    fd.append('_token', CSRF);
+    const res = await fetch('/folders/' + sourceId + '/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parent_id: targetId })
+    });
+    const data = await res.json();
+    if (data.success) {
+        location.reload();
+    } else {
+        alert(data.error || 'Erreur déplacement');
+    }
+});
+
+/* ── Keyboard shortcuts ── */
+document.addEventListener('keydown', (e) => {
+    // F2 = rename
+    if (e.key === 'F2') {
+        e.preventDefault();
+        const selected = document.querySelector('.fb-item.selected');
+        if (selected) {
+            const id = selected.dataset.id;
+            const name = selected.dataset.name;
+            const isFolder = selected.dataset.type === 'folder';
+            if (isFolder) renameFolder(id, name);
+            else renameFile(id, name);
+        }
+    }
+    // Delete = delete
+    if (e.key === 'Delete') {
+        const selected = document.querySelector('.fb-item.selected');
+        if (selected && !e.target.matches('input, textarea')) {
+            e.preventDefault();
+            const id = selected.dataset.id;
+            const isFolder = selected.dataset.type === 'folder';
+            if (isFolder) deleteFolder(id);
+            else deleteFile(id);
+        }
+    }
+    // Enter = open
+    if (e.key === 'Enter') {
+        const selected = document.querySelector('.fb-item.selected');
+        if (selected) {
+            const id = selected.dataset.id;
+            const mime = selected.dataset.mime;
+            const name = selected.dataset.name;
+            if (mime) viewFile(parseInt(id), mime, name);
+        }
+    }
+    // Ctrl+A = select all
+    if (e.ctrlKey && e.key === 'a') {
+        e.preventDefault();
+        document.querySelectorAll('.fb-select').forEach(c => {
+            c.checked = true;
+            c.closest('.fb-item')?.classList.add('selected');
+            selectedFiles.add(parseInt(c.dataset.id));
+        });
+        updateBatchBar();
+    }
+    // Escape = clear selection / close modals
+    if (e.key === 'Escape') {
+        clearSelection();
+        closeContext();
+        closeUploadModal();
+        closeFolderModal();
+        closeViewer();
+        closeShareModal();
+        closeMoveModal();
+    }
+});
 </script>
