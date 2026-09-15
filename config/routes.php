@@ -112,6 +112,7 @@ $router->get('/trash', [FileController::class, 'trash'], [AuthMiddleware::class]
 // ─────────────────────────────────────────────────────────────
 $router->post('/folders', [FolderController::class, 'create'], [AuthMiddleware::class]);
 $router->post('/folders/{id}/rename', [FolderController::class, 'rename'], [AuthMiddleware::class]);
+$router->post('/folders/{id}/move', [FolderController::class, 'move'], [AuthMiddleware::class]);
 $router->delete('/folders/{id}', [FolderController::class, 'delete'], [AuthMiddleware::class]);
 
 // ─────────────────────────────────────────────────────────────

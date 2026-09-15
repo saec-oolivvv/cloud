@@ -366,6 +366,161 @@ class FolderController extends Controller
         $this->json(['success' => true]);
     }
 
+    public function move(string $id): void
+    {
+        $user = $this->requireAuth();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->json(['error' => 'Method not allowed'], 405);
+            return;
+        }
+
+        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['_token'] ?? '');
+        if (!\Saec\Core\Session::verifyCsrf($token)) {
+            $this->json(['error' => 'Token CSRF invalide'], 403);
+            return;
+        }
+
+        $db = Database::getInstance();
+        $tenantId = $user['tenant_id'];
+
+        $folder = $db->fetch(
+            "SELECT * FROM folders WHERE id = ? AND tenant_id = ?",
+            [$id, $tenantId]
+        );
+
+        if (!$folder) {
+            $this->json(['error' => 'Dossier non trouvé'], 404);
+            return;
+        }
+
+        $body = json_decode(file_get_contents('php://input'), true);
+        $targetParentId = isset($body['parent_id']) ? (int) $body['parent_id'] : null;
+
+        if ($targetParentId === $id) {
+            $this->json(['error' => 'Impossible de déplacer un dossier dans lui-même'], 400);
+            return;
+        }
+
+        // Vérifier que le target n'est pas un descendant
+        if ($targetParentId) {
+            $check = $db->fetch(
+                "SELECT id FROM folders WHERE id = ? AND tenant_id = ?",
+                [$targetParentId, $tenantId]
+            );
+            if (!$check) {
+                $this->json(['error' => 'Dossier destination non trouvé'], 404);
+                return;
+            }
+
+            // Vérifier que target n'est pas un descendant de source
+            $current = $targetParentId;
+            while ($current) {
+                if ($current == $id) {
+                    $this->json(['error' => 'Impossible de déplacer un dossier dans son propre sous-dossier'], 400);
+                    return;
+                }
+                $parent = $db->fetch("SELECT parent_id FROM folders WHERE id = ?", [$current]);
+                $current = $parent ? $parent['parent_id'] : null;
+            }
+        }
+
+        // Construire nouveau path
+        $parentPath = '/';
+        if ($targetParentId) {
+            $parent = $db->fetch(
+                "SELECT path FROM folders WHERE id = ? AND tenant_id = ?",
+                [$targetParentId, $tenantId]
+            );
+            $parentPath = $parent['path'] ?? '/';
+        }
+        $newPath = rtrim($parentPath, '/') . '/' . $folder['name'];
+
+        // Mettre à jour récursivement les paths enfants
+        $oldPathPrefix = rtrim($folder['path'], '/');
+        $newPathPrefix = rtrim($newPath, '/');
+
+        $db->execute(
+            "UPDATE folders SET path = REPLACE(path, ?, ?), parent_id = ? WHERE path LIKE ? AND tenant_id = ?",
+            [$oldPathPrefix, $newPathPrefix, $targetParentId, $oldPathPrefix . '/%', $tenantId]
+        );
+
+        $db->execute(
+            "UPDATE folders SET path = ?, parent_id = ? WHERE id = ?",
+            [$newPath, $targetParentId, $id]
+        );
+
+        // Déplacer aussi physiquement sur le disque local
+        $uploadDir = dirname(__DIR__, 2) . '/storage/uploads/' . $tenantId;
+        $oldPhysicalPath = $uploadDir . '/' . ltrim($oldPathPrefix, '/');
+        $newPhysicalPath = $uploadDir . '/' . ltrim($newPath, '/');
+
+        if (is_dir($oldPhysicalPath) && $oldPhysicalPath !== $newPhysicalPath) {
+            $newDir = dirname($newPhysicalPath);
+            if (!is_dir($newDir)) {
+                mkdir($newDir, 0777, true);
+                @chmod($newDir, 0777);
+            }
+            rename($oldPhysicalPath, $newPhysicalPath);
+        }
+
+        // Push vers mounts distants (remote sync)
+        $this->pushFolderToRemoteMounts($tenantId, $newPath);
+
+        // Si l'ancien chemin n'a plus de dossiers, nettoyer
+        $this->cleanupEmptyRemotePaths($tenantId, $oldPathPrefix);
+
+        // Audit log
+        try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $tenantId,
+                    'user_id' => $user['id'],
+                    'action' => 'folder.moved',
+                    'resource_type' => 'folder',
+                    'resource_id' => $id,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                    'metadata' => json_encode(['old_path' => $oldPathPrefix, 'new_path' => $newPath, 'new_parent_id' => $targetParentId]),
+                ]);
+            } catch (\Throwable $e) {}
+
+        $this->json(['success' => true]);
+    }
+
+    /**
+     * Nettoyer les chemins distants vides après un move
+     */
+    private function cleanupEmptyRemotePaths(int $tenantId, string $oldPathPrefix): void
+    {
+        $db = Database::getInstance();
+        $hasChildren = $db->fetch(
+            "SELECT COUNT(*) as count FROM folders WHERE path LIKE ? AND tenant_id = ?",
+            [$oldPathPrefix . '/%', $tenantId]
+        );
+        
+        if (($hasChildren['count'] ?? 0) === 0) {
+            // L'ancien chemin n'a plus de sous-dossiers, on peut essayer de le supprimer des remotes
+            $mountService = MountService::getInstance();
+            $mounts = $mountService->listMounts($tenantId);
+            
+            foreach ($mounts as $mount) {
+                if (!in_array($mount['mount_type'], ['readwrite', 'backup_only'])) continue;
+                if (empty($mount['is_active'])) continue;
+                
+                $remoteBase = rtrim($mount['remote_path'], '/');
+                $folderRel = ltrim($oldPathPrefix, '/');
+                $remotePath = $remoteBase . ($folderRel ? '/' . $folderRel : '');
+                
+                try {
+                    $adapter = StorageService::getInstance()->getAdapter($mount['provider_id']);
+                    // Tenter de supprimer si vide
+                    $adapter->delete($remotePath);
+                } catch (\Throwable $e) {
+                    // Ignorer, le dossier n'est peut-être pas vide côté remote
+                }
+            }
+        }
+    }
+
     private function buildBreadcrumb(int $tenantId, ?int $folderId): array
     {
         if (!$folderId) {

@@ -369,3 +369,48 @@ chmod 644 /mnt/nas-web/cloud/storage/keys/master.key
 - `app/Services/MountService.php` — sync engine mounts (upload/download/deleteRemote/sync)
 - `app/Services/StorageService.php` — orchestration providers
 - `saec-sync/` — client Tauri (Rust) buildé OK
+
+---
+
+## 13. SESSION 2026-09-15 (SUITE) — NOUVEAUX BUGS & FEATURES OCTOPUS
+
+> Suite de la session — correction des retours utilisateur temps réel.
+
+### Nouveaux bugs identifiés
+1. **Move folder ne fonctionne pas** — endpoint `POST /folders/{id}/move` manquant + UI drag&drop entre dossiers absente.
+2. **Page `/download/` 403 Cloudflare** — route existe, view existe, mais WAF bloque (à investiguer CSP/origin).
+3. **Dropbox sync ne push pas** — fichiers restent en local, pas de push vers remote. `MountService.sync()` non appelé en cron.
+4. **Architecture remote** — pas de dossier maître `cloud/` sur les remotes. Il faut: `/cloud/tenant_{id}/` pour isolation totale.
+5. **Drag & drop dossiers inactif sur tenant** — code existe mais dropzone ne réagit pas (événements non bindés ou CSS z-index).
+6. **Move folders UI** — impossible de glisser un dossier dans un autre comme navigateur natif. Pas de HTML5 drag API sur `.fb-folder`.
+
+### Features OCTOPUS à finaliser
+7. **Sync engine bidirectionnel** — `MountService.sync()` doit tourner en cron (toutes les 5min) + push/pull temps réel.
+8. **Conflict resolution** — last-write-wins / keep both / manual pour sync multi-remote.
+9. **Multi-remote routing** — si 2 Dropbox attachés, décider où va quel fichier (tags, règles, taille, type).
+10. **Tenant quota sur remote** — enforcement quota pas juste local, mais sur l'espace distant réel.
+11. **Remote folder watcher** — inotify/FSEvents/Webhook sur provider distant pour sync temps réel.
+12. **Admin UI sync status** — voir status sync par mount (last_sync, pending, errors, bytes).
+
+### UX/UI à améliorer
+13. **Move folder drag&drop** — HTML5 drag API entre `.fb-folder` items (dragstart, dragover, drop).
+14. **Keyboard shortcuts** — Ctrl+X/C/V, Delete, F2 rename, Enter open, Ctrl+K search.
+15. **Breadcrumb click navigation** — click sur path pour remonter.
+16. **Inline rename** — double-click ou F2 sur nom fichier/dossier.
+17. **Multi-select** — Ctrl+Click, Shift+Click, Ctrl+A, batch actions bar (déjà partiellement fait).
+18. **Column view** — option vue en colonnes arborescentes (style Finder).
+19. **Global search** — Ctrl+K fuzzy search fichiers/dossiers.
+20. **Sync status indicator** — badge sur dossier/fichier (synced, pending, conflict, local-only).
+
+### Prochaines actions immédiates
+- [ ] Fix route move folder + drag&drop UI
+- [ ] Créer dossier `cloud/` maître sur chaque remote + structure `tenant_{id}/`
+- [ ] Cron sync bidirectionnel + MountService.sync() réel
+- [ ] Dropbox push test + debug pourquoi pas de sync
+- [ ] Drag&drop move folder UI + endpoint move
+
+### Commits récents
+- `a4e4e76` — context menu + OCTOPUS download + copy endpoint + Encryption decryptContent
+- `7c76287` — OCTOPUS MODE upload direct + deploy.php schema + admin tenant root
+- `935bf49` — drag&drop folders upload + backend recursive folder creation + remote push
+- `08e4a76` — sync client download page + fix upload folder select + remote push
