@@ -37,8 +37,12 @@
             <kbd>Ctrl+K</kbd>
         </div>
 
-        <!-- Right: Notifications + User -->
+        <!-- Right: Download Sync + Notifications + User -->
         <div class="header-right">
+            <a href="/client-sync" class="header-download" title="Télécharger SAEC Sync" style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:8px; background:rgba(0,255,136,0.1); color:var(--accent); font-weight:600; font-size:13px; text-decoration:none; transition:all 0.2s; border:1px solid rgba(0,255,136,0.3);" onmouseover="this.style.background='rgba(0,255,136,0.2)'" onmouseout="this.style.background='rgba(0,255,136,0.1)'">
+                <i class="fas fa-download" style="font-size:14px;"></i>
+                <span style="display:none;">Sync</span>
+            </a>
             <div class="header-notif" id="notifToggle" onclick="toggleNotifMenu(event)">
                 <i class="fas fa-bell"></i>
                 <span class="notif-count" id="notifCount">3</span>

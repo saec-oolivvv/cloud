@@ -2,6 +2,56 @@
 $lang = $GLOBALS['SAEC_TRANSLATION'] ?? null;
 $currentLang = $lang ? $lang->getLang() : 'en';
 $availableLangs = $lang ? Saec\Core\Translation::getAvailable() : [];
+
+// Récupérer les releases GitHub pour les artifacts
+$githubReleases = [];
+$releasesUrl = 'https://api.github.com/repos/saec-oolivvv/cloud/releases';
+$ctx = stream_context_create([
+    'http' => [
+        'header' => 'User-Agent: SAEC Cloud',
+        'timeout' => 5
+    ]
+]);
+$json = @file_get_contents($releasesUrl, false, $ctx);
+if ($json) {
+    $releases = json_decode($json, true);
+    if (is_array($releases) && !empty($releases)) {
+        $latest = $releases[0];
+        if (isset($latest['assets'])) {
+            foreach ($latest['assets'] as $asset) {
+                $githubReleases[$asset['name']] = [
+                    'url' => $asset['browser_download_url'],
+                    'size' => $asset['size'],
+                    'updated' => $asset['updated_at']
+                ];
+            }
+        }
+    }
+}
+
+// Fichiers locaux disponibles
+$localFiles = [
+    'saec-sync-0.1.0-amd64.deb' => ['path' => '/download/saec-sync-0.1.0-amd64.deb', 'local' => true],
+    'saec-sync-0.1.0-x86_64.rpm' => ['path' => '/download/saec-sync-0.1.0-x86_64.rpm', 'local' => true],
+];
+
+function getDownloadInfo(string $filename, array $githubReleases, array $localFiles): array {
+    if (isset($localFiles[$filename])) {
+        return ['url' => $localFiles[$filename]['path'], 'source' => 'local', 'available' => true];
+    }
+    if (isset($githubReleases[$filename])) {
+        return ['url' => $githubReleases[$filename]['url'], 'source' => 'github', 'available' => true];
+    }
+    return ['url' => '#', 'source' => 'none', 'available' => false];
+}
+
+$platforms = [
+    ['id' => 'linux-deb', 'name' => 'Linux — .deb', 'icon' => '🐧', 'desc' => 'Debian, Ubuntu, Mint, Pop!_OS, Elementary, et dérivés', 'meta' => ['Architecture: amd64', 'Taille: ~11 MB', 'Version: 0.1.0', 'Dépendances: webkit2gtk-4.1, gtk3, libayatana-appindicator3'], 'filename' => 'saec-sync-0.1.0-amd64.deb'],
+    ['id' => 'linux-rpm', 'name' => 'Linux — .rpm', 'icon' => '🐧', 'desc' => 'Fedora, RHEL, CentOS, AlmaLinux, Rocky, openSUSE', 'meta' => ['Architecture: x86_64', 'Taille: ~11 MB', 'Version: 0.1.0', 'Dépendances: webkit2gtk4.1, gtk3, libayatana-appindicator-gtk3'], 'filename' => 'saec-sync-0.1.0-x86_64.rpm'],
+    ['id' => 'linux-appimage', 'name' => 'Linux — AppImage', 'icon' => '🐧', 'desc' => 'Distribution universelle (toutes distros, sans installation)', 'meta' => ['Architecture: x86_64', 'Taille: ~11 MB', 'Version: 0.1.0', 'Exécution: chmod +x && ./SAEC-Sync.AppImage'], 'filename' => 'saec-sync-0.1.0-x86_64.AppImage'],
+    ['id' => 'windows-msi', 'name' => 'Windows — .msi', 'icon' => '🪟', 'desc' => 'Windows 10/11 (x64)', 'meta' => ['Build CI: GitHub Actions', 'Installation: per-user (pas d\'admin)', 'Signature: code signing'], 'filename' => 'SAEC Sync_0.1.0_amd64.msi'],
+    ['id' => 'macos-dmg', 'name' => 'macOS — .dmg', 'icon' => '🍎', 'desc' => 'macOS 12+ (Apple Silicon & Intel)', 'meta' => ['Build CI: GitHub Actions', 'Notarisation: Apple', 'Universal: ARM64 + x64'], 'filename' => 'SAEC Sync-0.1.0.dmg'],
+];
 ?>
 <!DOCTYPE html>
 <html lang="<?= $currentLang ?>">
@@ -134,66 +184,43 @@ $availableLangs = $lang ? Saec\Core\Translation::getAvailable() : [];
 
 <section class="download-section">
     <div class="download-grid">
-        <div class="download-card">
-            <div class="download-icon">🐧</div>
-            <h2 class="download-name">Linux — .deb</h2>
-            <p class="download-desc">Debian, Ubuntu, Mint, Pop!_OS, Elementary, et dérivés</p>
+        <?php foreach ($platforms as $platform): 
+            $info = getDownloadInfo($platform['filename'], $githubReleases, $localFiles);
+            $available = $info['available'];
+            $source = $info['source'];
+            $url = $info['url'];
+        ?>
+        <div class="download-card <?= !$available ? 'download-coming' : '' ?>">
+            <div class="download-icon"><?= $platform['icon'] ?></div>
+            <h2 class="download-name"><?= $platform['name'] ?></h2>
+            <p class="download-desc"><?= $platform['desc'] ?></p>
             <ul class="download-meta">
-                <li><i class="fas fa-check"></i> Architecture: amd64</li>
-                <li><i class="fas fa-check"></i> Taille: ~11 MB</li>
-                <li><i class="fas fa-check"></i> Version: 0.1.0</li>
-                <li><i class="fas fa-check"></i> Dépendances: webkit2gtk-4.1, gtk3, libayatana-appindicator3</li>
+                <?php foreach ($platform['meta'] as $meta): ?>
+                <li>
+                    <i class="fas <?= $available ? 'fa-check' : 'fa-clock' ?>" 
+                       style="color: <?= $available ? 'var(--emerald-400)' : 'var(--amber-400)' ?>;"></i>
+                    <?= $meta ?>
+                </li>
+                <?php endforeach; ?>
+                <?php if ($source === 'github'): ?>
+                <li><i class="fas fa-cloud-download-alt" style="color: var(--blue-500);"></i> Depuis GitHub Releases</li>
+                <?php elseif ($source === 'local'): ?>
+                <li><i class="fas fa-server" style="color: var(--cyan-400);"></i> Hébergé localement</li>
+                <?php endif; ?>
             </ul>
-            <a href="/download/saec-sync-0.1.0-amd64.deb" class="btn btn-primary download-btn">Télécharger .deb</a>
+            <?php if ($available): ?>
+                <a href="<?= htmlspecialchars($url) ?>" class="btn btn-primary download-btn" target="_blank" rel="noopener">
+                    <i class="fas fa-download" style="margin-right:8px;"></i>
+                    Télécharger
+                </a>
+            <?php else: ?>
+                <button class="btn btn-outline download-btn" disabled>
+                    <i class="fas fa-clock" style="margin-right:8px;"></i>
+                    Bientôt disponible
+                </button>
+            <?php endif; ?>
         </div>
-
-        <div class="download-card">
-            <div class="download-icon">🐧</div>
-            <h2 class="download-name">Linux — .rpm</h2>
-            <p class="download-desc">Fedora, RHEL, CentOS, AlmaLinux, Rocky, openSUSE</p>
-            <ul class="download-meta">
-                <li><i class="fas fa-check"></i> Architecture: x86_64</li>
-                <li><i class="fas fa-check"></i> Taille: ~11 MB</li>
-                <li><i class="fas fa-check"></i> Version: 0.1.0</li>
-                <li><i class="fas fa-check"></i> Dépendances: webkit2gtk4.1, gtk3, libayatana-appindicator-gtk3</li>
-            </ul>
-            <a href="/download/saec-sync-0.1.0-x86_64.rpm" class="btn btn-primary download-btn">Télécharger .rpm</a>
-        </div>
-
-        <div class="download-card">
-            <div class="download-icon">🐧</div>
-            <h2 class="download-name">Linux — AppImage</h2>
-            <p class="download-desc">Distribution universelle (toutes distros, sans installation)</p>
-            <ul class="download-meta">
-                <li><i class="fas fa-check"></i> Architecture: x86_64</li>
-                <li><i class="fas fa-check"></i> Taille: ~11 MB</li>
-                <li><i class="fas fa-check"></i> Version: 0.1.0</li>
-                <li><i class="fas fa-check"></i> Exécution: chmod +x && ./SAEC-Sync.AppImage</li>
-            </ul>
-            <button class="btn btn-outline download-btn" disabled>Bientôt disponible</button>
-        </div>
-
-        <div class="download-card download-coming">
-            <div class="download-icon">🪟</div>
-            <h2 class="download-name">Windows — .msi</h2>
-            <p class="download-desc">Windows 10/11 (x64)</p>
-            <ul class="download-meta">
-                <li><i class="fas fa-clock"></i> Build CI en cours</li>
-                <li><i class="fas fa-clock"></i> Signature code requise</li>
-            </ul>
-            <button class="btn btn-outline download-btn" disabled>Bientôt disponible</button>
-        </div>
-
-        <div class="download-card download-coming">
-            <div class="download-icon">🍎</div>
-            <h2 class="download-name">macOS — .dmg</h2>
-            <p class="download-desc">macOS 12+ (Apple Silicon & Intel)</p>
-            <ul class="download-meta">
-                <li><i class="fas fa-clock"></i> Build CI futur</li>
-                <li><i class="fas fa-clock"></i> Notarisation Apple requise</li>
-            </ul>
-            <button class="btn btn-outline download-btn" disabled>Bientôt disponible</button>
-        </div>
+        <?php endforeach; ?>
     </div>
 </section>
 
