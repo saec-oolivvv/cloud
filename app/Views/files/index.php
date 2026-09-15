@@ -247,10 +247,14 @@ function formatSize(int $bytes): string {
         <div class="fb-modal-body">
             <div class="fb-upload-dropzone" id="uploadDropzone">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                <p>Glissez vos fichiers ici</p>
+                <p>Glissez vos fichiers ou dossiers ici</p>
                 <span>ou</span>
-                <button class="fb-btn fb-btn-primary" onclick="document.getElementById('uploadFileInput').click()">Parcourir</button>
+                <button class="fb-btn fb-btn-primary" onclick="document.getElementById('uploadFileInput').click()">Parcourir fichiers</button>
                 <input type="file" id="uploadFileInput" multiple style="display:none;">
+                <button class="fb-btn fb-btn-outline" id="pickFolderBtn" style="display:none;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                    Choisir un dossier
+                </button>
             </div>
             <div class="fb-upload-dest">
                 <label class="fb-label">Destination :</label>
@@ -578,9 +582,33 @@ const fileInput = document.getElementById('uploadFileInput');
 if (dropzone) {
     dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
     dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
-    dropzone.addEventListener('drop', (e) => {
+    dropzone.addEventListener('drop', async (e) => {
         e.preventDefault();
         dropzone.classList.remove('dragover');
+        
+        // Support dossier drop via webkitGetAsEntry (Chrome/Edge) + File System Access API
+        const items = e.dataTransfer.items;
+        if (items && items.length) {
+            const entries = [];
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                if (item.kind === 'file') {
+                    const entry = item.webkitGetAsEntry?.() || item.getAsEntry?.();
+                    if (entry) {
+                        entries.push(entry);
+                    } else {
+                        // Fallback: fichier simple
+                        const file = item.getAsFile();
+                        if (file) entries.push({ isFile: true, file });
+                    }
+                }
+            }
+            if (entries.length) {
+                await processEntries(entries, document.getElementById('uploadFolderSelect').value);
+                return;
+            }
+        }
+        // Fallback: fichiers simples
         addFilesToUploadQueue(e.dataTransfer.files);
     });
 }
@@ -588,6 +616,29 @@ if (fileInput) {
     fileInput.addEventListener('change', (e) => {
         addFilesToUploadQueue(e.target.files);
         e.target.value = '';
+    });
+}
+
+// File System Access API (modern browsers) - bouton "Choisir dossier"
+const pickFolderBtn = document.getElementById('pickFolderBtn');
+if (pickFolderBtn && 'showDirectoryPicker' in window) {
+    pickFolderBtn.style.display = 'inline-flex';
+    pickFolderBtn.addEventListener('click', async () => {
+        try {
+            const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+            const entries = [];
+            for await (const [name, handle] of dirHandle.entries()) {
+                if (handle.kind === 'file') {
+                    const file = await handle.getFile();
+                    entries.push({ isFile: true, file, relativePath: name });
+                } else if (handle.kind === 'directory') {
+                    entries.push({ isDirectory: true, handle, relativePath: name });
+                }
+            }
+            await processEntries(entries, document.getElementById('uploadFolderSelect').value);
+        } catch (err) {
+            if (err.name !== 'AbortError') console.error('Folder picker error:', err);
+        }
     });
 }
 
@@ -608,6 +659,81 @@ function addFilesToUploadQueue(files) {
         list.appendChild(item);
     }
     document.getElementById('uploadStartBtn').disabled = pendingUploads.length === 0;
+}
+
+// Process directory entries recursively (webkitGetAsEntry + File System Access API)
+async function processEntries(entries, folderId) {
+    for (const entry of entries) {
+        if (entry.isFile) {
+            pendingUploads.push(entry.file);
+            addFileToList(entry.file, entry.relativePath || entry.file.name);
+        } else if (entry.isDirectory && entry.handle) {
+            // File System Access API: traverse directory
+            await traverseDirectory(entry.handle, entry.relativePath || '', folderId);
+        } else if (entry.isDirectory) {
+            // webkitGetAsEntry: traverse directory
+            await traverseWebkitDirectory(entry, entry.relativePath || '', folderId);
+        }
+    }
+    document.getElementById('uploadStartBtn').disabled = pendingUploads.length === 0;
+}
+
+async function traverseDirectory(dirHandle, basePath, folderId) {
+    for await (const [name, handle] of dirHandle.entries()) {
+        const relativePath = basePath ? `${basePath}/${name}` : name;
+        if (handle.kind === 'file') {
+            const file = await handle.getFile();
+            file.relativePath = relativePath;
+            pendingUploads.push(file);
+            addFileToList(file, relativePath);
+        } else if (handle.kind === 'directory') {
+            await traverseDirectory(handle, relativePath, folderId);
+        }
+    }
+}
+
+async function traverseWebkitDirectory(dirEntry, basePath, folderId) {
+    return new Promise((resolve) => {
+        const reader = dirEntry.createReader();
+        const readEntries = () => {
+            reader.readEntries(async (entries) => {
+                if (!entries.length) {
+                    resolve();
+                    return;
+                }
+                for (const entry of entries) {
+                    const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
+                    if (entry.isFile) {
+                        entry.file((file) => {
+                            file.relativePath = relativePath;
+                            pendingUploads.push(file);
+                            addFileToList(file, relativePath);
+                        });
+                    } else if (entry.isDirectory) {
+                        await traverseWebkitDirectory(entry, relativePath, folderId);
+                    }
+                }
+                readEntries();
+            });
+        };
+        readEntries();
+    });
+}
+
+function addFileToList(file, displayName) {
+    const list = document.getElementById('uploadList');
+    const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+    const item = document.createElement('div');
+    item.className = 'fb-upload-item';
+    item.dataset.relativePath = file.relativePath || '';
+    item.innerHTML = `
+        <span class="fb-upload-item-status">📄</span>
+        <span class="fb-upload-item-name" title="${displayName}">${displayName}</span>
+        <span class="fb-upload-item-size">${sizeMB} MB</span>
+        <div class="fb-upload-progress" style="display:none;"><div class="fb-upload-progress-fill" style="width:0%"></div></div>
+        <span class="fb-upload-item-status"></span>
+    `;
+    list.appendChild(item);
 }
 
 document.getElementById('uploadStartBtn')?.addEventListener('click', () => {
@@ -631,6 +757,7 @@ document.getElementById('uploadStartBtn')?.addEventListener('click', () => {
         const fd = new FormData();
         fd.append('file', file);
         if (folderId) fd.append('folder_id', folderId);
+        if (file.relativePath) fd.append('relative_path', file.relativePath);
 
         const xhr = new XMLHttpRequest();
         xhr.upload.onprogress = (e) => {

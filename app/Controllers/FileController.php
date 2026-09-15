@@ -40,6 +40,123 @@ class FileController extends Controller
     }
 
     /**
+     * Assurer qu'un chemin de dossiers existe (créer récursivement)
+     * Retourne l'ID du dossier final
+     */
+    private function ensureFolderPath(int $tenantId, int $userId, string $relativePath, ?int $baseFolderId = null): int
+    {
+        $db = Database::getInstance();
+        
+        // Normaliser le chemin
+        $parts = array_filter(explode('/', trim($relativePath, '/')));
+        if (empty($parts)) {
+            return $baseFolderId ?? 0;
+        }
+        
+        $currentParentId = $baseFolderId;
+        $currentPath = $baseFolderId ? $this->getFolderPath($tenantId, $baseFolderId) : '/';
+        
+        foreach ($parts as $part) {
+            $currentPath = rtrim($currentPath, '/') . '/' . $part;
+            
+            // Vérifier si le dossier existe déjà
+            $existing = $db->fetch(
+                "SELECT id FROM folders WHERE tenant_id = ? AND parent_id " . ($currentParentId ? "= ?" : "IS NULL") . " AND name = ?",
+                array_merge([$tenantId], $currentParentId ? [$currentParentId] : [], [$part])
+            );
+            
+            if ($existing) {
+                $currentParentId = $existing['id'];
+                continue;
+            }
+            
+            // Créer le dossier
+            $folderId = $db->insert('folders', [
+                'tenant_id' => $tenantId,
+                'user_id' => $userId,
+                'parent_id' => $currentParentId,
+                'name' => $part,
+                'path' => $currentPath,
+            ]);
+            
+            if (!$folderId) {
+                throw new \RuntimeException("Échec création dossier: {$part}");
+            }
+            
+            // Créer le répertoire physique
+            $uploadDir = dirname(__DIR__, 2) . '/storage/uploads/' . $tenantId;
+            $physicalPath = $uploadDir . '/' . ltrim($currentPath, '/');
+            if (!is_dir($physicalPath)) {
+                mkdir($physicalPath, 0777, true);
+                @chmod($physicalPath, 0777);
+            }
+            
+            // Push vers mounts distants
+            $mountService = MountService::getInstance();
+            $mounts = $mountService->listMounts($tenantId);
+            foreach ($mounts as $mount) {
+                if (!in_array($mount['mount_type'], ['readwrite', 'backup_only'])) continue;
+                if (empty($mount['is_active'])) continue;
+                $remoteBase = rtrim($mount['remote_path'], '/');
+                $folderRel = ltrim($currentPath, '/');
+                $remotePath = $remoteBase . ($folderRel ? '/' . $folderRel : '');
+                try {
+                    $adapter = StorageService::getInstance()->getAdapter($mount['provider_id']);
+                    $adapter->mkdir($remotePath);
+                } catch (\Throwable $e) {
+                    error_log("[SYNC] Mkdir on mount {$mount['id']} failed: " . $e->getMessage());
+                }
+            }
+            
+            // Audit log
+            try {
+                $db->insert('audit_logs', [
+                    'tenant_id' => $tenantId,
+                    'user_id' => $userId,
+                    'action' => 'folder.created',
+                    'resource_type' => 'folder',
+                    'resource_id' => $folderId,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                ]);
+            } catch (\Throwable $e) {}
+            
+            $currentParentId = $folderId;
+        }
+        
+        return $currentParentId;
+    }
+
+    /**
+     * Pousser la création d'un dossier vers les mounts distants
+     */
+    private function pushFolderToRemoteMounts(int $tenantId, string $folderPath): void
+    {
+        try {
+            $mountService = MountService::getInstance();
+            $mounts = $mountService->listMounts($tenantId);
+            
+            foreach ($mounts as $mount) {
+                if (!in_array($mount['mount_type'], ['readwrite', 'backup_only'])) continue;
+                if (empty($mount['is_active'])) continue;
+                
+                $remoteBase = rtrim($mount['remote_path'], '/');
+                $folderRel = ltrim($folderPath, '/');
+                $remotePath = $remoteBase . ($folderRel ? '/' . $folderRel : '');
+                
+                try {
+                    $adapter = StorageService::getInstance()->getAdapter($mount['provider_id']);
+                    $adapter->mkdir($remotePath);
+                    error_log("[SYNC] Created folder at mount {$mount['id']}: $remotePath");
+                } catch (\Throwable $e) {
+                    error_log("[SYNC] Mkdir on mount {$mount['id']} failed: " . $e->getMessage());
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log("[SYNC] Remote folder push error: " . $e->getMessage());
+        }
+    }
+
+    /**
      * Pousser un fichier vers les mounts distants du tenant (si readwrite/backup)
      */
     private function pushToRemoteMounts(int $tenantId, string $storedName, int $fileId, string $originalName, string $folderPath): void
@@ -151,6 +268,17 @@ class FileController extends Controller
             if (!$folder) {
                 $this->json(['error' => 'Dossier non trouvé'], 400);
                 return;
+            }
+        }
+
+        // Support pour relative_path (drag & drop dossiers)
+        $relativePath = isset($_POST['relative_path']) ? trim($_POST['relative_path']) : '';
+        if ($relativePath) {
+            // Extraire le dossier parent du chemin relatif
+            $parentDir = dirname($relativePath);
+            if ($parentDir !== '.' && $parentDir !== '/') {
+                // Créer ou trouver la structure de dossiers
+                $folderId = $this->ensureFolderPath($tenantId, $userId, $parentDir, $folderId);
             }
         }
 
