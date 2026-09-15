@@ -161,10 +161,12 @@ function formatSize(int $bytes): string {
                             <path d="M6 12C6 9.79 7.79 8 10 8H18L22 14H38C40.21 14 42 15.79 42 18V36C42 38.21 40.21 40 38 40H10C7.79 40 6 38.21 6 36V12Z" stroke="#F59E0B" stroke-width="2" fill="none"/>
                         </svg>
                     </div>
-                    <div class="fb-item-info">
-                        <div class="fb-item-name" title="<?= htmlspecialchars($folder['name']) ?>"><?= htmlspecialchars($folder['name']) ?></div>
-                        <div class="fb-item-meta"><?= ($folder['file_count'] ?? 0) ?> fichiers</div>
-                    </div>
+                    <a href="/files?folder=<?= $folder['id'] ?>" class="fb-item-link fb-folder-link">
+                        <div class="fb-item-info">
+                            <div class="fb-item-name" title="<?= htmlspecialchars($folder['name']) ?>"><?= htmlspecialchars($folder['name']) ?></div>
+                            <div class="fb-item-meta"><?= ($folder['file_count'] ?? 0) ?> fichiers</div>
+                        </div>
+                    </a>
                     <div class="fb-item-actions">
                         <button class="fb-action-btn" onclick="renameFolder(<?= $folder['id'] ?>, '<?= htmlspecialchars(addslashes($folder['name'])) ?>')" title="Renommer">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -173,7 +175,6 @@ function formatSize(int $bytes): string {
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                         </button>
                     </div>
-                    <a href="/files?folder=<?= $folder['id'] ?>" class="fb-item-link"></a>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -531,7 +532,8 @@ function formatSize(int $bytes): string {
 .fb-action-btn { background: none; border: none; color: var(--text-muted); padding: 6px; border-radius: 6px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; }
 .fb-action-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.08); }
 .fb-action-danger:hover { color: #EF4444; background: rgba(239,68,68,0.1); }
-.fb-item-link { position: absolute; inset: 0; z-index: 1; }
+.fb-item-link { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.fb-folder-link { position: relative; z-index: 2; pointer-events: auto; display: flex; flex: 1; min-width: 0; }
 .fb-folder { cursor: pointer; }
 
 /* List View */

@@ -340,6 +340,9 @@ class FolderController extends Controller
             return;
         }
 
+        // Supprimer sur les mounts distants (readwrite/backup_only)
+        $this->deleteFromRemoteMounts($tenantId, $folder['path']);
+
         $db->execute("DELETE FROM folders WHERE id = ? AND tenant_id = ?", [$id, $tenantId]);
 
         try {
@@ -354,6 +357,56 @@ class FolderController extends Controller
             } catch (\Throwable $e) {}
 
         $this->json(['success' => true]);
+    }
+
+    /**
+     * Supprimer un dossier des mounts distants
+     */
+    private function deleteFromRemoteMounts(int $tenantId, string $folderPath): void
+    {
+        try {
+            $mountService = MountService::getInstance();
+            $mounts = $mountService->listMounts($tenantId);
+            $storage = StorageService::getInstance();
+
+            foreach ($mounts as $mount) {
+                if (!in_array($mount['mount_type'], ['readwrite', 'backup_only'])) continue;
+                if (empty($mount['is_active'])) continue;
+
+                $remoteBase = rtrim($mount['remote_path'], '/');
+                $tenantRoot = '/cloud/tenant_' . $tenantId;
+
+                // Le mount doit être sous /cloud/tenant_{id}/
+                if (!str_starts_with($remoteBase, rtrim($tenantRoot, '/'))) {
+                    continue;
+                }
+
+                // Calculer chemin relatif
+                $mountRelPath = ltrim(substr($remoteBase, strlen($tenantRoot)), '/');
+                $folderRelPath = ltrim($folderPath, '/');
+
+                if (!empty($mountRelPath)) {
+                    if (!str_starts_with($folderRelPath, $mountRelPath)) {
+                        continue;
+                    }
+                    $remoteSubPath = substr($folderRelPath, strlen($mountRelPath));
+                    $remoteSubPath = ltrim($remoteSubPath, '/');
+                    $remotePath = $mountRelPath ? $remoteBase . '/' . $remoteSubPath : $mountRelPath . '/' . $remoteSubPath;
+                } else {
+                    $remotePath = $remoteBase . ($folderRelPath ? '/' . $folderRelPath : '');
+                }
+
+                try {
+                    $adapter = $storage->getAdapter($mount['provider_id']);
+                    $adapter->delete($remotePath);
+                    error_log("[SYNC] Deleted folder at mount {$mount['id']}: $remotePath");
+                } catch (\Throwable $e) {
+                    error_log("[SYNC] Remote delete failed: " . $e->getMessage());
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log("[SYNC] Remote delete error: " . $e->getMessage());
+        }
     }
 
     public function move(string $id): void
