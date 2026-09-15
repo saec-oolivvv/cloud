@@ -1,0 +1,31 @@
+[workspace]
+resolver = "2"
+members = ["src-tauri"]
+
+[workspace.dependencies]
+tauri = { version = "2.0", features = ["tray-icon", "custom-protocol"] }
+tokio = { version = "1.40", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+anyhow = "1.0"
+reqwest = { version = "0.13", features = ["json", "rustls", "gzip", "brotli", "cookies"] }
+notify = { version = "6.1", features = ["mio"] }
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite", "chrono", "uuid", "migrate"] }
+redb = "1.0"
+keyring = { version = "4.2", features = ["v1"] }
+keyring-core = "1.0"
+toml = "0.8"
+toml_edit = "0.22"
+figment = { version = "0.10", features = ["toml", "env"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.8", features = ["v4", "serde", "fast-rng"] }
+blake3 = "1.5"
+directories = "5.0"
+once_cell = "1.19"
+parking_lot = "0.12"
+bytes = "1.5"
+futures = "0.3"
+dashmap = "5.5"

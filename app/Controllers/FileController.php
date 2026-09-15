@@ -13,7 +13,11 @@ class FileController extends Controller
     {
         $dir = dirname(__DIR__, 2) . '/storage/uploads/' . $tenantId;
         if (!is_dir($dir)) {
-            @mkdir($dir, 0775, true);
+            @mkdir($dir, 0777, true);
+            @chmod($dir, 0777);
+        }
+        if (!is_dir($dir)) {
+            throw new \RuntimeException('Dossier upload non créable: ' . $dir);
         }
         return $dir;
     }

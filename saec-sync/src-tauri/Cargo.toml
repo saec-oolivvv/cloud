@@ -1,0 +1,52 @@
+[package]
+name = "saec-sync"
+version = "0.1.0"
+edition = "2021"
+description = "SAEC Cloud Desktop Sync Client"
+authors = ["SAEC Ltd."]
+license = "MIT"
+repository = "https://github.com/saec/cloud"
+
+[features]
+custom-protocol = []
+
+[build-dependencies]
+tauri-build = { version = "2.6", features = [] }
+
+[dependencies]
+# Workspace deps
+tauri = { workspace = true, features = ["custom-protocol"] }
+tauri-plugin-shell = { version = "2", features = [] }
+tauri-plugin-dialog = { version = "2", features = [] }
+tauri-plugin-opener = { version = "2", features = [] }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+reqwest = { workspace = true }
+notify = { workspace = true }
+sqlx = { workspace = true }
+redb = { workspace = true }
+keyring = { workspace = true }
+keyring-core = { version = "1.0", features = [] }
+toml = { workspace = true }
+toml_edit = { workspace = true }
+figment = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+blake3 = { workspace = true }
+directories = { workspace = true }
+once_cell = { workspace = true }
+parking_lot = { workspace = true }
+bytes = { workspace = true }
+futures = { workspace = true }
+dashmap = { workspace = true }
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"

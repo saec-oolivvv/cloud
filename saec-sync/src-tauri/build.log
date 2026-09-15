@@ -1,0 +1,13 @@
+warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
+package:   /mnt/nas-web/cloud/saec-sync/src-tauri/Cargo.toml
+workspace: /mnt/nas-web/cloud/saec-sync/Cargo.toml
+    Updating crates.io index
+error: failed to select a version for `tauri`.
+    ... required by package `saec-sync v0.1.0 (/mnt/nas-web/cloud/saec-sync/src-tauri)`
+versions that meet the requirements `^1.6` are: 1.8.3, 1.8.2, 1.8.1, 1.8.0, 1.7.2, 1.7.1, 1.7.0, 1.6.8, 1.6.7, 1.6.6, 1.6.4, 1.6.3, 1.6.2, 1.6.1, 1.6.0
+
+package `saec-sync` depends on `tauri` with feature `fs` but `tauri` does not have that feature.
+help: there is a feature `rfd` with a similar name
+
+
+failed to select a version for `tauri` which could resolve this conflict

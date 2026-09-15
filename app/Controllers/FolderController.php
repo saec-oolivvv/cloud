@@ -149,7 +149,8 @@ class FolderController extends Controller
         $uploadDir = dirname(__DIR__, 2) . '/storage/uploads/' . $tenantId;
         $physicalPath = $uploadDir . '/' . ltrim($path, '/');
         if (!is_dir($physicalPath)) {
-            mkdir($physicalPath, 0770, true);
+            mkdir($physicalPath, 0777, true);
+            @chmod($physicalPath, 0777);
         }
 
         // Audit log

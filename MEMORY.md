@@ -270,6 +270,8 @@ CSP: strict (self, fonts, cloudflare only)
 - [ ] Page pricing + questionnaire souscription
 - [ ] Client sync bidirectionnelle
 - [ ] Sync API endpoints
+- [ ] Upload direct vers serveur distant (provider attaché au tenant)
+- [ ] Drag & drop de dossiers (upload + création sous-dossiers)
 
 ### Prévu
 - [ ] Paiement Stripe/PayPal
@@ -332,3 +334,38 @@ chmod 644 /mnt/nas-web/cloud/storage/keys/master.key
 - Pas de paiement direct pour le moment
 - Les demandes de tenant passent par un questionnaire
 - Facture envoyée après validation admin
+
+---
+
+## 12. SESSION 2026-09-15 — BUGS & DEMANDES UTILISATEUR (À TRAITER)
+
+> Liste non exhaustive — ne rien perdre. Priorité: HIGH → MEDIUM.
+
+### Bugs signalés par l'utilisateur
+1. **Upload fichiers impossible** — `mkdir(): Permission denied` sur `storage/uploads/{tenant_id}/` (Apache pas writable).
+   - Fix partiel fait: `chmod 777 storage/uploads/` + code `mkdir(0777)` dans FileController/FolderController.
+   - **EN ATTENTE**: PHP `upload_max_filesize=2M`, `post_max_size=8M` → trop petit (config app → 100MB). À augmenter côté serveur (php.ini ou .user.ini).
+2. **Suppression dossier impossible** — `DELETE /folders/{id}` avec body multipart + `parse_str()` sur `php://input` ne parse PAS le multipart → CSRF token introuvable → 403 "Token CSRF invalide".
+   - Fix à faire: envoyer token via header `X-CSRF-Token` (déjà supporté côté PHP) au lieu du body FormData.
+3. **Dossiers tous niveau 1, pas de sous-dossiers** — à investiguer: création de dossier dans un dossier ≠ sauvegarde `parent_id`.
+4. **Upload sans CSRF token** — `xhr.open('POST','/files/upload')` dans `app/Views/files/index.php` (~ligne 658) et `public/js/app.js` (ligne 64) n'envoient PAS de token CSRF. (Controller ne vérifie pas encore le CSRF sur upload → à ajouter).
+
+### Demandes features utilisateur
+5. **Upload direct vers serveur distant** — tous fichiers/dossiers créés ou envoyés doivent aller DIRECTEMENT sur le provider storage attaché au tenant (`storage_mounts`). Actuellement upload → local `storage/uploads/{tenant_id}/` uniquement. Le sync direct vers distant est "ne se fait pas".
+6. **Drag & drop de dossiers** — dans le SaaS permettre glisser-déposer des dossiers (et idéalement créer les sous-dossiers automatiquement).
+7. **Lien menu → download sync client** — ajouter un lien direct dans le menu pour télécharger le programme de synchronisation déjà buildé.
+   - Builds existants: `saec-sync/target/release/bundle/deb/SAEC Sync_0.1.0_amd64.deb` (11MB), `rpm/...x86_64.rpm` (11MB), `appimage/SAEC Sync.AppDir/`, binaire `target/release/saec-sync`.
+   - Copié vers `public/download/saec-sync-0.1.0-amd64.deb` + `public/download/saec-sync-0.1.0-x86_64.rpm`.
+8. **Sync client API endpoints** — le client Tauri (`saec-sync/src-tauri/src/api/client.rs`) appelle: `GET /sync/mounts`, `GET /sync/mounts/{id}/files{path}`, `GET /sync/mounts/{id}/files/{path}/content`, `PUT /sync/mounts/{id}/files{path}` (upload checksum), `DELETE /sync/mounts/{id}/files{path}`, `POST /sync/mounts/{id}/files{path}` (create folder), `POST /api/auth/device` (device code), `POST /api/auth/token` (token). → **AUCUN de ces endpoints n'existe dans `config/routes.php`**. À implémenter côté backend.
+9. **Sync bidirectionnelle** — le client se connecte sur `https://cloud.saec.me/api`, token via device-code flow. Config par défaut dans `saec-sync/src-tauri/src/config.rs`.
+
+### Fichiers clés analysés
+- `app/Controllers/FileController.php` — upload/download/delete fichiers, chiffrement AES-256-GCM
+- `app/Controllers/FolderController.php` — CRUD dossiers + index files
+- `app/Views/files/index.php` — file browser (upload modal, drag&drop, folder actions)
+- `public/js/app.js` — upload zone (dashboards)
+- `app/Services/Storage/StorageAdapter.php` — interface adapters (write/read/mkdir/delete/rename/copy/stream)
+- `app/Services/Storage/LocalAdapter.php` — adapter local
+- `app/Services/MountService.php` — sync engine mounts (upload/download/deleteRemote/sync)
+- `app/Services/StorageService.php` — orchestration providers
+- `saec-sync/` — client Tauri (Rust) buildé OK

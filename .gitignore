@@ -12,3 +12,8 @@ vendor/
 *~
 .DS_Store
 Thumbs.db
+.slim/deepwork/
+saec-sync/node_modules/
+saec-sync/target/
+saec-sync/dist/
+public/download/
