@@ -134,6 +134,38 @@ class Encryption
         return $plaintext;
     }
 
+    /**
+     * Déchiffrer du contenu déjà en mémoire (depuis remote storage)
+     */
+    public function decryptContent(string $encryptedContent, string $keyBase64): string
+    {
+        $key = base64_decode($keyBase64, true);
+        $data = base64_decode($encryptedContent, true);
+
+        if ($data === false || strlen($data) < 28) {
+            throw new \RuntimeException('Invalid encrypted content');
+        }
+
+        $iv = substr($data, 0, 12);
+        $tag = substr($data, 12, 16);
+        $ciphertext = substr($data, 28);
+
+        $plaintext = openssl_decrypt(
+            $ciphertext,
+            $this->cipher,
+            $key,
+            OPENSSL_RAW_DATA,
+            $iv,
+            $tag
+        );
+
+        if ($plaintext === false) {
+            throw new \RuntimeException('Content decryption failed');
+        }
+
+        return $plaintext;
+    }
+
     public function generateFileKey(): string
     {
         return random_bytes(32);

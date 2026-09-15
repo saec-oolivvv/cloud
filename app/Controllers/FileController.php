@@ -465,27 +465,58 @@ class FileController extends Controller
             return;
         }
 
-        // Isolation stricte: storage/uploads/{tenant_id}/
-        $uploadDir = $this->getUploadDir($user['tenant_id']);
-        $storagePath = $uploadDir . '/' . $file['stored_name'];
-
-        // Vérifier que le path est bien dans le dossier du tenant (prevent path traversal)
-        $realUploadDir = realpath($uploadDir);
-        $realStoragePath = realpath($storagePath);
-        if ($realUploadDir === false || $realStoragePath === false || !str_starts_with($realStoragePath, $realUploadDir . '/')) {
-            http_response_code(403);
-            echo "Accès interdit";
-            return;
+        $content = null;
+        
+        // OCTOPUS MODE: Si stockage distant, lire depuis le provider
+        if (!empty($file['storage_location']) && str_starts_with($file['storage_location'], 'remote:')) {
+            $mountId = (int) substr($file['storage_location'], 7);
+            $mountService = MountService::getInstance();
+            $mount = $mountService->getMount($mountId);
+            
+            if ($mount) {
+                try {
+                    $adapter = StorageService::getInstance()->getAdapter($mount['provider_id']);
+                    $folderPath = $this->getFolderPath($user['tenant_id'], $file['folder_id']);
+                    $remoteBase = rtrim($mount['remote_path'], '/');
+                    $folderRel = ltrim($folderPath, '/');
+                    $remotePath = $remoteBase . ($folderRel ? '/' . $folderRel : '') . '/' . $file['stored_name'];
+                    
+                    $content = $adapter->read($remotePath);
+                    error_log("[OCTOPUS] Download from remote mount {$mountId}: $remotePath");
+                } catch (\Throwable $e) {
+                    error_log("[OCTOPUS] Remote download failed, fallback local: " . $e->getMessage());
+                }
+            }
         }
+        
+        // Fallback: lecture locale
+        if ($content === null) {
+            // Isolation stricte: storage/uploads/{tenant_id}/
+            $uploadDir = $this->getUploadDir($user['tenant_id']);
+            $storagePath = $uploadDir . '/' . $file['stored_name'];
 
-        if (!file_exists($storagePath)) {
-            http_response_code(404);
-            echo "Fichier manquant sur le serveur";
-            return;
+            // Vérifier que le path est bien dans le dossier du tenant (prevent path traversal)
+            $realUploadDir = realpath($uploadDir);
+            $realStoragePath = realpath($storagePath);
+            if ($realUploadDir === false || $realStoragePath === false || !str_starts_with($realStoragePath, $realUploadDir . '/')) {
+                http_response_code(403);
+                echo "Accès interdit";
+                return;
+            }
+
+            if (!file_exists($storagePath)) {
+                http_response_code(404);
+                echo "Fichier manquant sur le serveur";
+                return;
+            }
+
+            $encryption = new Encryption();
+            $content = $encryption->decryptFile($storagePath, $file['file_key']);
+        } else {
+            // Déchiffrer le contenu distant
+            $encryption = new Encryption();
+            $content = $encryption->decryptContent($content, $file['file_key']);
         }
-
-        $encryption = new Encryption();
-        $content = $encryption->decryptFile($storagePath, $file['file_key']);
 
         try {
                 $db->insert('audit_logs', [
@@ -863,5 +894,136 @@ class FileController extends Controller
             } catch (\Throwable $e) {}
 
         $this->json(['success' => true]);
+    }
+
+    /**
+     * Copier un fichier vers un dossier
+     */
+    public function copy(string $id): void
+    {
+        $user = $this->requireAuth();
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->json(['error' => 'Method not allowed'], 405);
+            return;
+        }
+
+        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['_token'] ?? '');
+        if (!\Saec\Core\Session::verifyCsrf($token)) {
+            $this->json(['error' => 'Token CSRF invalide'], 403);
+            return;
+        }
+
+        $db = Database::getInstance();
+        $body = json_decode(file_get_contents('php://input'), true);
+        $targetFolderId = isset($body['folder_id']) ? (int) $body['folder_id'] : null;
+
+        $file = $db->fetch(
+            "SELECT * FROM files WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL",
+            [$id, $user['tenant_id']]
+        );
+
+        if (!$file) {
+            $this->json(['error' => 'Fichier non trouvé'], 404);
+            return;
+        }
+
+        if ($targetFolderId) {
+            $folder = $db->fetch(
+                "SELECT id FROM folders WHERE id = ? AND tenant_id = ?",
+                [$targetFolderId, $user['tenant_id']]
+            );
+            if (!$folder) {
+                $this->json(['error' => 'Dossier destination non trouvé'], 404);
+                return;
+            }
+        }
+
+        // Générer nouveau nom stocké
+        $ext = pathinfo($file['stored_name'], PATHINFO_EXTENSION);
+        $newStoredName = bin2hex(random_bytes(16)) . ($ext ? ".{$ext}" : '');
+
+        // Copier le fichier physiquement (local)
+        $uploadDir = $this->getUploadDir($user['tenant_id']);
+        $srcPath = $uploadDir . '/' . $file['stored_name'];
+        $dstPath = $uploadDir . '/' . $newStoredName;
+
+        if (!copy($srcPath, $dstPath)) {
+            $this->json(['error' => 'Échec copie fichier'], 500);
+            return;
+        }
+
+        // Si stockage distant, copier aussi là-bas
+        if (!empty($file['storage_location']) && str_starts_with($file['storage_location'], 'remote:')) {
+            $mountId = (int) substr($file['storage_location'], 7);
+            $mountService = MountService::getInstance();
+            $mount = $mountService->getMount($mountId);
+            
+            if ($mount) {
+                try {
+                    $adapter = StorageService::getInstance()->getAdapter($mount['provider_id']);
+                    $folderPath = $this->getFolderPath($user['tenant_id'], $targetFolderId ?? $file['folder_id']);
+                    $remoteBase = rtrim($mount['remote_path'], '/');
+                    $folderRel = ltrim($folderPath, '/');
+                    $remotePath = $remoteBase . ($folderRel ? '/' . $folderRel : '') . '/' . $newStoredName;
+                    
+                    $content = file_get_contents($srcPath);
+                    if ($content !== false) {
+                        $adapter->write($remotePath, $content, [
+                            'original_name' => $file['original_name'],
+                            'file_id' => 'pending',
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    error_log("[OCTOPUS] Remote copy failed: " . $e->getMessage());
+                }
+            }
+        }
+
+        $newFileId = $db->insert('files', [
+            'tenant_id' => $user['tenant_id'],
+            'user_id' => $user['id'],
+            'folder_id' => $targetFolderId,
+            'original_name' => $file['original_name'],
+            'stored_name' => $newStoredName,
+            'mime_type' => $file['mime_type'],
+            'size' => $file['size'],
+            'checksum' => $file['checksum'],
+            'file_key' => $file['file_key'],
+            'version' => 1,
+            'storage_location' => $file['storage_location'],
+        ]);
+
+        if (!$newFileId) {
+            @unlink($dstPath);
+            $this->json(['error' => 'Échec insertion en base de données'], 500);
+            return;
+        }
+
+        try {
+            $db->insert('audit_logs', [
+                'tenant_id' => $user['tenant_id'],
+                'user_id' => $user['id'],
+                'action' => 'file.copied',
+                'resource_type' => 'file',
+                'resource_id' => $newFileId,
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                'metadata' => json_encode([
+                    'source_file_id' => $id,
+                    'target_folder_id' => $targetFolderId,
+                ]),
+            ]);
+        } catch (\Throwable $e) {}
+
+        $this->json([
+            'success' => true,
+            'file' => [
+                'id' => $newFileId,
+                'name' => $file['original_name'],
+                'size' => $file['size'],
+                'mime_type' => $file['mime_type'],
+                'folder_id' => $targetFolderId,
+            ],
+        ]);
     }
 }

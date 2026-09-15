@@ -154,7 +154,7 @@ function formatSize(int $bytes): string {
             </div>
             <div class="fb-grid" id="foldersGrid">
                 <?php foreach ($folders as $folder): ?>
-                <div class="fb-item fb-folder" data-id="<?= $folder['id'] ?>" data-type="folder">
+                <div class="fb-item fb-folder" data-id="<?= $folder['id'] ?>" data-type="folder" data-name="<?= htmlspecialchars($folder['name']) ?>" data-path="<?= htmlspecialchars($folder['path'] ?? '/') ?>">
                     <div class="fb-item-icon">
                         <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M6 12C6 9.79 7.79 8 10 8H18L22 14H38C40.21 14 42 15.79 42 18V36C42 38.21 40.21 40 38 40H10C7.79 40 6 38.21 6 36V12Z" fill="#F59E0B" opacity="0.2"/>
@@ -376,6 +376,65 @@ function formatSize(int $bytes): string {
     </div>
 </div>
 
+<!-- Context Menu (Right-click) -->
+<div class="fb-context-menu" id="contextMenu" style="display:none; position:fixed; z-index:10000;">
+    <div class="fb-context-menu-inner">
+        <div class="fb-context-section">
+            <button class="fb-context-item" onclick="contextRename()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <span>Renommer</span>
+                <kbd>F2</kbd>
+            </button>
+            <button class="fb-context-item" onclick="contextDownload()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Télécharger</span>
+            </button>
+            <button class="fb-context-item" onclick="contextShare()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                <span>Partager</span>
+            </button>
+        </div>
+        <div class="fb-context-divider"></div>
+        <div class="fb-context-section">
+            <button class="fb-context-item" onclick="contextCopy()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                <span>Copier</span>
+                <kbd>Ctrl+C</kbd>
+            </button>
+            <button class="fb-context-item" onclick="contextCut()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <span>Couper</span>
+                <kbd>Ctrl+X</kbd>
+            </button>
+            <button class="fb-context-item" onclick="contextPaste()" id="contextPasteBtn" disabled>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+                <span>Coller</span>
+                <kbd>Ctrl+V</kbd>
+            </button>
+        </div>
+        <div class="fb-context-divider"></div>
+        <div class="fb-context-section">
+            <button class="fb-context-item" onclick="contextMove()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                <span>Déplacer vers...</span>
+            </button>
+            <button class="fb-context-item fb-context-danger" onclick="contextDelete()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                <span>Supprimer</span>
+                <kbd>Suppr</kbd>
+            </button>
+        </div>
+        <div class="fb-context-divider"></div>
+        <div class="fb-context-section">
+            <button class="fb-context-item" onclick="contextInfo()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <span>Propriétés</span>
+                <kbd>Ctrl+I</kbd>
+            </button>
+        </div>
+    </div>
+</div>
+
 <style>
 /* ══════════════════════════════════════════════════════════════
    FILE BROWSER — Desktop-style
@@ -545,6 +604,58 @@ function formatSize(int $bytes): string {
 /* Share */
 .fb-share-link-row { display: flex; gap: 8px; }
 .fb-share-link-row .fb-input { flex: 1; }
+
+/* Context Menu */
+.fb-context-menu {
+    position: fixed;
+    z-index: 10000;
+    pointer-events: none;
+}
+.fb-context-menu-inner {
+    pointer-events: auto;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    min-width: 200px;
+    overflow: hidden;
+    animation: ctxIn 0.1s ease-out;
+}
+@keyframes ctxIn {
+    from { opacity: 0; transform: scale(0.95) translateY(4px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.fb-context-section { padding: 4px 0; }
+.fb-context-divider { height: 1px; background: var(--border); margin: 4px 8px; }
+.fb-context-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s;
+}
+.fb-context-item:hover { background: rgba(0,255,136,0.08); color: var(--accent); }
+.fb-context-item:disabled { opacity: 0.4; cursor: not-allowed; }
+.fb-context-item kbd {
+    margin-left: auto;
+    font-size: 10px;
+    padding: 2px 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 4px;
+    color: var(--text-muted);
+    font-family: inherit;
+}
+.fb-context-danger { color: var(--rose-500); }
+.fb-context-danger:hover { background: rgba(239,68,68,0.1); color: var(--rose-400); }
+.fb-item.cut { opacity: 0.5; background: rgba(239,68,68,0.05); }
 </style>
 
 <script>
@@ -943,7 +1054,134 @@ async function saveFileContent() {
 }
 
 function escapeHtml(str) {
-    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return str.replace(/&/g,"&").replace(/</g,"<").replace(/>/g,">");
+}
+
+/* ── Context Menu ── */
+let contextTarget = null;
+let clipboard = { action: null, ids: [] };
+
+document.addEventListener("contextmenu", (e) => {
+    const folderItem = e.target.closest(".fb-folder");
+    const fileItem = e.target.closest(".fb-file");
+    if (!folderItem && !fileItem) return;
+    
+    e.preventDefault();
+    contextTarget = folderItem || fileItem;
+    
+    const menu = document.getElementById("contextMenu");
+    menu.style.left = e.clientX + "px";
+    menu.style.top = e.clientY + "px";
+    menu.style.display = "block";
+    
+    document.getElementById("contextPasteBtn").disabled = clipboard.ids.length === 0;
+});
+
+document.addEventListener("click", () => {
+    document.getElementById("contextMenu").style.display = "none";
+    contextTarget = null;
+});
+
+function contextRename() {
+    if (!contextTarget) return;
+    const id = contextTarget.dataset.id;
+    const name = contextTarget.dataset.name;
+    const isFolder = contextTarget.dataset.type === "folder";
+    if (isFolder) renameFolder(id, name);
+    else renameFile(id, name);
+    closeContext();
+}
+
+function contextDownload() {
+    if (!contextTarget) return;
+    const id = contextTarget.dataset.id;
+    downloadFile(id);
+    closeContext();
+}
+
+function contextShare() {
+    if (!contextTarget) return;
+    const id = contextTarget.dataset.id;
+    shareFile(id);
+    closeContext();
+}
+
+function contextCopy() {
+    if (!contextTarget) return;
+    const id = parseInt(contextTarget.dataset.id);
+    const type = contextTarget.dataset.type;
+    clipboard = { action: "copy", ids: [id], type };
+    document.getElementById("contextPasteBtn").disabled = false;
+    closeContext();
+}
+
+function contextCut() {
+    if (!contextTarget) return;
+    const id = parseInt(contextTarget.dataset.id);
+    const type = contextTarget.dataset.type;
+    clipboard = { action: "cut", ids: [id], type };
+    contextTarget.classList.add("cut");
+    document.getElementById("contextPasteBtn").disabled = false;
+    closeContext();
+}
+
+function contextPaste() {
+    if (clipboard.ids.length === 0) return;
+    const targetFolder = contextTarget?.dataset.type === "folder" ? contextTarget.dataset.id : CURRENT_FOLDER;
+    const action = clipboard.action;
+    let done = 0;
+    const total = clipboard.ids.length;
+    
+    clipboard.ids.forEach(async (id) => {
+        if (action === "copy") {
+            await fetch("/files/" + id + "/copy", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ folder_id: targetFolder, _token: CSRF })
+            });
+        } else if (action === "cut") {
+            await fetch("/files/" + id + "/move", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ folder_id: targetFolder })
+            });
+        }
+        done++;
+        if (done === total) location.reload();
+    });
+    clipboard = { action: null, ids: [] };
+    closeContext();
+}
+
+function contextMove() {
+    if (!contextTarget) return;
+    const id = contextTarget.dataset.id;
+    moveTargets = [parseInt(id)];
+    document.getElementById("moveModal").style.display = "flex";
+    closeContext();
+}
+
+function contextDelete() {
+    if (!contextTarget) return;
+    const id = contextTarget.dataset.id;
+    const isFolder = contextTarget.dataset.type === "folder";
+    if (isFolder) deleteFolder(id);
+    else deleteFile(id);
+    closeContext();
+}
+
+function contextInfo() {
+    if (!contextTarget) return;
+    const id = contextTarget.dataset.id;
+    const mime = contextTarget.dataset.mime;
+    const name = contextTarget.dataset.name;
+    viewFile(parseInt(id), mime, name);
+    closeContext();
+}
+
+function closeContext() {
+    document.getElementById("contextMenu").style.display = "none";
+    contextTarget = null;
 }
 
 /* ── Share ── */

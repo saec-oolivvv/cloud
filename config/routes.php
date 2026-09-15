@@ -102,6 +102,7 @@ $router->get('/files/{id}/view', [FileController::class, 'view'], [AuthMiddlewar
 $router->get('/files/{id}/content', [FileController::class, 'getContent'], [AuthMiddleware::class]);
 $router->post('/files/{id}/save', [FileController::class, 'saveContent'], [AuthMiddleware::class]);
 $router->post('/files/{id}/move', [FileController::class, 'move'], [AuthMiddleware::class]);
+$router->post('/files/{id}/copy', [FileController::class, 'copy'], [AuthMiddleware::class]);
 $router->delete('/files/{id}', [FileController::class, 'delete'], [AuthMiddleware::class]);
 $router->post('/files/{id}/restore', [FileController::class, 'restore'], [AuthMiddleware::class]);
 $router->get('/trash', [FileController::class, 'trash'], [AuthMiddleware::class]);
