@@ -21,8 +21,21 @@ class AuthController extends Controller
             return;
         }
 
+        $redirect = $this->sanitizeRedirect($_GET['redirect'] ?? '');
         $pageTitle = 'Connexion';
         require __DIR__ . '/../Views/auth/login.php';
+    }
+
+    /**
+     * Ne permettre que des chemins internes (pas d'URL externe).
+     */
+    private function sanitizeRedirect(string $url): string
+    {
+        if ($url === '' || $url === '/') return '/dashboard';
+        if (str_starts_with($url, '/') && !str_starts_with($url, '//') && !str_contains($url, '://')) {
+            return $url;
+        }
+        return '/dashboard';
     }
 
     public function login(): void
@@ -117,10 +130,10 @@ class AuthController extends Controller
         }
 
         Security::recordLoginAttempt($email, $ip, true);
-        $this->completeLogin($user);
+        $this->completeLogin($user, $this->sanitizeRedirect($_POST['redirect'] ?? $_GET['redirect'] ?? ''));
     }
 
-    private function completeLogin(array $user): void
+    private function completeLogin(array $user, string $redirect = '/dashboard'): void
     {
         Session::start();
 
@@ -171,7 +184,7 @@ class AuthController extends Controller
         }
 
         $this->logActivity($userData['id'], $userData['tenant_id'], 'auth.login');
-        $this->redirect('/dashboard');
+        $this->redirect($redirect);
     }
 
     public function logout(): void

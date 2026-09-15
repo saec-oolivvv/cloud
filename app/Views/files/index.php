@@ -1259,8 +1259,7 @@ function batchDelete() {
     if (!confirm('Supprimer ' + selectedFiles.size + ' fichier(s) ?')) return;
     let done = 0;
     selectedFiles.forEach(async (id) => {
-        const fd = new FormData(); fd.append('_token', CSRF);
-        await fetch('/files/' + id, { method: 'DELETE', body: fd });
+        await fetch('/files/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': CSRF } });
         done++;
         if (done === selectedFiles.size) location.reload();
     });

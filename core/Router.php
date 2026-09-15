@@ -78,7 +78,12 @@ class Router
 
     private function buildPattern(string $path): string
     {
-        $pattern = preg_replace('/\{([a-zA-Z_]+)\}/', '(?P<$1>[^/]+)', $path);
+        // Support {name} and {name:regex}
+        $pattern = preg_replace_callback('/\{([a-zA-Z_]+)(?::([^}]+))?\}/', function (array $m): string {
+            $name = $m[1];
+            $regex = $m[2] ?? '[^/]+';
+            return "(?P<{$name}>{$regex})";
+        }, $path);
         return '#^' . $pattern . '$#';
     }
 }

@@ -589,6 +589,19 @@ class FileController extends Controller
     public function delete(string $id): void
     {
         $user = $this->requireAuth();
+
+        $token = $this->extractCsrf();
+        if (!isset($_SERVER['HTTP_X_CSRF_TOKEN']) && $token === '') {
+            // Body multipart (DELETE) — parse php://input
+            $raw = file_get_contents('php://input');
+            parse_str($raw, $body);
+            $token = $body['_token'] ?? '';
+        }
+        if (!\Saec\Core\Session::verifyCsrf($token)) {
+            $this->json(['error' => 'Token CSRF invalide'], 403);
+            return;
+        }
+
         $db = Database::getInstance();
 
         $file = $db->fetch(
@@ -957,7 +970,7 @@ class FileController extends Controller
             return;
         }
 
-        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['_token'] ?? '');
+        $token = $this->extractCsrf();
         if (!\Saec\Core\Session::verifyCsrf($token)) {
             $this->json(['error' => 'Token CSRF invalide'], 403);
             return;

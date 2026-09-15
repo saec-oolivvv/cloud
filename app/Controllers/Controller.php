@@ -68,6 +68,22 @@ abstract class Controller
         $this->response->status($status)->json($data)->send();
     }
 
+    /**
+     * Extraire le token CSRF depuis header, body POST ou body JSON.
+     */
+    protected function extractCsrf(): string
+    {
+        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['_token'] ?? '');
+        if (empty($token)) {
+            $raw = file_get_contents('php://input');
+            if ($raw !== false && str_contains($raw, '_token')) {
+                $body = json_decode($raw, true);
+                $token = is_array($body) ? ($body['_token'] ?? '') : '';
+            }
+        }
+        return is_string($token) ? $token : '';
+    }
+
     protected function redirect(string $url, int $status = 302): void
     {
         $this->response->redirect($url, $status)->send();

@@ -210,3 +210,27 @@ $router->post('/api/login', [AuthController::class, 'login']);
 $router->get('/api/files', [FileController::class, 'index'], [AuthMiddleware::class]);
 $router->post('/api/files/upload', [FileController::class, 'upload'], [AuthMiddleware::class]);
 $router->get('/api/files/{id}/download', [FileController::class, 'download'], [AuthMiddleware::class]);
+
+// ─────────────────────────────────────────────────────────────
+// SYNC DESKTOP — Device Code Flow + API sync
+// ─────────────────────────────────────────────────────────────
+use Saec\Controllers\SyncController;
+use Saec\Middleware\SyncApiMiddleware;
+
+// Device code (OAuth-like)
+$router->post('/api/auth/device', [SyncController::class, 'deviceCode']);
+$router->post('/api/auth/token', [SyncController::class, 'token']);
+
+// Page web d'approbation du device
+$router->get('/device', [SyncController::class, 'verifyForm']);
+$router->post('/device', [SyncController::class, 'verify']);
+
+// API sync (Bearer token)
+// NB: le client Rust construit `/files{path}` SANS slash après `files`.
+// `{path:.*}` matche les deux formes: `/files/foo` (path="/foo") et `/filesfoo` (path="foo").
+$router->get('/api/sync/mounts', [SyncController::class, 'mounts'], [SyncApiMiddleware::class]);
+$router->get('/api/sync/mounts/{id}/files/{path:.+}/content', [SyncController::class, 'content'], [SyncApiMiddleware::class]);
+$router->get('/api/sync/mounts/{id}/files{path:.*}', [SyncController::class, 'files'], [SyncApiMiddleware::class]);
+$router->post('/api/sync/mounts/{id}/files{path:.*}', [SyncController::class, 'createFolder'], [SyncApiMiddleware::class]);
+$router->put('/api/sync/mounts/{id}/files{path:.*}', [SyncController::class, 'upload'], [SyncApiMiddleware::class]);
+$router->delete('/api/sync/mounts/{id}/files{path:.*}', [SyncController::class, 'delete'], [SyncApiMiddleware::class]);

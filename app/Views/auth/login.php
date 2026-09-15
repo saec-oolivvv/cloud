@@ -3,6 +3,7 @@ $errors = $errors ?? [];
 $lang = $GLOBALS['SAEC_TRANSLATION'] ?? null;
 $currentLang = $lang ? $lang->getLang() : 'en';
 $availableLangs = $lang ? Saec\Core\Translation::getAvailable() : [];
+$redirect = $redirect ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="<?= $currentLang ?>">
@@ -225,6 +226,7 @@ $availableLangs = $lang ? Saec\Core\Translation::getAvailable() : [];
 
         <form method="POST" action="/login" class="login-form" id="loginForm">
             <?= Saec\Core\Session::csrfField() ?>
+            <?php if ($redirect): ?><input type="hidden" name="redirect" value="<?= htmlspecialchars($redirect) ?>"><?php endif; ?>
             <div class="field">
                 <label class="field-label" for="email">Adresse email</label>
                 <input type="email" id="email" name="email" class="field-input" placeholder="admin@saec.me" required autocomplete="email" autofocus>
