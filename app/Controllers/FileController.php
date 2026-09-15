@@ -291,16 +291,91 @@ class FileController extends Controller
         $storagePath = $uploadDir . '/' . $storedName;
 
         try {
-            // Chiffrement AES-256-GCM
-            $encryption = new Encryption();
-            $result = $encryption->encryptFile($file['tmp_name'], $storagePath);
+            // OCTOPUS MODE: Déterminer le stockage cible
+            $mountService = MountService::getInstance();
+            $mounts = $mountService->listMounts($tenantId);
+            $activeMounts = array_filter($mounts, fn($m) => !empty($m['is_active']) && in_array($m['mount_type'], ['readwrite', 'backup_only']));
+            
+            $storagePath = null;
+            $remoteResults = [];
+            $primaryMount = null;
+            
+            if (!empty($activeMounts)) {
+                // OCTOPUS MODE: Upload DIRECT vers le remote (pas de local-first)
+                // Sélectionner le mount primaire (premier readwrite actif)
+                $primaryMount = array_values($activeMounts)[0];
+                
+                // Construire le chemin distant
+                $folderPath = $this->getFolderPath($tenantId, $folderId);
+                $remoteBase = rtrim($primaryMount['remote_path'], '/');
+                $folderRel = ltrim($folderPath, '/');
+                $remotePath = $remoteBase . ($folderRel ? '/' . $folderRel : '') . '/' . $storedName;
+                
+                // Chiffrer le fichier temporairement
+                $tempPath = sys_get_temp_dir() . '/' . $storedName;
+                $encryption = new Encryption();
+                $result = $encryption->encryptFile($file['tmp_name'], $tempPath);
+                $checksum = hash_file('sha256', $tempPath);
+                
+                if (!file_exists($tempPath) || filesize($tempPath) === 0) {
+                    throw new \RuntimeException("Échec chiffrement fichier");
+                }
+                
+                // Upload DIRECT vers le provider distant
+                try {
+                    $adapter = StorageService::getInstance()->getAdapter($primaryMount['provider_id']);
+                    $content = file_get_contents($tempPath);
+                    if ($content === false) {
+                        throw new \RuntimeException("Impossible de lire le fichier chiffré");
+                    }
+                    
+                    $success = $adapter->write($remotePath, $content, [
+                        'original_name' => $file['name'],
+                        'file_id' => 'pending',
+                    ]);
+                    
+                    if (!$success) {
+                        throw new \RuntimeException("Échec upload vers provider distant");
+                    }
+                    
+                    $remoteResults[] = [
+                        'mount_id' => $primaryMount['id'],
+                        'provider_id' => $primaryMount['provider_id'],
+                        'remote_path' => $remotePath,
+                        'success' => true,
+                    ];
+                    
+                    error_log("[OCTOPUS] Upload direct vers mount {$primaryMount['id']} ({$primaryMount['provider_name']}): $remotePath");
+                    
+                } catch (\Throwable $e) {
+                    error_log("[OCTOPUS] Upload distant échoué: " . $e->getMessage());
+                    // Fallback: local storage
+                    $storagePath = $this->getUploadDir($tenantId) . '/' . $storedName;
+                    rename($tempPath, $storagePath);
+                }
+                
+                // Nettoyer le fichier temp si upload distant réussi
+                if (file_exists($tempPath)) {
+                    @unlink($tempPath);
+                }
+                
+            } else {
+                // Pas de mount distant actif → stockage local uniquement
+                $uploadDir = $this->getUploadDir($tenantId);
+                $storagePath = $uploadDir . '/' . $storedName;
+                
+                $encryption = new Encryption();
+                $result = $encryption->encryptFile($file['tmp_name'], $storagePath);
+                $checksum = hash_file('sha256', $storagePath);
+                
+                if (!file_exists($storagePath) || filesize($storagePath) === 0) {
+                    throw new \RuntimeException("Échec écriture fichier sur disque local");
+                }
+            }
 
-            // Checksum du fichier chiffré
-            $checksum = hash_file('sha256', $storagePath);
-
-            // Vérifier que le fichier existe bien sur disque
-            if (!file_exists($storagePath) || filesize($storagePath) === 0) {
-                throw new \RuntimeException("Échec écriture fichier sur disque");
+            // Si pas de remoteResults, on est en mode local (storagePath défini)
+            if (!isset($checksum)) {
+                $checksum = hash_file('sha256', $storagePath);
             }
 
             $fileId = $db->insert('files', [
@@ -313,6 +388,7 @@ class FileController extends Controller
                 'size' => $file['size'],
                 'checksum' => $checksum,
                 'file_key' => $result['key'],
+                'storage_location' => $primaryMount ? 'remote:' . $primaryMount['id'] : 'local',
             ]);
 
             if (!$fileId) {
@@ -332,13 +408,18 @@ class FileController extends Controller
                         'size' => $file['size'],
                         'mime' => $mimeType,
                         'folder_id' => $folderId,
+                        'storage' => $primaryMount ? 'remote' : 'local',
+                        'mount_id' => $primaryMount['id'] ?? null,
                     ]),
                 ]);
             } catch (\Throwable $e) {}
 
-            // Push vers les mounts distants (async non-bloquant)
-            $folderPath = $this->getFolderPath($tenantId, $folderId);
-            $this->pushToRemoteMounts($tenantId, $storedName, $fileId, $file['name'], $folderPath);
+            // Si remote upload réussi, mettre à jour l'audit avec file_id réel
+            if (!empty($remoteResults)) {
+                foreach ($remoteResults as &$rr) {
+                    $rr['file_id'] = $fileId;
+                }
+            }
 
             $this->json([
                 'success' => true,
@@ -348,12 +429,15 @@ class FileController extends Controller
                     'size' => $file['size'],
                     'mime_type' => $mimeType,
                     'folder_id' => $folderId,
+                    'storage' => $primaryMount ? 'remote' : 'local',
                 ],
             ]);
         } catch (\Throwable $e) {
-            // Nettoyer le fichier si l'insert DB échoue
-            if (file_exists($storagePath)) {
+            if (isset($storagePath) && file_exists($storagePath)) {
                 @unlink($storagePath);
+            }
+            if (isset($tempPath) && file_exists($tempPath)) {
+                @unlink($tempPath);
             }
             $this->json(['error' => 'Erreur upload: ' . $e->getMessage()], 500);
         }

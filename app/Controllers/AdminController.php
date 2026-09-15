@@ -437,18 +437,25 @@ try {
             return;
         }
 
-        $db->execute(
-            "INSERT INTO storage_mounts (provider_id, tenant_id, remote_path, local_alias, mount_type) VALUES (?, ?, ?, ?, ?)",
-            [$providerId, (int)$id, $remotePath, $localAlias, $mountType]
-        );
+        $tenantRootPath = '/tenant_' . $id;
+$fullRemotePath = rtrim($tenantRootPath, '/') . '/' . ltrim($remotePath, '/');
 
-        // Créer le dossier sur le storage distant
-        try {
-            $adapter = AdapterFactory::fromDatabase($providerId);
-            $adapter->mkdir($remotePath);
-        } catch (\Throwable $e) {
-            error_log("[STORAGE] mkdir failed for mount tenant={$id} provider={$providerId} path={$remotePath}: " . $e->getMessage());
-        }
+$db->execute(
+    "INSERT INTO storage_mounts (provider_id, tenant_id, remote_path, local_alias, mount_type) VALUES (?, ?, ?, ?, ?)",
+    [$providerId, (int)$id, $fullRemotePath, $localAlias, $mountType]
+);
+
+// Créer le dossier racine tenant + chemin complet sur le storage distant (isolation totale)
+try {
+    $adapter = AdapterFactory::fromDatabase($providerId);
+    // 1. Créer le dossier racine tenant
+    $adapter->mkdir($tenantRootPath);
+    // 2. Créer l'arborescence complète dans le dossier tenant
+    $adapter->mkdir($fullRemotePath);
+    error_log("[STORAGE] Created tenant root + path: {$tenantRootPath} + {$fullRemotePath}");
+} catch (\Throwable $e) {
+    error_log("[STORAGE] mkdir failed for mount tenant={$id} provider={$providerId} path={$fullRemotePath}: " . $e->getMessage());
+}
 
         try {
             $db->insert('audit_logs', [

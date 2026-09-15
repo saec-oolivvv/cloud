@@ -202,14 +202,25 @@ $tables = [
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         tenant_id INT UNSIGNED NOT NULL,
         user_id INT UNSIGNED NOT NULL,
+        folder_id INT UNSIGNED NULL,
         original_name VARCHAR(255) NOT NULL,
         stored_name VARCHAR(255) NOT NULL,
         mime_type VARCHAR(100),
         size BIGINT UNSIGNED NOT NULL,
         checksum VARCHAR(64) NOT NULL,
+        file_key TEXT NOT NULL,
+        version INT DEFAULT 1,
+        storage_location VARCHAR(50) DEFAULT 'local',
+        deleted_at TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (tenant_id) REFERENCES tenants(id),
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL,
+        INDEX idx_tenant (tenant_id),
+        INDEX idx_folder (folder_id),
+        INDEX idx_deleted (deleted_at),
+        INDEX idx_storage (storage_location)
     ) ENGINE=InnoDB",
     
     "CREATE TABLE IF NOT EXISTS audit_logs (
