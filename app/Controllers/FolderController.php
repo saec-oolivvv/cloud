@@ -5,9 +5,41 @@ declare(strict_types=1);
 namespace Saec\Controllers;
 
 use Saec\Core\Database;
+use Saec\Services\MountService;
+use Saec\Services\StorageService;
 
 class FolderController extends Controller
 {
+    /**
+     * Pousser la création d'un dossier vers les mounts distants
+     */
+    private function pushFolderToRemoteMounts(int $tenantId, string $folderPath): void
+    {
+        try {
+            $mountService = MountService::getInstance();
+            $mounts = $mountService->listMounts($tenantId);
+            
+            foreach ($mounts as $mount) {
+                if (!in_array($mount['mount_type'], ['readwrite', 'backup_only'])) continue;
+                if (empty($mount['is_active'])) continue;
+                
+                $remoteBase = rtrim($mount['remote_path'], '/');
+                $folderRel = ltrim($folderPath, '/');
+                $remotePath = $remoteBase . ($folderRel ? '/' . $folderRel : '');
+                
+                try {
+                    $adapter = StorageService::getInstance()->getAdapter($mount['provider_id']);
+                    $adapter->mkdir($remotePath);
+                    error_log("[SYNC] Created folder at mount {$mount['id']}: $remotePath");
+                } catch (\Throwable $e) {
+                    error_log("[SYNC] Mkdir on mount {$mount['id']} failed: " . $e->getMessage());
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log("[SYNC] Remote folder push error: " . $e->getMessage());
+        }
+    }
+
     public function index(): void
     {
         $user = $this->requireAuth();
@@ -28,7 +60,7 @@ class FolderController extends Controller
             }
         }
 
-        // Sous-dossiers
+        // Sous-dossiers (niveau courant pour affichage)
         $folders = $db->fetchAll(
             "SELECT f.*, 
                     (SELECT COUNT(*) FROM files WHERE folder_id = f.id AND deleted_at IS NULL) as file_count,
@@ -37,6 +69,12 @@ class FolderController extends Controller
              WHERE f.tenant_id = ? AND " . ($parentId ? "f.parent_id = ?" : "f.parent_id IS NULL") . "
              ORDER BY f.name ASC",
             $parentId ? [$tenantId, $parentId] : [$tenantId]
+        );
+
+        // Tous les dossiers du tenant (pour dropdown upload)
+        $allFolders = $db->fetchAll(
+            "SELECT id, name, parent_id, path FROM folders WHERE tenant_id = ? ORDER BY path ASC",
+            [$tenantId]
         );
 
         // Fichiers dans ce dossier
@@ -64,6 +102,7 @@ class FolderController extends Controller
         $data = [
             'user' => $user,
             'folders' => $folders,
+            'allFolders' => $allFolders,
             'files' => $files,
             'current_folder' => $currentFolder,
             'breadcrumb' => $breadcrumb,
@@ -152,6 +191,9 @@ class FolderController extends Controller
             mkdir($physicalPath, 0777, true);
             @chmod($physicalPath, 0777);
         }
+
+        // Push création dossier vers mounts distants
+        $this->pushFolderToRemoteMounts($tenantId, $path);
 
         // Audit log
         try {

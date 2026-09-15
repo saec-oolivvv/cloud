@@ -21,7 +21,7 @@ return [
     ],
 
     'upload' => [
-        'max_file_size' => 104857600, // 100MB
+        'max_file_size' => 3355443200, // 3200MB
         'allowed_types' => [
             'application/pdf',
             'application/msword',

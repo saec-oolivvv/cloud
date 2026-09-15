@@ -6,6 +6,8 @@ namespace Saec\Controllers;
 
 use Saec\Core\Database;
 use Saec\Core\Encryption;
+use Saec\Services\MountService;
+use Saec\Services\StorageService;
 
 class FileController extends Controller
 {
@@ -22,6 +24,61 @@ class FileController extends Controller
         return $dir;
     }
 
+    /**
+     * Construire le chemin relatif d'un dossier
+     */
+    private function getFolderPath(int $tenantId, ?int $folderId): string
+    {
+        if (!$folderId) return '/';
+        
+        $db = Database::getInstance();
+        $folder = $db->fetch(
+            "SELECT path FROM folders WHERE id = ? AND tenant_id = ?",
+            [$folderId, $tenantId]
+        );
+        return $folder['path'] ?? '/';
+    }
+
+    /**
+     * Pousser un fichier vers les mounts distants du tenant (si readwrite/backup)
+     */
+    private function pushToRemoteMounts(int $tenantId, string $storedName, int $fileId, string $originalName, string $folderPath): void
+    {
+        try {
+            $mountService = MountService::getInstance();
+            $mounts = $mountService->listMounts($tenantId);
+            
+            foreach ($mounts as $mount) {
+                // Ne pousser que sur les mounts readwrite ou backup_only
+                if (!in_array($mount['mount_type'], ['readwrite', 'backup_only'])) continue;
+                if (empty($mount['is_active'])) continue;
+                
+                // Construire le chemin distant: remote_path + folder_path + stored_name
+                $remoteBase = rtrim($mount['remote_path'], '/');
+                $folderRel = ltrim($folderPath, '/');
+                $remotePath = $remoteBase . ($folderRel ? '/' . $folderRel : '') . '/' . $storedName;
+                
+                // Upload fichier chiffré vers le mount
+                try {
+                    $adapter = StorageService::getInstance()->getAdapter($mount['provider_id']);
+                    $content = file_get_contents($this->getUploadDir($tenantId) . '/' . $storedName);
+                    if ($content !== false) {
+                        $adapter->write($remotePath, $content, [
+                            'original_name' => $originalName,
+                            'file_id' => $fileId,
+                        ]);
+                        error_log("[SYNC] Pushed file $fileId to mount {$mount['id']} at $remotePath");
+                    }
+                } catch (\Throwable $e) {
+                    error_log("[SYNC] Push to mount {$mount['id']} failed: " . $e->getMessage());
+                    // Ne pas faire échouer l'upload local si le push distant échoue
+                }
+            }
+        } catch (\Throwable $e) {
+            error_log("[SYNC] Remote push error: " . $e->getMessage());
+        }
+    }
+
     public function index(): void
     {
         $user = $this->requireAuth();
@@ -34,6 +91,12 @@ class FileController extends Controller
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->json(['error' => 'Method not allowed'], 405);
+            return;
+        }
+
+        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['_token'] ?? '');
+        if (!\Saec\Core\Session::verifyCsrf($token)) {
+            $this->json(['error' => 'Token CSRF invalide'], 403);
             return;
         }
 
@@ -144,6 +207,10 @@ class FileController extends Controller
                     ]),
                 ]);
             } catch (\Throwable $e) {}
+
+            // Push vers les mounts distants (async non-bloquant)
+            $folderPath = $this->getFolderPath($tenantId, $folderId);
+            $this->pushToRemoteMounts($tenantId, $storedName, $fileId, $file['name'], $folderPath);
 
             $this->json([
                 'success' => true,

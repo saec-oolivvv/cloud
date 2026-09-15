@@ -34,6 +34,10 @@ $router->get('/subscribe', function() {
     require __DIR__ . '/../app/Views/pricing/subscribe.php';
     exit;
 });
+$router->get('/download', function() {
+    require __DIR__ . '/../app/Views/download/index.php';
+    exit;
+});
 $router->get('/privacy', function() {
     require __DIR__ . '/../app/Views/legal/privacy.php';
     exit;

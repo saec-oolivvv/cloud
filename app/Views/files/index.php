@@ -256,8 +256,8 @@ function formatSize(int $bytes): string {
                 <label class="fb-label">Destination :</label>
                 <select id="uploadFolderSelect" class="fb-select-input">
                     <option value="">📁 Racine</option>
-                    <?php foreach ($folders as $f): ?>
-                    <option value="<?= $f['id'] ?>" <?= $parentId == $f['id'] ? 'selected' : '' ?>>📁 <?= htmlspecialchars($f['name']) ?></option>
+                    <?php foreach (($allFolders ?? $folders) as $f): ?>
+                    <option value="<?= $f['id'] ?>" <?= $parentId == $f['id'] ? 'selected' : '' ?>>📁 <?= htmlspecialchars($f['path'] ?? $f['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -656,6 +656,7 @@ document.getElementById('uploadStartBtn')?.addEventListener('click', () => {
             }
         };
         xhr.open('POST', '/files/upload');
+        xhr.setRequestHeader('X-CSRF-Token', CSRF);
         xhr.send(fd);
     });
 });
@@ -682,9 +683,10 @@ async function createFolder() {
 /* ── Folder Actions ── */
 async function deleteFolder(id) {
     if (!confirm('Supprimer ce dossier ?')) return;
-    const fd = new FormData();
-    fd.append('_token', CSRF);
-    const res = await fetch('/folders/' + id, { method: 'DELETE', body: fd });
+    const res = await fetch('/folders/' + id, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-Token': CSRF }
+    });
     const data = await res.json();
     if (data.success) location.reload(); else alert(data.error);
 }
@@ -704,9 +706,10 @@ function downloadFile(id) { window.location.href = '/files/' + id + '/download';
 
 async function deleteFile(id) {
     if (!confirm('Supprimer ce fichier ?')) return;
-    const fd = new FormData();
-    fd.append('_token', CSRF);
-    const res = await fetch('/files/' + id, { method: 'DELETE', body: fd });
+    const res = await fetch('/files/' + id, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-Token': CSRF }
+    });
     const data = await res.json();
     if (data.success) location.reload(); else alert(data.error);
 }

@@ -62,6 +62,9 @@ function initUploadZone() {
 
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/files/upload', true);
+        if (typeof CSRF !== 'undefined') {
+            xhr.setRequestHeader('X-CSRF-Token', CSRF);
+        }
 
         if (progress) {
             progress.classList.add('active');
