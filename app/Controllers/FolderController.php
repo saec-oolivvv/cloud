@@ -226,7 +226,7 @@ class FolderController extends Controller
             return;
         }
 
-        $token = $_POST['_token'] ?? '';
+        $token = $this->extractCsrf();
         if (!\Saec\Core\Session::verifyCsrf($token)) {
             $this->json(['error' => 'Token CSRF invalide'], 403);
             return;
@@ -301,17 +301,7 @@ class FolderController extends Controller
     {
         $user = $this->requireAuth();
 
-        // For DELETE requests, CSRF token may be in body or header
-        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
-        if (!$token && $_SERVER['REQUEST_METHOD'] === 'DELETE') {
-            // Try to read from php://input
-            $raw = file_get_contents('php://input');
-            parse_str($raw, $body);
-            $token = $body['_token'] ?? '';
-        }
-        if (!$token) {
-            $token = $_POST['_token'] ?? '';
-        }
+        $token = $this->extractCsrf();
         if (!\Saec\Core\Session::verifyCsrf($token)) {
             $this->json(['error' => 'Token CSRF invalide'], 403);
             return;
@@ -375,7 +365,7 @@ class FolderController extends Controller
             return;
         }
 
-        $token = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? ($_POST['_token'] ?? '');
+        $token = $this->extractCsrf();
         if (!\Saec\Core\Session::verifyCsrf($token)) {
             $this->json(['error' => 'Token CSRF invalide'], 403);
             return;

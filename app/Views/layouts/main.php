@@ -124,7 +124,7 @@
                     <span class="nav-text">Mon compte</span>
                 </a>
 
-                <a href="/download" class="nav-item <?= strpos($_SERVER['REQUEST_URI'], '/download') !== false ? 'active' : '' ?>">
+                <a href="/client-sync" class="nav-item <?= strpos($_SERVER['REQUEST_URI'], '/client-sync') !== false ? 'active' : '' ?>">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     <span class="nav-text">Télécharger Sync</span>
                 </a>

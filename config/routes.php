@@ -25,27 +25,32 @@ $router->get('/', function() {
 
 // ─────────────────────────────────────────────────────────────
 // PUBLIC PAGES (no auth)
-// ─────────────────────────────────────────────────────────────
-$router->get('/pricing', function() {
-    require __DIR__ . '/../app/Views/pricing/index.php';
-    exit;
-});
-$router->get('/subscribe', function() {
-    require __DIR__ . '/../app/Views/pricing/subscribe.php';
-    exit;
-});
-$router->get('/download', function() {
-    require __DIR__ . '/../app/Views/download/index.php';
-    exit;
-});
-$router->get('/privacy', function() {
-    require __DIR__ . '/../app/Views/legal/privacy.php';
-    exit;
-});
-$router->get('/terms', function() {
-    require __DIR__ . '/../app/Views/legal/terms.php';
-    exit;
-});
+ // ─────────────────────────────────────────────────────────────
+ $router->get('/pricing', function() {
+     require __DIR__ . '/../app/Views/pricing/index.php';
+     exit;
+ });
+ $router->get('/subscribe', function() {
+     require __DIR__ . '/../app/Views/pricing/subscribe.php';
+     exit;
+ });
+ $router->get('/client-sync', function() {
+     require __DIR__ . '/../app/Views/download/index.php';
+     exit;
+ });
+ $router->get('/download', function() {
+     // Rediriger vers la nouvelle URL
+     header('Location: /client-sync');
+     exit;
+ });
+ $router->get('/privacy', function() {
+     require __DIR__ . '/../app/Views/legal/privacy.php';
+     exit;
+ });
+ $router->get('/terms', function() {
+     require __DIR__ . '/../app/Views/legal/terms.php';
+     exit;
+ });
 
 // ─────────────────────────────────────────────────────────────
 // AUTH

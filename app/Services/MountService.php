@@ -55,11 +55,25 @@ class MountService
             throw new \RuntimeException("Provider non trouvé ou inactif");
         }
 
-        // Tester que le remote path existe
+        // Tester que le remote path existe OU le créer s'il suit le pattern /cloud/tenant_{id}/
         $adapter = $this->storage->getAdapter($data['provider_id']);
         $remotePath = $data['remote_path'] ?? '/';
 
-        if (!$adapter->exists($remotePath)) {
+        // Structure maître: /cloud/tenant_{tenant_id}/
+        $tenantRoot = "/cloud/tenant_" . (int) $data['tenant_id'];
+
+        // Si le remote_path commence par le tenantRoot, créer la structure si absente
+        if (str_starts_with($remotePath, $tenantRoot)) {
+            // Créer le dossier racine tenant
+            if (!$adapter->exists($tenantRoot)) {
+                $adapter->mkdir($tenantRoot);
+            }
+            // Créer le sous-dossier demandé
+            if (!$adapter->exists($remotePath)) {
+                $adapter->mkdir($remotePath);
+            }
+        } elseif (!$adapter->exists($remotePath)) {
+            // Chemin ne suit pas la structure standard et n'existe pas
             throw new \RuntimeException("Le chemin distant n'existe pas: {$remotePath}");
         }
 
