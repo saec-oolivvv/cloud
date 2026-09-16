@@ -88,6 +88,12 @@ jobs:
           # Install ImageMagick and create ICO from PNG
           choco install imagemagick -y
           magick icons/icon.png -define icon:auto-resize=16,32,48,64,128,256 icons/icon.ico
+          # Verify ICO was created
+          if (-not (Test-Path "icons/icon.ico")) {
+            Write-Error "ICO file was not created!"
+            exit 1
+          }
+          Write-Host "ICO created successfully: $(Get-Item icons/icon.ico).Length bytes"
 
       - name: Build Tauri app (MSI)
         working-directory: saec-sync/src-tauri
