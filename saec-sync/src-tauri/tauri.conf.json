@@ -54,18 +54,15 @@
         "depends": ["webkit2gtk4.1", "gtk3", "libayatana-appindicator-gtk3"]
       }
     },
-    "windows": {
-      "msi": {
-        "upgradeCode": "{1A2B3C4D-5E6F-7A8B-9C0D-1E2F3A4B5C6D}",
-        "allowDowngrades": false,
-        "installMode": "perUser",
-        "wix": {
-          "language": "en-US",
-          "template": "wix-sharp"
-        }
+    "msi": {
+      "upgradeCode": "{1A2B3C4D-5E6F-7A8B-9C0D-1E2F3A4B5C6D}",
+      "allowDowngrades": false,
+      "installMode": "perUser",
+      "wix": {
+        "language": "en-US",
+        "template": "wix-sharp"
       }
-    }
-  },
+    },
   "plugins": {
     "updater": {
       "active": false,
