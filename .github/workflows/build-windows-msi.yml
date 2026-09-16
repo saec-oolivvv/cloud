@@ -1,0 +1,145 @@
+name: Build Windows MSI
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. v0.1.20)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-msi:
+    name: Build Windows MSI
+    runs-on: windows-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Rust (MSVC toolchain)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          target: x86_64-pc-windows-msvc
+          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            saec-sync/src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install WiX Toolset v3.14
+        run: |
+          choco install wixtoolset -y --version 3.14.1
+          $env:PATH += ";C:\Program Files (x86)\WiX Toolset v3.14\bin"
+          echo "C:\Program Files (x86)\WiX Toolset v3.14\bin" >> $env:GITHUB_PATH
+
+      - name: Verify MSBuild
+        run: where msbuild
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: saec-sync/package-lock.json
+
+      - name: Install npm dependencies
+        working-directory: saec-sync
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: saec-sync
+        run: npm run build
+
+      - name: Build Tauri app (MSI)
+        working-directory: saec-sync/src-tauri
+        run: cargo tauri build --target x86_64-pc-windows-msvc -- --msi
+        env:
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+
+      - name: Find MSI artifact
+        id: find-msi
+        run: |
+          $msi = Get-ChildItem -Path "target/x86_64-pc-windows-msvc/release/bundle/msi" -Filter "*.msi" | Select-Object -First 1
+          if ($msi) {
+            echo "msi_path=$($msi.FullName)" >> $env:GITHUB_OUTPUT
+            echo "msi_name=$($msi.Name)" >> $env:GITHUB_OUTPUT
+            echo "##[group]MSI found"
+            echo "Path: $($msi.FullName)"
+            echo "Size: $([math]::Round($msi.Length / 1MB, 1)) MB"
+            echo "##[endgroup]"
+          } else {
+            Write-Error "No MSI found in target/x86_64-pc-windows-msvc/release/bundle/msi/"
+            Get-ChildItem -Path "target" -Recurse -Filter "*.msi" -ErrorAction SilentlyContinue
+            exit 1
+          }
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SAEC-Sync-Windows-MSI
+          path: ${{ steps.find-msi.outputs.msi_path }}
+          retention-days: 30
+
+      - name: Create/Update Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.find-msi.outputs.msi_path }}
+          name: SAEC Sync ${{ github.ref_name }}
+          body: |
+            ## SAEC Sync Desktop Client - Windows
+
+            ### Windows Installer (MSI)
+
+            **Installation**
+            1. Téléchargez `SAEC Sync_${{ github.ref_name }}_x64.msi`
+            2. Double-cliquez pour installer (installation par utilisateur, pas d'admin requis)
+            3. Lancez "SAEC Sync" depuis le menu Démarrer
+
+            ### Configuration
+            - Au premier lancement, le client affiche un **code d'appareil** (ex: `ABCD-EFGH`)
+            - Une page s'ouvre automatiquement dans le navigateur : `https://cloud.saec.me/device?code=XXXX`
+            - Connectez-vous à SAEC Cloud et **autorisez l'appareil**
+            - La synchronisation démarre automatiquement
+
+            ### Fonctionnalités
+            - Sync bidirectionnelle temps réel (AES-256-GCM)
+            - Tray icon + notifications natives
+            - Multi-provider (S3, Dropbox, GDrive, OneDrive, SFTP, WebDAV)
+            - Résolution de conflits (Last-Write-Wins, Keep Both, Ask)
+            - Open source (Rust + Tauri + React)
+
+            ### Exigences
+            - Windows 10 1903+ (x64)
+            - Compte SAEC Cloud avec mount configuré par admin
+
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
