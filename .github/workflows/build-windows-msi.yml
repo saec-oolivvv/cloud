@@ -82,6 +82,13 @@ jobs:
         working-directory: saec-sync
         run: npm run build
 
+      - name: Create ICO from PNG for Windows
+        working-directory: saec-sync/src-tauri
+        run: |
+          # Install ImageMagick and create ICO from PNG
+          choco install imagemagick -y
+          magick icons/icon.png -define icon:auto-resize=16,32,48,64,128,256 icons/icon.ico
+
       - name: Build Tauri app (MSI)
         working-directory: saec-sync/src-tauri
         run: |
