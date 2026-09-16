@@ -87,8 +87,14 @@ jobs:
         run: |
           # Install tauri-cli if not present
           if (!(Get-Command cargo-tauri -ErrorAction SilentlyContinue)) {
-            cargo install tauri-cli --version "^2.0" --locked
+            Write-Host "Installing tauri-cli..."
+            cargo install tauri-cli --version "^2.0" --locked 2>&1
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "Failed to install tauri-cli"
+              exit 1
+            }
           }
+          Write-Host "tauri-cli installed successfully"
           cargo tauri build --target x86_64-pc-windows-msvc -- --msi
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
