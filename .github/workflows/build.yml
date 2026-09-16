@@ -53,8 +53,8 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          # Install WiX Toolset v3.14+ for MSI
-          choco install wixtoolset -y --version 3.14.1
+          # Install WiX Toolset v3.14+ for MSI (force reinstall to ensure correct version)
+          choco install wixtoolset -y --version 3.14.1 --force
           # Add WiX to PATH for this session
           $env:PATH += ";C:\Program Files (x86)\WiX Toolset v3.14\bin"
           echo "C:\Program Files (x86)\WiX Toolset v3.14\bin" >> $env:GITHUB_PATH
