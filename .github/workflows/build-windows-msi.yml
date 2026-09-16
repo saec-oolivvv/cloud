@@ -13,7 +13,6 @@ on:
 
 permissions:
   contents: write
-  packages: write
 
 env:
   RUST_BACKTRACE: 1
@@ -37,7 +36,6 @@ jobs:
         with:
           toolchain: stable
           target: x86_64-pc-windows-msvc
-          components: rustfmt, clippy
 
       - name: Cache Cargo
         uses: actions/cache@v4
@@ -48,29 +46,24 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
             saec-sync/src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('saec-sync/src-tauri/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
       - name: Install WiX Toolset v3.14
+        shell: pwsh
         run: |
-          # Check if WiX is already installed
           if (Test-Path "C:\Program Files (x86)\WiX Toolset v3.14\bin\candle.exe") {
             Write-Host "WiX Toolset v3.14 already installed"
           } else {
             choco install wixtoolset -y --version 3.14.1 --force
           }
-          # Add WiX to PATH for this session
-          $env:PATH += ";C:\Program Files (x86)\WiX Toolset v3.14\bin"
-          echo "C:\Program Files (x86)\WiX Toolset v3.14\bin" >> $env:GITHUB_PATH
-
-      - name: Verify MSBuild
-        run: where msbuild
+          Add-Content -Path $env:GITHUB_PATH -Value "C:\Program Files (x86)\WiX Toolset v3.14\bin"
 
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: saec-sync/package-lock.json
 
@@ -78,82 +71,40 @@ jobs:
         working-directory: saec-sync
         run: npm ci
 
-      - name: Build frontend
-        working-directory: saec-sync
-        run: npm run build
-
-- name: Create ICO from PNG for Windows
+      - name: Create ICO from PNG for Windows
         working-directory: saec-sync/src-tauri
         run: |
-          # Install Pillow if needed
           pip install pillow --quiet
-          # Use Python with Pillow to create ICO (more reliable on GitHub Actions)
-          python << 'EOF'
-import sys
-import os
-from PIL import Image
+          python ../../.github/scripts/create_ico.py
 
-input_path = 'icons/icon.png'
-output_path = 'icons/icon.ico'
-
-if not os.path.exists(input_path):
-    print(f'Input PNG not found: {input_path}')
-    sys.exit(1)
-
-# Open the PNG
-img = Image.open(input_path)
-
-# Create ICO with multiple sizes
-sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
-images = []
-for size in sizes:
-    resized = img.resize(size, Image.Resampling.LANCZOS)
-    images.append(resized)
-
-# Save as ICO
-images[0].save(
-    output_path,
-    format='ICO',
-    sizes=[img.size for img in images]
-)
-
-print(f'ICO created successfully: {output_path}')
-print(f'File size: {os.path.getsize(output_path)} bytes')
-EOF
-        working-directory: saec-sync/src-tauri
-        run: |
-          # Install tauri-cli if not present
-          if (!(Get-Command cargo-tauri -ErrorAction SilentlyContinue)) {
-            Write-Host "Installing tauri-cli..."
-            cargo install tauri-cli --version "^2.0" --locked 2>&1
-            if ($LASTEXITCODE -ne 0) {
-              Write-Error "Failed to install tauri-cli"
-              exit 1
-            }
-          }
-          Write-Host "tauri-cli installed successfully"
-          # Tauri v2: MSI is built via bundle targets (configured in tauri.conf.json)
-          # No --msi flag needed - bundle targets include MSI on Windows
-          cargo tauri build --target x86_64-pc-windows-msvc
-        env:
-          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+      - name: Build Tauri app (MSI)
+        working-directory: saec-sync
+        run: npm run tauri -- build
 
       - name: Find MSI artifact
         id: find-msi
+        shell: pwsh
         run: |
-          $msi = Get-ChildItem -Path "target/x86_64-pc-windows-msvc/release/bundle/msi" -Filter "*.msi" | Select-Object -First 1
+          $msi = Get-ChildItem -Path "saec-sync/src-tauri/target/release/bundle/msi" -Filter "*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $msi) {
+            $msi = Get-ChildItem -Path "saec-sync/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi" -Filter "*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
+          }
           if ($msi) {
             echo "msi_path=$($msi.FullName)" >> $env:GITHUB_OUTPUT
             echo "msi_name=$($msi.Name)" >> $env:GITHUB_OUTPUT
-            echo "##[group]MSI found"
-            echo "Path: $($msi.FullName)"
-            echo "Size: $([math]::Round($msi.Length / 1MB, 1)) MB"
-            echo "##[endgroup]"
+            Write-Host "MSI found: $($msi.FullName)"
+            Write-Host "Size: $([math]::Round($msi.Length / 1MB, 1)) MB"
           } else {
-            Write-Error "No MSI found in target/x86_64-pc-windows-msvc/release/bundle/msi/"
-            Get-ChildItem -Path "target" -Recurse -Filter "*.msi" -ErrorAction SilentlyContinue
+            Write-Error "No MSI found"
+            Get-ChildItem -Path "saec-sync/src-tauri/target" -Recurse -Filter "*.msi" -ErrorAction SilentlyContinue
             exit 1
           }
+
+      - name: Verify ICO is valid
+        shell: pwsh
+        run: |
+          $ico = Get-Item "saec-sync/src-tauri/icons/icon.ico"
+          Write-Host "icon.ico size: $($ico.Length) bytes"
 
       - name: Upload MSI artifact
         uses: actions/upload-artifact@v4
@@ -173,14 +124,14 @@ EOF
 
             ### Windows Installer (MSI)
 
-            **Installation**
-            1. Téléchargez `SAEC Sync_${{ github.ref_name }}_x64.msi`
-            2. Double-cliquez pour installer (installation par utilisateur, pas d'admin requis)
+            ### Installation
+            1. Téléchargez `${{ steps.find-msi.outputs.msi_name }}`
+            2. Double-cliquez pour installer
             3. Lancez "SAEC Sync" depuis le menu Démarrer
 
             ### Configuration
             - Au premier lancement, le client affiche un **code d'appareil** (ex: `ABCD-EFGH`)
-            - Une page s'ouvre automatiquement dans le navigateur : `https://cloud.saec.me/device?code=XXXX`
+            - La page `https://cloud.saec.me/device?code=XXXX` s'ouvre automatiquement
             - Connectez-vous à SAEC Cloud et **autorisez l'appareil**
             - La synchronisation démarre automatiquement
 

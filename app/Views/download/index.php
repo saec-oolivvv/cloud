@@ -31,8 +31,9 @@ if ($json) {
 
 // Fichiers locaux disponibles
 $localFiles = [
-    'saec-sync-0.1.0-amd64.deb' => ['path' => '/download/saec-sync-0.1.0-amd64.deb', 'local' => true],
-    'saec-sync-0.1.0-x86_64.rpm' => ['path' => '/download/saec-sync-0.1.0-x86_64.rpm', 'local' => true],
+    'SAEC.Sync_0.1.0_amd64.deb' => ['path' => '/download/SAEC.Sync_0.1.0_amd64.deb', 'local' => true],
+    'SAEC.Sync-0.1.0-1.x86_64.rpm' => ['path' => '/download/SAEC.Sync-0.1.0-1.x86_64.rpm', 'local' => true],
+    'saec-sync-linux-x64' => ['path' => '/download/saec-sync-linux-x64', 'local' => true],
 ];
 
 function getDownloadInfo(string $filename, array $githubReleases, array $localFiles): array {
@@ -46,9 +47,10 @@ function getDownloadInfo(string $filename, array $githubReleases, array $localFi
 }
 
 $platforms = [
-    ['id' => 'linux-deb', 'name' => 'Linux — .deb', 'icon' => '🐧', 'desc' => 'Debian, Ubuntu, Mint, Pop!_OS, Elementary, et dérivés', 'meta' => ['Architecture: amd64', 'Taille: ~11 MB', 'Version: 0.1.0', 'Dépendances: webkit2gtk-4.1, gtk3, libayatana-appindicator3'], 'filename' => 'saec-sync-0.1.0-amd64.deb'],
-    ['id' => 'linux-rpm', 'name' => 'Linux — .rpm', 'icon' => '🐧', 'desc' => 'Fedora, RHEL, CentOS, AlmaLinux, Rocky, openSUSE', 'meta' => ['Architecture: x86_64', 'Taille: ~11 MB', 'Version: 0.1.0', 'Dépendances: webkit2gtk4.1, gtk3, libayatana-appindicator-gtk3'], 'filename' => 'saec-sync-0.1.0-x86_64.rpm'],
-    ['id' => 'linux-appimage', 'name' => 'Linux — AppImage', 'icon' => '🐧', 'desc' => 'Distribution universelle (toutes distros, sans installation)', 'meta' => ['Architecture: x86_64', 'Taille: ~11 MB', 'Version: 0.1.0', 'Exécution: chmod +x && ./SAEC-Sync.AppImage'], 'filename' => 'saec-sync-0.1.0-x86_64.AppImage'],
+    ['id' => 'linux-deb', 'name' => 'Linux — .deb', 'icon' => '🐧', 'desc' => 'Debian, Ubuntu, Mint, Pop!_OS, Elementary, et dérivés', 'meta' => ['Architecture: amd64', 'Taille: ~11 MB', 'Version: 0.1.0', 'Dépendances: webkit2gtk-4.1, gtk3, libayatana-appindicator3'], 'filename' => 'SAEC.Sync_0.1.0_amd64.deb'],
+    ['id' => 'linux-rpm', 'name' => 'Linux — .rpm', 'icon' => '🐧', 'desc' => 'Fedora, RHEL, CentOS, AlmaLinux, Rocky, openSUSE', 'meta' => ['Architecture: x86_64', 'Taille: ~11 MB', 'Version: 0.1.0', 'Dépendances: webkit2gtk4.1, gtk3, libayatana-appindicator-gtk3'], 'filename' => 'SAEC.Sync-0.1.0-1.x86_64.rpm'],
+    ['id' => 'linux-appimage', 'name' => 'Linux — AppImage', 'icon' => '🐧', 'desc' => 'Distribution universelle (toutes distros, sans installation)', 'meta' => ['Architecture: x86_64', 'Taille: ~11 MB', 'Version: 0.1.0', 'Exécution: chmod +x && ./SAEC-Sync.AppImage'], 'filename' => 'SAEC Sync-0.1.0.AppImage'],
+    ['id' => 'linux-binary', 'name' => 'Linux — Binaire', 'icon' => '🐧', 'desc' => 'Binaire autonome (toutes distros)', 'meta' => ['Architecture: x86_64', 'Taille: ~35 MB', 'Version: 0.1.0', 'Exécution: chmod +x && ./saec-sync-linux-x64'], 'filename' => 'saec-sync-linux-x64'],
     ['id' => 'windows-msi', 'name' => 'Windows — .msi', 'icon' => '🪟', 'desc' => 'Windows 10/11 (x64)', 'meta' => ['Build CI: GitHub Actions', 'Installation: per-user (pas d\'admin)', 'Signature: code signing'], 'filename' => 'SAEC Sync_0.1.0_amd64.msi'],
     ['id' => 'macos-dmg', 'name' => 'macOS — .dmg', 'icon' => '🍎', 'desc' => 'macOS 12+ (Apple Silicon & Intel)', 'meta' => ['Build CI: GitHub Actions', 'Notarisation: Apple', 'Universal: ARM64 + x64'], 'filename' => 'SAEC Sync-0.1.0.dmg'],
 ];
