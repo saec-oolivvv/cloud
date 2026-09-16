@@ -63,7 +63,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: saec-sync/package-lock.json
 
@@ -85,9 +85,16 @@ jobs:
         id: find-msi
         shell: pwsh
         run: |
-          $msi = Get-ChildItem -Path "saec-sync/src-tauri/target/release/bundle/msi" -Filter "*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $msi) {
-            $msi = Get-ChildItem -Path "saec-sync/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi" -Filter "*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
+          $candidates = @(
+            "saec-sync/target/release/bundle/msi",
+            "saec-sync/target/x86_64-pc-windows-msvc/release/bundle/msi",
+            "saec-sync/src-tauri/target/release/bundle/msi",
+            "saec-sync/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi"
+          )
+          $msi = $null
+          foreach ($dir in $candidates) {
+            $msi = Get-ChildItem -Path $dir -Filter "*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($msi) { break }
           }
           if ($msi) {
             echo "msi_path=$($msi.FullName)" >> $env:GITHUB_OUTPUT
