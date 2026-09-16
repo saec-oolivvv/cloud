@@ -1,0 +1,100 @@
+name: Upload Prebuilt Artifacts
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. v0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  upload-artifacts:
+    name: Upload Prebuilt Artifacts to Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify local artifacts exist
+        run: |
+          echo "=== Checking for prebuilt artifacts ==="
+          ls -la saec-sync/target/release/bundle/ 2>/dev/null || echo "No bundle dir"
+          find saec-sync/target/release -name "*.deb" -o -name "*.rpm" -o -name "*.AppImage" -o -name "*.msi" -o -name "*.dmg" 2>/dev/null | head -20
+
+      - name: Copy artifacts to staging
+        run: |
+          mkdir -p artifacts
+          # Linux DEB
+          cp saec-sync/target/release/bundle/deb/*.deb artifacts/ 2>/dev/null || true
+          # Linux RPM
+          cp saec-sync/target/release/bundle/rpm/*.rpm artifacts/ 2>/dev/null || true
+          # Linux AppImage
+          cp saec-sync/target/release/bundle/appimage/*.AppImage artifacts/ 2>/dev/null || true
+          # Windows MSI (if built on Windows and committed)
+          cp saec-sync/target/release/bundle/msi/*.msi artifacts/ 2>/dev/null || true
+          # macOS DMG (if built on macOS and committed)
+          cp saec-sync/target/release/bundle/dmg/*.dmg artifacts/ 2>/dev/null || true
+          # Fallback: raw binary
+          cp saec-sync/target/release/saec-sync artifacts/saec-sync-linux-x64 2>/dev/null || true
+          
+          echo "=== Staged artifacts ==="
+          ls -la artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        with:
+          files: artifacts/*
+          name: SAEC Sync ${{ github.ref_name }}
+          body: |
+            ## SAEC Sync Desktop Client
+
+            ### Téléchargements
+            | Plateforme | Fichier | Installation |
+            |------------|---------|--------------|
+            | Windows (x64) | `SAEC Sync_${{ github.ref_name }}_x64.msi` | Double-clic, installation per-user |
+            | Linux (Debian/Ubuntu) | `saec-sync-${{ github.ref_name }}-amd64.deb` | `sudo apt install ./saec-sync.deb` |
+            | Linux (Fedora/RHEL) | `saec-sync-${{ github.ref_name }}-x86_64.rpm` | `sudo rpm -i saec-sync.rpm` |
+            | Linux (Universal) | `SAEC Sync-${{ github.ref_name }}.AppImage` | `chmod +x && ./SAEC-Sync.AppImage` |
+            | Linux (Binary) | `saec-sync-linux-x64` | `chmod +x && ./saec-sync-linux-x64` |
+            | macOS (Apple Silicon) | `SAEC Sync-${{ github.ref_name }}-aarch64.dmg` | Double-clic |
+            | macOS (Intel) | `SAEC Sync-${{ github.ref_name }}-x64.dmg` | Double-clic |
+
+            ### Configuration
+            1. Téléchargez le fichier pour votre plateforme
+            2. Installez / rendez exécutable
+            3. Lancez "SAEC Sync"
+            4. Un **code d'appareil** s'affiche (ex: `ABCD-EFGH`)
+            5. La page `https://cloud.saec.me/device?code=XXXX` s'ouvre
+            6. Connectez-vous à SAEC Cloud et **autorisez l'appareil**
+            6. La synchronisation démarre automatiquement
+
+            ### Fonctionnalités
+            - Sync bidirectionnelle temps réel (AES-256-GCM)
+            - Tray icon + notifications natives
+            - Multi-provider (S3, Dropbox, GDrive, OneDrive, SFTP, WebDAV)
+            - Résolution de conflits (Last-Write-Wins, Keep Both, Ask)
+            - Open source (Rust + Tauri + React)
+
+            ### Exigences
+            - Windows 10 1903+ (x64)
+            - Linux: glibc 2.31+, WebKitGTK 4.1
+            - macOS 12+ (Universal)
+            - Compte SAEC Cloud avec mount configuré par admin
+
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
