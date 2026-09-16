@@ -1,4 +1,4 @@
-name: Build MSI
+name: Build All Platforms
 
 on:
   push:
@@ -16,10 +16,13 @@ permissions:
   packages: write
 
 jobs:
+  # ═══════════════════════════════════════════════════════════
+  # WINDOWS MSI
+  # ═══════════════════════════════════════════════════════════
   build-msi:
     name: Build Windows MSI
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     env:
       RUST_BACKTRACE: 1
@@ -60,7 +63,6 @@ jobs:
           echo "C:\Program Files (x86)\WiX Toolset v3.14\bin" >> $env:GITHUB_PATH
 
           # Visual Studio Build Tools already included in windows-latest
-          # Verify MSBuild available
           where msbuild
 
       - name: Install Node.js
@@ -142,10 +144,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # ═══════════════════════════════════════════════════════════
+  # LINUX .DEB (Ubuntu 24.04)
+  # ═══════════════════════════════════════════════════════════
   build-deb:
     name: Build Linux .deb
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
@@ -169,6 +174,8 @@ jobs:
             ~/.cargo/git/db
             saec-sync/src-tauri/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
       - name: Install system dependencies
         run: |
@@ -183,7 +190,12 @@ jobs:
             libssl-dev \
             pkg-config \
             wget \
-            file
+            file \
+            libgirepository1.0-dev \
+            libcairo2-dev \
+            libpango1.0-dev \
+            libatk1.0-dev \
+            libgdk-pixbuf-2.0-dev
 
       - name: Install Node.js
         uses: actions/setup-node@v4
@@ -207,12 +219,14 @@ jobs:
       - name: Find DEB artifact
         id: find-deb
         run: |
-          deb=$(find target/x86_64-unknown-linux-gnu/release/bundle/deb -name "*.deb" | head -1)
+          deb=$(find target/x86_64-unknown-linux-gnu/release/bundle/deb -name "*.deb" 2>/dev/null | head -1)
           if [ -n "$deb" ]; then
             echo "deb_path=$deb" >> $GITHUB_OUTPUT
             echo "deb_name=$(basename $deb)" >> $GITHUB_OUTPUT
           else
-            echo "No DEB found"
+            echo "No DEB found in target/x86_64-unknown-linux-gnu/release/bundle/deb/"
+            ls -la target/x86_64-unknown-linux-gnu/release/bundle/deb/ 2>/dev/null || echo "deb dir not found"
+            find target -name "*.deb" 2>/dev/null || echo "no .deb anywhere"
             exit 1
           fi
 
@@ -223,10 +237,13 @@ jobs:
           path: ${{ steps.find-deb.outputs.deb_path }}
           retention-days: 30
 
+  # ═══════════════════════════════════════════════════════════
+  # LINUX .RPM (Fedora 41)
+  # ═══════════════════════════════════════════════════════════
   build-rpm:
     name: Build Linux .rpm
     runs-on: fedora-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
@@ -250,6 +267,8 @@ jobs:
             ~/.cargo/git/db
             saec-sync/src-tauri/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
       - name: Install system dependencies
         run: |
@@ -263,7 +282,12 @@ jobs:
             gstreamer1-plugins-base-devel \
             openssl-devel \
             pkgconf-pkg-config \
-            file
+            file \
+            cairo-gobject-devel \
+            pango-devel \
+            atk-devel \
+            gdk-pixbuf2-devel \
+            libgirepository1.0-devel
 
       - name: Install Node.js
         uses: actions/setup-node@v4
@@ -287,12 +311,14 @@ jobs:
       - name: Find RPM artifact
         id: find-rpm
         run: |
-          rpm=$(find target/x86_64-unknown-linux-gnu/release/bundle/rpm -name "*.rpm" | head -1)
+          rpm=$(find target/x86_64-unknown-linux-gnu/release/bundle/rpm -name "*.rpm" 2>/dev/null | head -1)
           if [ -n "$rpm" ]; then
             echo "rpm_path=$rpm" >> $GITHUB_OUTPUT
             echo "rpm_name=$(basename $rpm)" >> $GITHUB_OUTPUT
           else
-            echo "No RPM found"
+            echo "No RPM found in target/x86_64-unknown-linux-gnu/release/bundle/rpm/"
+            ls -la target/x86_64-unknown-linux-gnu/release/bundle/rpm/ 2>/dev/null || echo "rpm dir not found"
+            find target -name "*.rpm" 2>/dev/null || echo "no .rpm anywhere"
             exit 1
           fi
 
@@ -303,10 +329,13 @@ jobs:
           path: ${{ steps.find-rpm.outputs.rpm_path }}
           retention-days: 30
 
+  # ═══════════════════════════════════════════════════════════
+  # LINUX APPIMAGE (Ubuntu 24.04)
+  # ═══════════════════════════════════════════════════════════
   build-appimage:
     name: Build Linux AppImage
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
@@ -330,6 +359,8 @@ jobs:
             ~/.cargo/git/db
             saec-sync/src-tauri/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
       - name: Install system dependencies
         run: |
@@ -345,7 +376,12 @@ jobs:
             pkg-config \
             file \
             fuse \
-            libfuse2
+            libfuse2 \
+            libgirepository1.0-dev \
+            libcairo2-dev \
+            libpango1.0-dev \
+            libatk1.0-dev \
+            libgdk-pixbuf-2.0-dev
 
       - name: Install Node.js
         uses: actions/setup-node@v4
@@ -369,12 +405,14 @@ jobs:
       - name: Find AppImage artifact
         id: find-appimage
         run: |
-          appimage=$(find target/x86_64-unknown-linux-gnu/release/bundle/appimage -name "*.AppImage" | head -1)
+          appimage=$(find target/x86_64-unknown-linux-gnu/release/bundle/appimage -name "*.AppImage" 2>/dev/null | head -1)
           if [ -n "$appimage" ]; then
             echo "appimage_path=$appimage" >> $GITHUB_OUTPUT
             echo "appimage_name=$(basename $appimage)" >> $GITHUB_OUTPUT
           else
-            echo "No AppImage found"
+            echo "No AppImage found in target/x86_64-unknown-linux-gnu/release/bundle/appimage/"
+            ls -la target/x86_64-unknown-linux-gnu/release/bundle/appimage/ 2>/dev/null || echo "appimage dir not found"
+            find target -name "*.AppImage" 2>/dev/null || echo "no .AppImage anywhere"
             exit 1
           fi
 
