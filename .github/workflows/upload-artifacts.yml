@@ -30,23 +30,20 @@ jobs:
       - name: Verify local artifacts exist
         run: |
           echo "=== Checking for prebuilt artifacts ==="
-          ls -la saec-sync/target/release/bundle/ 2>/dev/null || echo "No bundle dir"
-          find saec-sync/target/release -name "*.deb" -o -name "*.rpm" -o -name "*.AppImage" -o -name "*.msi" -o -name "*.dmg" 2>/dev/null | head -20
+          ls -la releases/${{ github.ref_name }}/ 2>/dev/null || echo "No release dir for ${{ github.ref_name }}"
+          ls -la releases/${{ github.ref_name }}/ 2>/dev/null || true
 
       - name: Copy artifacts to staging
         run: |
           mkdir -p artifacts
-          # Linux DEB
+          # Copy from versioned release folder
+          cp releases/${{ github.ref_name }}/* artifacts/ 2>/dev/null || true
+          # Also check legacy locations
           cp saec-sync/target/release/bundle/deb/*.deb artifacts/ 2>/dev/null || true
-          # Linux RPM
           cp saec-sync/target/release/bundle/rpm/*.rpm artifacts/ 2>/dev/null || true
-          # Linux AppImage
           cp saec-sync/target/release/bundle/appimage/*.AppImage artifacts/ 2>/dev/null || true
-          # Windows MSI (if built on Windows and committed)
           cp saec-sync/target/release/bundle/msi/*.msi artifacts/ 2>/dev/null || true
-          # macOS DMG (if built on macOS and committed)
           cp saec-sync/target/release/bundle/dmg/*.dmg artifacts/ 2>/dev/null || true
-          # Fallback: raw binary
           cp saec-sync/target/release/saec-sync artifacts/saec-sync-linux-x64 2>/dev/null || true
           
           echo "=== Staged artifacts ==="
