@@ -95,7 +95,9 @@ jobs:
             }
           }
           Write-Host "tauri-cli installed successfully"
-          cargo tauri build --target x86_64-pc-windows-msvc -- --msi
+          # Tauri v2: MSI is built via bundle targets (configured in tauri.conf.json)
+          # No --msi flag needed - bundle targets include MSI on Windows
+          cargo tauri build --target x86_64-pc-windows-msvc
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
 
