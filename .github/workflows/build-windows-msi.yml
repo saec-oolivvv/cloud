@@ -82,13 +82,13 @@ jobs:
         working-directory: saec-sync
         run: npm run build
 
-      - name: Create ICO from PNG for Windows
+- name: Create ICO from PNG for Windows
         working-directory: saec-sync/src-tauri
         run: |
           # Install Pillow if needed
           pip install pillow --quiet
           # Use Python with Pillow to create ICO (more reliable on GitHub Actions)
-          python -c "
+          python << 'EOF'
 import sys
 import os
 from PIL import Image
@@ -119,7 +119,7 @@ images[0].save(
 
 print(f'ICO created successfully: {output_path}')
 print(f'File size: {os.path.getsize(output_path)} bytes')
-          "
+EOF
         working-directory: saec-sync/src-tauri
         run: |
           # Install tauri-cli if not present
