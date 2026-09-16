@@ -62,7 +62,8 @@
         "language": "en-US",
         "template": "wix-sharp"
       }
-    },
+    }
+  },
   "plugins": {
     "updater": {
       "active": false,
