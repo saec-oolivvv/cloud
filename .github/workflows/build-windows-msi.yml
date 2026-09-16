@@ -85,17 +85,39 @@ jobs:
       - name: Create ICO from PNG for Windows
         working-directory: saec-sync/src-tauri
         run: |
-          # Install ImageMagick and create ICO from PNG
-          choco install imagemagick -y
-          magick icons/icon.png -define icon:auto-resize=16,32,48,64,128,256 icons/icon.ico
-          # Verify ICO was created
-          if (-not (Test-Path "icons/icon.ico")) {
-            Write-Error "ICO file was not created!"
-            exit 1
-          }
-          Write-Host "ICO created successfully: $(Get-Item icons/icon.ico).Length bytes"
+          # Use Python with Pillow to create ICO (more reliable on GitHub Actions)
+          python -c "
+import sys
+import os
+from PIL import Image
 
-      - name: Build Tauri app (MSI)
+input_path = 'icons/icon.png'
+output_path = 'icons/icon.ico'
+
+if not os.path.exists(input_path):
+    print(f'Input PNG not found: {input_path}')
+    sys.exit(1)
+
+# Open the PNG
+img = Image.open(input_path)
+
+# Create ICO with multiple sizes
+sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
+images = []
+for size in sizes:
+    resized = img.resize(size, Image.Resampling.LANCZOS)
+    images.append(resized)
+
+# Save as ICO
+images[0].save(
+    output_path,
+    format='ICO',
+    sizes=[img.size for img in images]
+)
+
+print(f'ICO created successfully: {output_path}')
+print(f'File size: {os.path.getsize(output_path)} bytes')
+          "
         working-directory: saec-sync/src-tauri
         run: |
           # Install tauri-cli if not present
