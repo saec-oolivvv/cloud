@@ -37,7 +37,7 @@
   "bundle": {
     "active": true,
     "targets": ["deb", "rpm", "appimage", "msi"],
-    "icon": ["icons/icon.png", "icons/icon.icns"],
+    "icon": ["icons/icon.png", "icons/icon.icns", "icons/icon.ico"],
     "resources": [],
     "externalBin": [],
     "copyright": "© 2026 SAEC Ltd.",
