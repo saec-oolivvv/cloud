@@ -7,7 +7,7 @@
 #>
 
 param(
-    [string]$Version = "0.1.20",
+    [string]$Version = "0.1.36",
     [switch]$CleanBuild
 )
 
@@ -167,7 +167,7 @@ function Upload-Release {
     
     Write-Host "☁️ Upload vers GitHub Release..." -ForegroundColor Yellow
     
-    $version = "v0.1.20"
+    $version = "v0.1.36"
     $repo = "saec-oolivvv/cloud"
     
     # Vérifier si release existe
