@@ -30,29 +30,29 @@ jobs:
           python-version: '3.12'
 
       - name: Build Tauri DMG for Intel (x86_64)
-        working-directory: saec-sync/src-tauri
+        working-directory: saec-sync
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           CODESIGN_IDENTITY: ${{ secrets.CODESIGN_IDENTITY }}
         run: |
-          cargo tauri build --target x86_64-apple-darwin --release
+          npm run tauri -- build --target x86_64-apple-darwin
 
       - name: Build Tauri DMG for Apple Silicon (arm64)
-        working-directory: saec-sync/src-tauri
+        working-directory: saec-sync
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           CODESIGN_IDENTITY: ${{ secrets.CODESIGN_IDENTITY }}
         run: |
-          cargo tauri build --target aarch64-apple-darwin --release
+          npm run tauri -- build --target aarch64-apple-darwin
 
       - name: Locate generated DMGs
         id: find-dmgs
         run: |
           $dmgPaths_intel = @(
-            "saec-sync/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg"
+            "saec-sync/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg"
           )
           $dmgPaths_arm = @(
-            "saec-sync/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg"
+            "saec-sync/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg"
           )
 
           $all_dmgs = @()

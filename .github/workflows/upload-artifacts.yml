@@ -44,9 +44,9 @@ jobs:
           cp saec-sync/target/release/bundle/appimage/*.AppImage artifacts/ 2>/dev/null || true
           cp saec-sync/target/release/bundle/msi/*.msi artifacts/ 2>/dev/null || true
           # DMG Intel
-          cp saec-sync/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg artifacts/ 2>/dev/null || true
+          cp saec-sync/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg artifacts/ 2>/dev/null || true
           # DMG Apple Silicon
-          cp saec-sync/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg artifacts/ 2>/dev/null || true
+          cp saec-sync/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg artifacts/ 2>/dev/null || true
           cp saec-sync/target/release/saec-sync artifacts/saec-sync-linux-x64 2>/dev/null || true
           
           echo "=== Staged artifacts ==="
