@@ -19,6 +19,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install dependencies
+        working-directory: saec-sync
+        run: npm ci
+
       - name: Install Rust targets (Intel + Apple Silicon)
         run: |
           rustup target add x86_64-apple-darwin
