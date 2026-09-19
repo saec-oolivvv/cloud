@@ -1,0 +1,89 @@
+name: Build SAEC Sync DMG
+
+on:
+  push:
+    tags:
+      - 'v*'          # déclenché à chaque nouveau tag (ex: v0.1.36)
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build'
+        required: false
+        default: ''
+
+jobs:
+  build-dmg:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust targets (Intel + Apple Silicon)
+        run: |
+          rustup target add x86_64-apple-darwin
+          rustup target add aarch64-apple-darwin
+
+      - name: Setup Python (for any helpers)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build Tauri DMG for Intel (x86_64)
+        working-directory: saec-sync/src-tauri
+        env:
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          CODESIGN_IDENTITY: ${{ secrets.CODESIGN_IDENTITY }}
+        run: |
+          cargo tauri build --target x86_64-apple-darwin --release
+
+      - name: Build Tauri DMG for Apple Silicon (arm64)
+        working-directory: saec-sync/src-tauri
+        env:
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          CODESIGN_IDENTITY: ${{ secrets.CODESIGN_IDENTITY }}
+        run: |
+          cargo tauri build --target aarch64-apple-darwin --release
+
+      - name: Locate generated DMGs
+        id: find-dmgs
+        run: |
+          $dmgPaths_intel = @(
+            "saec-sync/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg"
+          )
+          $dmgPaths_arm = @(
+            "saec-sync/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg"
+          )
+
+          $all_dmgs = @()
+          
+          foreach ($pattern in $dmgPaths_intel) {
+            $files = Get-ChildItem $pattern -ErrorAction SilentlyContinue
+            if ($files) {
+              $all_dmgs += $files[0].FullName
+            }
+          }
+          
+          foreach ($pattern in $dmgPaths_arm) {
+            $files = Get-ChildItem $pattern -ErrorAction SilentlyContinue
+            if ($files) {
+              $all_dmgs += $files[0].FullName
+            }
+          }
+
+          if ($all_dmgs.Count -eq 0) {
+            throw "Aucun DMG trouvé dans les dossiers de sortie attendus"
+          }
+
+          # Output all DMG paths as comma-separated list
+          $dmg_list = ($all_dmgs -join ",")
+          echo "dmg_paths=$dmg_list" >> $env:GITHUB_OUTPUT
+
+      - name: Create/Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "SAEC Sync ${{ github.ref_name }}"
+          files: ${{ steps.find-dmgs.outputs.dmg_paths }}
+          overwrite: true
+          generate_release_notes: true

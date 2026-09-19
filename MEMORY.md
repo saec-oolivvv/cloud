@@ -508,3 +508,105 @@ chmod 644 /mnt/nas-web/cloud/storage/keys/master.key
 - `app/Controllers/FileController.php` — MODIFIÉ (CSRF delete + copy fix)
 - `app/Views/files/index.php` — MODIFIÉ (delete CSRF header au lieu de body)
 - `app/Views/auth/login.php` — MODIFIÉ (champ hidden redirect)
+
+## 15. DMG — Build macOS (à venir)
+
+> Target: `dmg` via Tauri bundle — voir `tauri.conf.json` → `bundle.targets`.
+
+### Prérequis
+- Machine macOS (ou CI macOS compatible)
+- Xcode command line tools: `xcode-select --install`
+- `productbuild` (inclus avec Xcode)
+- Codesigning identity pour signature macOS
+
+### Processus de build DMG
+1. **Build Tauri ciblant macOS** :
+   ```bash
+   cargo tauri build --target aarch64-apple-darwin -- --debug
+   ```
+   ou en release :
+   ```bash
+   cargo tauri build --target aarch64-apple-darwin --release
+   ```
+2. **Artifact généré** : `saec-sync/target/aarch64-apple-darwin/release/bundle/dmg/SAEC Sync.app.dmg`
+3. **Options de personnalisation** :
+   - Icons DMG (icône + dossier Applications)
+   - Background personnalisé
+   - Licence agreement
+   - Ejection du volume après installation
+
+### Problèmes connus
+- Aucun runner macOS n'est disponible en local → solution recommandée : GitHub Actions runner macOS-latest
+- Codesigning requis pour distribution extérieure → clé Apple Developer ou identité de signature
+- La target `aarch64-apple-darwin` nécessite Rust ciblé via `rustup target add aarch64-apple-darwin`
+
+### Workflow GitHub Actions proposé (`.github/workflows/dmg.yml`)
+```yaml
+name: Build SAEC Sync DMG
+
+on:
+  push:
+    tags:
+      - 'v*'          # déclenché à chaque nouveau tag
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build'
+        required: false
+        default: ''
+
+jobs:
+  build-dmg:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust target (if needed)
+        run: rustup target add aarch64-apple-darwin
+
+      - name: Setup Python (for any helpers)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build Tauri DMG
+        working-directory: saec-sync/src-tauri
+        env:
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+        run: |
+          cargo tauri build --target aarch64-apple-darwin --release
+
+      - name: Locate generated DMG
+        run: |
+          $dmgPaths = @(
+            "saec-sync/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg"
+          )
+          foreach ($pattern in $dmgPaths) {
+            $files = Get-ChildItem $pattern -ErrorAction SilentlyContinue
+            if ($files) {
+              echo "dmg_path=$($files[0].FullName)" >> $env:GITHUB_OUTPUT
+              break
+            }
+          }
+
+      - name: Create/Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "SAEC Sync ${{ github.ref_name }}"
+          files: ${{ steps.find-dmg.outputs.dmg_path }}
+          overwrite: true
+          generate_release_notes: true
+```
+
+### Meilleure solution sans machine macOS locale
+Comme aucune machine physique macOS n'est à disposition, la solution idéale et sécurisée consiste à **déplacer la compilation DMG vers une pipeline CI hébergée en ligne**, spécifiquement **GitHub Actions** utilisant le runner `macOS-latest`. Cette approche présente les mêmes avantages que la solution Windows MSI (voir passation §7) :
+- Pas de dépendance matérielle locale
+- Environnement préconfiguré avec Xcode, codesigning tools, etc.
+- Rust target `aarch64-apple-darwin` disponible par défaut
+- Secrets (TAURI_PRIVATE_KEY) stockés en secret GitHub
+- Intégration native avec GitHub Releases
+- Reproductibilité totale via workflow YAML
+```

@@ -577,6 +577,7 @@ Super Admin (master)
 
 ### Apps & Clients
 - [ ] Desktop app (Electron/Tauri)
+- [ ] **DMG build (macOS app, Tauri bundle dmg)** — config `bundle.targets` → `dmg`, CI GitHub Actions runner macOS-latest, codesigning, icon DMG, background, licence agreement
 - [ ] Mobile app (React Native)
 - [ ] Browser extension (upload rapide)
 - [ ] CLI tool (upload/download/sync)
