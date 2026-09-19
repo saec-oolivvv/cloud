@@ -3,13 +3,8 @@ name: Build SAEC Sync DMG
 on:
   push:
     tags:
-      - 'v*'          # déclenché à chaque nouveau tag (ex: v0.1.36)
+      - 'v*'          # déclenché à chaque nouveau tag (ex: v0.1.43)
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to build'
-        required: false
-        default: ''
 
 jobs:
   build-dmg:
@@ -19,19 +14,44 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies
-        working-directory: saec-sync
-        run: npm ci
+      - name: Install Xcode Command Line Tools
+        run: |
+          xcode-select --install 2>/dev/null || true
+          # Attendre que les tools soient dispo
+          until [ -x "/usr/bin/productbuild" ]; do
+            sleep 10
+            echo "En attente des Xcode CLI..."
+          done
+          echo "✅ Xcode CLI disponibles"
 
       - name: Install Rust targets (Intel + Apple Silicon)
         run: |
           rustup target add x86_64-apple-darwin
           rustup target add aarch64-apple-darwin
 
-      - name: Setup Python (for any helpers)
-        uses: actions/setup-python@v5
+      - name: Cache Cargo
+        uses: actions/cache@v4
         with:
-          python-version: '3.12'
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            saec-sync/src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('saec-sync/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: saec-sync/package-lock.json
+
+      - name: Install dependencies
+        working-directory: saec-sync
+        run: npm ci
 
       - name: Build Tauri DMG for Intel (x86_64)
         working-directory: saec-sync
@@ -91,3 +111,10 @@ jobs:
           files: ${{ steps.find-dmgs.outputs.dmg_paths }}
           overwrite: true
           generate_release_notes: true
+
+      - name: Upload DMG artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: saec-sync-dmgs
+          path: ${{ steps.find-dmgs.outputs.dmg_paths }}
+          retention-days: 30
