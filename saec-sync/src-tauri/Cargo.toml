@@ -15,7 +15,7 @@ tauri-build = { version = "2.6", features = [] }
 
 [dependencies]
 # Workspace deps
-tauri = { workspace = true, features = ["custom-protocol"] }
+tauri = { workspace = true, features = ["custom-protocol", "devtools"] }
 tauri-plugin-shell = { version = "2", features = [] }
 tauri-plugin-dialog = { version = "2", features = [] }
 tauri-plugin-opener = { version = "2", features = [] }

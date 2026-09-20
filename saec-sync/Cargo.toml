@@ -3,7 +3,7 @@ resolver = "2"
 members = ["src-tauri"]
 
 [workspace.dependencies]
-tauri = { version = "2.0", features = ["tray-icon", "custom-protocol"] }
+tauri = { version = "2.0", features = ["tray-icon", "custom-protocol", "devtools"] }
 tauri-build = { version = "2.0" }
 tokio = { version = "1.40", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
