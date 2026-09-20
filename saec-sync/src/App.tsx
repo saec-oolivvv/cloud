@@ -25,6 +25,15 @@ function App() {
     async function init() {
       try {
         console.log('[init] Starting...')
+        console.log('[init] window.__TAURI_INTERNALS__:', typeof (window as any).__TAURI_INTERNALS__)
+        console.log('[init] window.__TAURI__:', typeof (window as any).__TAURI__)
+        console.log('[init] navigator.userAgent:', navigator.userAgent)
+
+        if (!(window as any).__TAURI_INTERNALS__) {
+          console.error('[init] Tauri IPC bridge NOT loaded! This app must run inside Tauri, not a browser.')
+          setInitError('Tauri IPC bridge not available. This app must run as a desktop application, not in a browser.')
+          return
+        }
         
         console.log('[init] Calling get_config...')
         const config = await invoke<Config>('get_config')
