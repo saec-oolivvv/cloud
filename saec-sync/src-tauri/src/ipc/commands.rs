@@ -52,8 +52,12 @@ pub async fn auth_device_code(
     tracing::info!("[cmd] auth_device_code called");
     let config = state.get_config();
     tracing::info!("[cmd] device_code_url: {}", config.api.device_code_url);
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(config.api.timeout_seconds))
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
+    tracing::info!("[cmd] Sending device code request...");
     let response = client
         .post(&config.api.device_code_url)
         .json(&serde_json::json!({
@@ -62,12 +66,19 @@ pub async fn auth_device_code(
         }))
         .send()
         .await
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| {
+            tracing::error!("[cmd] Device code request failed: {}", e);
+            format!("Request failed: {}", e)
+        })?;
 
+    tracing::info!("[cmd] Device code response status: {}", response.status());
     let data: DeviceCodeResponse = response
         .json()
         .await
-        .map_err(|e| format!("Invalid response: {}", e))?;
+        .map_err(|e| {
+            tracing::error!("[cmd] Device code parse failed: {}", e);
+            format!("Invalid response: {}", e)
+        })?;
 
     app.opener().open_url(&data.verification_uri_complete, None::<&str>)
         .map_err(|e| format!("Failed to open browser: {}", e))?;
