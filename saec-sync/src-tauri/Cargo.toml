@@ -11,7 +11,7 @@ repository = "https://github.com/saec/cloud"
 custom-protocol = []
 
 [build-dependencies]
-tauri-build = { version = "2.6", features = [] }
+tauri-build = { workspace = true, features = [] }
 
 [dependencies]
 # Workspace deps
