@@ -509,36 +509,76 @@ chmod 644 /mnt/nas-web/cloud/storage/keys/master.key
 - `app/Views/files/index.php` — MODIFIÉ (delete CSRF header au lieu de body)
 - `app/Views/auth/login.php` — MODIFIÉ (champ hidden redirect)
 
-## 15. DMG — Build macOS (à venir)
+## 15. DMG — Build macOS
 
 > Target: `dmg` via Tauri bundle — voir `tauri.conf.json` → `bundle.targets`.
+> **Statut:** DMG fonctionnel, installé et testé sur macOS Intel (x86_64).
 
 ### Prérequis
 - Machine macOS (ou CI macOS compatible)
+- Rust + cargo-tauri: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && cargo install tauri-cli`
+- Target: `rustup target add x86_64-apple-darwin` (Intel) ou `aarch64-apple-darwin` (Apple Silicon)
+- Node.js + npm (pour le frontend React/Vite)
 - Xcode command line tools: `xcode-select --install`
-- `productbuild` (inclus avec Xcode)
-- Codesigning identity pour signature macOS
 
 ### Processus de build DMG
-1. **Build Tauri ciblant macOS** :
-   ```bash
-   cargo tauri build --target aarch64-apple-darwin -- --debug
-   ```
-   ou en release :
-   ```bash
-   cargo tauri build --target aarch64-apple-darwin --release
-   ```
-2. **Artifact généré** : `saec-sync/target/aarch64-apple-darwin/release/bundle/dmg/SAEC Sync.app.dmg`
-3. **Options de personnalisation** :
-   - Icons DMG (icône + dossier Applications)
-   - Background personnalisé
-   - Licence agreement
-   - Ejection du volume après installation
+```bash
+cd saec-sync/src-tauri
+# 1. Générer les icônes (AVANT le build)
+cargo tauri icon icons/source-icon.png
+# 2. Fix tray-icon (cargo tauri icon produit un 108 bytes sur macOS)
+cp icons/source-icon.png icons/tray-icon.png
+# 3. Build
+cargo tauri build --target x86_64-apple-darwin
+```
+- **Artifact:** `saec-sync/target/x86_64-apple-darwin/release/bundle/dmg/SAEC Sync_0.1.36_x64.dmg`
+- **Note:** `--release` n'est PAS nécessaire (Tauri v2 = release par défaut)
+- Le build nettoie la .app après création du DMG → monter le DMG pour récupérer la .app
 
-### Problèmes connus
-- Aucun runner macOS n'est disponible en local → solution recommandée : GitHub Actions runner macOS-latest
-- Codesigning requis pour distribution extérieure → clé Apple Developer ou identité de signature
-- La target `aarch64-apple-darwin` nécessite Rust ciblé via `rustup target add aarch64-apple-darwin`
+### Installation sur macOS
+```bash
+hdiutil attach <chemin>.dmg
+cp -R /Volumes/SAEC\ Sync/SAEC\ Sync.app /Applications/
+hdiutil detach /Volumes/SAEC\ Sync
+codesign --force --deep --sign - "/Applications/SAEC Sync.app"
+open "/Applications/SAEC Sync.app"
+```
+
+### Bugs corrigés (session 2026-09-20)
+
+#### Bug 1: State management — panic `state() called before manage()`
+- **Erreur:** `state() called before manage() for Arc<SyncEngine>`
+- **Cause:** `SyncEngine` enregistré comme `SyncEngine` mais récupéré comme `Arc<SyncEngine>`
+- **Fix:** `.manage(Arc::new(sync_engine))` au lieu de `.manage(sync_engine)` dans `main.rs`
+- **Règle:** Toujours wrapper dans `Arc` quand on passe au `.manage()` de Tauri
+
+#### Bug 2: CSP bloque Google Fonts → webview crash
+- **Erreur:** `web content process terminated` + app bloquée sur "Initialisation..."
+- **Cause:** CSP dans `tauri.conf.json` n'autorisait pas `fonts.googleapis.com` / `fonts.gstatic.com`
+- **Fix:** Ajouter au CSP:
+  ```
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' data: https://fonts.gstatic.com;
+  ```
+- **Règle:** Le frontend React charge Google Fonts → CSP doit les autoriser
+
+#### Bug 3: Icônes corrompues → crash TAO
+- **Erreur:** `panic_cannot_unwind` dans `tao::did_finish_launching`
+- **Cause:** `tray-icon.png` faisait 108-316 bytes (vide/corrompu)
+- **Fix:** Utiliser `cargo tauri icon icons/source-icon.png` PUIS `cp icons/source-icon.png icons/tray-icon.png`
+- **Règle:** Toujours vérifier la taille des icônes après génération (>1KB)
+
+#### Bug 4: git pull pas appliqué sur Mac
+- **Erreur:** Fix CSP fait sur NAS mais pas sur le Mac local
+- **Cause:** Le clone GitHub est un snapshot, pas un lien vers le NAS
+- **Fix:** Éditer directement les fichiers sur le Mac ou `git pull` avant rebuild
+- **Règle:** Toujours vérifier que le code local est à jour avant de builder
+
+### Icônes
+- **Source:** `public/img/favicon-192x192.png` (32KB, 192x192, PNG RGBA)
+- **Génération:** `cargo tauri icon icons/source-icon.png` → icon.png, icon.icns, icon.ico
+- **tray-icon:** Copier source-icon.png par dessus (le générateur Tauri produit un fichier trop petit)
+- **Icons requis:** icon.png (1024x1024), icon.icns (macOS), icon.ico (Windows), tray-icon.png (32x32 template)
 
 ### Workflow GitHub Actions proposé (`.github/workflows/dmg.yml`)
 ```yaml
