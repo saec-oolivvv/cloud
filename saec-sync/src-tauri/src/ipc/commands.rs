@@ -10,6 +10,23 @@ pub async fn get_config(state: tauri::State<'_, AppState>) -> Result<Config, Str
 }
 
 #[tauri::command]
+pub async fn get_credentials(state: tauri::State<'_, AppState>) -> Result<Option<StoredCredentials>, String> {
+    Ok(crate::keyring::load_credentials().map_err(|e| e.to_string())?)
+}
+
+#[tauri::command]
+pub async fn store_credentials(
+    access_token: String,
+    refresh_token: String,
+    expires_in: i64,
+    tenant_id: Option<String>,
+    user_email: String,
+) -> Result<(), String> {
+    crate::keyring::store_credentials(access_token, refresh_token, expires_in, tenant_id, user_email)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn set_config(
     state: tauri::State<'_, AppState>,
     config: Config,

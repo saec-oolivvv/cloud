@@ -34,6 +34,8 @@ fn main() -> anyhow::Result<()> {
         .invoke_handler(tauri::generate_handler![
             commands::get_config,
             commands::set_config,
+            commands::get_credentials,
+            commands::store_credentials,
             commands::auth_device_code,
             commands::auth_poll_token,
             commands::auth_logout,
