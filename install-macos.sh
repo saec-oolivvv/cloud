@@ -42,6 +42,7 @@ echo -e "${CYAN}═════════════════════�
 echo ""
 
 mkdir -p "$TMPDIR_INSTALL"
+touch "$LOG_FILE"
 
 # ─── Checks pr-requis ───────────────────────────────────────
 check_prereqs() {
