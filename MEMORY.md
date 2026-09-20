@@ -511,7 +511,7 @@ chmod 644 /mnt/nas-web/cloud/storage/keys/master.key
 
 ## 15. SAEC Sync — Client Desktop Tauri (CRITIQUE)
 
-> **Statut:** 🔴 BLOCAGE — auth_device_code OK, polling token jamais déclenché
+> **Statut:** 🟡 Polling Rust OK — transition frontend après token reçu à débugger
 > **Dernière session:** 20 septembre 2026
 
 ### Environnement de dev
@@ -523,6 +523,7 @@ chmod 644 /mnt/nas-web/cloud/storage/keys/master.key
 | SCP | **Ne fonctionne pas** Mac → NAS |
 | Keyring | `me.saec.sync` / user `auth` |
 | API | `https://cloud.saec.me/api/auth/device` + `/api/auth/token` |
+| User-Agent | `SAEC-Sync/0.1.36` (obligatoire — Cloudflare bloque le défaut) |
 
 ### Ce qui fonctionne ✅
 1. `cargo tauri dev` compile et lance l'app
@@ -534,24 +535,26 @@ chmod 644 /mnt/nas-web/cloud/storage/keys/master.key
 7. User-Agent `SAEC-Sync/0.1.36` sur tous les reqwest clients
 8. CSP autorise Cloudflare, Vite dev, Google Fonts
 9. Tauri v2 IPC bridge: `withGlobalTauri: true` + `capabilities/default.json`
-10. `npm run build` avant `cargo tauri dev` résout le problème dist/
+10. **Polling Rust: `auth_device_code` spawn `tokio::spawn` qui poll en arrière-plan**
+11. `auth_poll attempt 1` → `auth_poll SUCCESS — token received` ✅
+12. Credentials stockés dans keyring ✅
+13. Event `auth://token` émis vers le frontend ✅
 
-### 🔴 BLOCAGE: polling token jamais déclenché
-`auth_poll_token` n'est JAMAIS appelé depuis le frontend React.
-Le terminal Rust montre `auth_device_code 200 OK` puis plus rien.
+### 🟡 BLOCAGE: après token reçu, pas de transition vers Dashboard
+Le terminal Rust montre `auth_poll SUCCESS — token received` mais l'app reste sur "Autorisation en cours".
 
-**Racines possibles (non confirmées — WebKit Inspector jamais consulté):**
-- Vite sert du JavaScript stale (cache non invalidé)
-- Erreur JavaScript silencieuse dans le try/catch
-- Stale closure React malgré le useRef
-- Bug IPC Tauri avec invoke imbriqués dans un async non-awaited
+**Hypothèses (non confirmées — WebKit Inspector jamais consulté):**
+- `listen('auth://token')` ne reçoit pas l'event (Tauri v2 filtre peut-être les `://` dans les noms d'event)
+- `login()` appelé mais pas de re-render
+- `onSuccess()` ne déclenche pas `checkAuth()`
+- Race condition: `useEffect` cleanup détruit le listener avant l'event
+- Component AuthView démonté avant que le listener ne se déclenche
 
-**Plan de fix: déplacer le poll vers Rust (elimine les problèmes React)**
-1. `auth_device_code` spawn un `tokio::spawn` qui poll en arrière-plan
-2. Le poll émet `app.emit("auth://token", data)` quand token reçu
-3. Frontend utilise `listen('auth://token')` au lieu de `invoke('auth_poll_token')`
-4. Supprime la command `auth_poll_token`
-→ Voir passation.md §6 pour le code détaillé.
+**Pistes de fix:**
+1. Changer nom event `auth://token` → `auth-token` (sans `://`)
+2. Ajouter `console.log` dans le listener pour confirmer réception
+3. Utiliser `app.emit_all()` au lieu de `app.emit()`
+4. Vérifier `login()` appelle `set({ isAuthenticated: true })`
 
 ### Build DMG
 ```bash
@@ -597,11 +600,11 @@ open "/Applications/SAEC Sync.app"
 
 ---
 
-## 16. SESSION 2026-09-20 — Fix blocage + Auth polling
+## 16. SESSION 2026-09-20 (1) — Fix blocage + Auth polling React
 
 > Dernière session: 20 septembre 2026
 
-### Fixes appliqués cette session
+### Fixes appliqués cette session (premiers commits)
 
 | Fichier | Changement | Statut |
 |---------|-----------|--------|
@@ -625,21 +628,38 @@ open "/Applications/SAEC Sync.app"
 [cmd] Sending device code request...
 [cmd] Device code response status: 200 OK
 ```
-→ Plus rien. `auth_poll_token` n'apparaît JAMAIS.
+→ Plus rien. `auth_poll_token` n'apparaît JAMAIS (polling React cassé).
+
+---
+
+## 17. SESSION 2026-09-20 (2) — Polling déplacé vers Rust
+
+> Commits: `3cd8848`, `2e2035d`
+
+### Fix appliqué
+- **`auth_device_code`** spawn un `tokio::spawn` qui poll le token en arrière-plan (60 iters, interval 5s)
+- Le poll appelle `POST /api/auth/token`, stocke les credentials dans keyring, émet `auth://token` ou `auth://error`
+- **Frontend `AuthView`** : plus de `invoke('auth_poll_token')` en boucle → utilise `listen('auth://token')`
+- **Supprimé** : command `auth_poll_token` du `generate_handler![]`
+
+### Résultat
+- ✅ `auth_poll attempt 1` apparaît
+- ✅ `auth_poll SUCCESS — token received` apparaît
+- ✅ Credentials stockés dans keyring
+- ✅ Event `auth://token` émis
+- 🟡 **Mais l'app ne passe pas au Dashboard** — reste sur "Autorisation en cours"
 
 ### Ce qu'il faut faire (PROCHAINE SESSION)
-1. **Déplacer le poll vers Rust** — `auth_device_code` spawn un `tokio::spawn`
-2. Le poll émet events `auth://token` et `auth://error`
-3. Frontend utilise `listen()` au lieu de `invoke()` dans une boucle
-4. Tester le flow complet
+1. **Ouvrir WebKit Inspector** (clic droit → Inspecter → Console) pour voir les logs frontend
+2. Vérifier si `listen('auth://token')` reçoit l'event
+3. **Hypothèse probable** : le nom d'event `auth://token` contient `://` — Tauri v2 pourrait le filtrer
+   - Fix: changer `auth://token` → `auth-token` dans Rust `emit()` ET React `listen()`
+4. Si `login()` non appelé → vérifier le listener
+5. Si `login()` appelé mais pas de transition → vérifier `onSuccess()` et `checkAuth()`
 
-### Fichiers modifiés (session 2026-09-20)
-- `src/App.tsx` — AuthView simplifié, console.log tracing
-- `src/store/auth.ts` — checkAuth sans refreshToken(), login sans double store
-- `src-tauri/src/main.rs` — RUST_LOG fallback, Arc<AppState>
-- `src-tauri/src/state.rs` — keyring 1 seul appel au startup
-- `src-tauri/src/ipc/commands.rs` — User-Agent, Arc<AppState>, tracing
-- `src-tauri/src/api/client.rs` — User-Agent sur tous les reqwest clients
-- `src-tauri/tauri.conf.json` — withGlobalTauri: true, CSP étendue
-- `src-tauri/capabilities/default.json` — permissions Tauri v2
-- `src-tauri/Cargo.toml` + workspace Cargo.toml — devtools feature
+### Fichiers modifiés (session 2026-09-20 — 2e partie)
+- `src/App.tsx` — AuthView utilise `listen('auth://token')` au lieu de polling
+- `src-tauri/src/ipc/commands.rs` — auth_device_code avec `tokio::spawn` poll, auth_poll_token supprimé
+- `src-tauri/src/main.rs` — `auth_poll_token` retiré du `generate_handler![]`
+- `src-tauri/gen/schemas/capabilities.json` — régénéré
+- `MEMORY.md` + `passation.md` — docs mises à jour
