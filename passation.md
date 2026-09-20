@@ -330,7 +330,40 @@ jobs:
 - Le workflow s’exécute dans un environnement isolé, ne donnant aucun accès aux ressources du poste de développement local.
 - Si une clé de code‑signing tiers est nécessaire, elle peut être fournie via un secret supplémentaire et utilisée uniquement pendant l’étape de build.
 
-## 9. Conclusion
+## 9. Script d'installation macOS (`install-macos.sh`)
+
+> **Statut:** Cr et test
+> **Usage:** `chmod +x install-macos.sh && ./install-macos.sh`
+
+### Fonctionnalits
+- Vrification pr-requis macOS (uname, curl, hdiutil)
+- Dtection architecture (Apple Silicon arm64 / Intel x86_64)
+- Recherche DMG automatique (GitHub Releases > cloud.saec.me > local)
+- Tlchargement progressif avec curl
+- Montage DMG, copie dans /Applications
+- Configuration automatique (serveur API, version)
+- Retire quarantine (xattr -dr com.apple.quarantine)
+- Vrification Gatekeeper avec instructions
+- Lancement optionnel de l'app
+
+### Utilisation
+```bash
+# Version par dfaut (0.1.36)
+chmod +x install-macos.sh
+./install-macos.sh
+
+# Version spcifique
+./install-macos.sh 0.1.37
+```
+
+### Sources DMG tries (ordre)
+1. GitHub: `https://github.com/saec-oolivvv/cloud/releases/download/v{VERSION}/SAEC-Sync-{VERSION}.dmg`
+2. SAEC: `https://cloud.saec.me/download/saec-sync-{VERSION}.dmg`
+3. Local: `saec-sync/target/{arch}/release/bundle/dmg/SAEC-Sync-{VERSION}.dmg`
+
+---
+
+## 10. Conclusion
 En s’appuyant sur **GitHub Actions avec le runner `macOS-latest`**, la compilation DMG de SAEC‑Sync devient totalement indépendante de toute machine macOS locale, tout en conservant la sécurité (secrets gérés), la reproductibilité (définition explicite des étapes) et la facilité d’intégration avec les releases GitHub. Cette solution est idéale pour continuer le projet dans un environnement sans infrastructure macOS physique.
 
 ---

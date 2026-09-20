@@ -601,6 +601,21 @@ jobs:
           generate_release_notes: true
 ```
 
+### Scripts d'installation
+
+#### `install-macos.sh` (cr, excutable)
+- **Usage:** `chmod +x install-macos.sh && ./install-macos.sh [VERSION]`
+- **Fonctions:**
+  - Vrification pr-requis macOS (uname, curl, hdiutil)
+  - Dtection architecture (Apple Silicon arm64 / Intel x86_64)
+  - Recherche DMG automatique (GitHub Releases > cloud.saec.me > local)
+  - Tlchargement progressif avec curl
+  - Montage DMG, copie dans /Applications
+  - Configuration automatique (serveur API, version)
+  - Retire quarantine Gatekeeper
+  - Lancement optionnel de l'app
+- **Sources DMG:** GitHub Releases, cloud.saec.me, ou local
+
 ### Meilleure solution sans machine macOS locale
 Comme aucune machine physique macOS n'est à disposition, la solution idéale et sécurisée consiste à **déplacer la compilation DMG vers une pipeline CI hébergée en ligne**, spécifiquement **GitHub Actions** utilisant le runner `macOS-latest`. Cette approche présente les mêmes avantages que la solution Windows MSI (voir passation §7) :
 - Pas de dépendance matérielle locale
