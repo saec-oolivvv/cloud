@@ -49,7 +49,9 @@ pub async fn auth_device_code(
     state: tauri::State<'_, Arc<AppState>>,
     app: tauri::AppHandle,
 ) -> Result<DeviceCodeResponse, String> {
+    tracing::info!("[cmd] auth_device_code called");
     let config = state.get_config();
+    tracing::info!("[cmd] device_code_url: {}", config.api.device_code_url);
     let client = reqwest::Client::new();
 
     let response = client
