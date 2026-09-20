@@ -5,13 +5,13 @@ use tauri_plugin_dialog::DialogExt;
 use std::sync::Arc;
 
 #[tauri::command]
-pub async fn get_config(state: tauri::State<'_, AppState>) -> Result<Config, String> {
+pub async fn get_config(state: tauri::State<'_, Arc<AppState>>) -> Result<Config, String> {
     tracing::info!("[cmd] get_config called");
     Ok(state.get_config())
 }
 
 #[tauri::command]
-pub async fn get_credentials(state: tauri::State<'_, AppState>) -> Result<Option<StoredCredentials>, String> {
+pub async fn get_credentials(state: tauri::State<'_, Arc<AppState>>) -> Result<Option<StoredCredentials>, String> {
     tracing::info!("[cmd] get_credentials called");
     let result = crate::keyring::load_credentials().map_err(|e| {
         tracing::warn!("[cmd] get_credentials keyring error: {}", e);
@@ -35,7 +35,7 @@ pub async fn store_credentials(
 
 #[tauri::command]
 pub async fn set_config(
-    state: tauri::State<'_, AppState>,
+    state: tauri::State<'_, Arc<AppState>>,
     config: Config,
 ) -> Result<(), String> {
     config.validate().map_err(|e| e.to_string())?;
@@ -46,7 +46,7 @@ pub async fn set_config(
 
 #[tauri::command]
 pub async fn auth_device_code(
-    state: tauri::State<'_, AppState>,
+    state: tauri::State<'_, Arc<AppState>>,
     app: tauri::AppHandle,
 ) -> Result<DeviceCodeResponse, String> {
     let config = state.get_config();
@@ -75,7 +75,7 @@ pub async fn auth_device_code(
 
 #[tauri::command]
 pub async fn auth_poll_token(
-    state: tauri::State<'_, AppState>,
+    state: tauri::State<'_, Arc<AppState>>,
     device_code: String,
 ) -> Result<TokenResponse, String> {
     let config = state.get_config();
@@ -128,7 +128,7 @@ pub async fn auth_poll_token(
 }
 
 #[tauri::command]
-pub async fn auth_logout(state: tauri::State<'_, AppState>) -> Result<(), String> {
+pub async fn auth_logout(state: tauri::State<'_, Arc<AppState>>) -> Result<(), String> {
     crate::keyring::clear_credentials().map_err(|e| e.to_string())?;
     state.set_credentials(None);
     state.update_sync_status(|s| s.state = SyncState::AuthRequired);
@@ -159,7 +159,7 @@ pub async fn sync_resume(engine: tauri::State<'_, Arc<SyncEngine>>) -> Result<()
 }
 
 #[tauri::command]
-pub async fn sync_status(state: tauri::State<'_, AppState>) -> Result<SyncStatus, String> {
+pub async fn sync_status(state: tauri::State<'_, Arc<AppState>>) -> Result<SyncStatus, String> {
     tracing::info!("[cmd] sync_status called");
     Ok(state.get_sync_status())
 }
@@ -180,12 +180,12 @@ pub async fn select_folder(app: tauri::AppHandle) -> Result<Option<String>, Stri
 }
 
 #[tauri::command]
-pub async fn get_file_tree(state: tauri::State<'_, AppState>) -> Result<Option<crate::state::FileTreeNode>, String> {
+pub async fn get_file_tree(state: tauri::State<'_, Arc<AppState>>) -> Result<Option<crate::state::FileTreeNode>, String> {
     Ok(state.get_file_tree())
 }
 
 #[tauri::command]
-pub async fn get_conflicts(state: tauri::State<'_, AppState>) -> Result<Vec<ConflictInfo>, String> {
+pub async fn get_conflicts(state: tauri::State<'_, Arc<AppState>>) -> Result<Vec<ConflictInfo>, String> {
     Ok(state.get_conflicts())
 }
 
