@@ -224,6 +224,7 @@ chmod +x install-macos.sh
 | `0538c91` | fix: patch ALL tauri crates from git dev |
 | `c688f07` | fix: tauri from git in workspace deps |
 | `f15f4b6` | revert: remove all tauri git patches, back to crates.io |
+| `b4a5880` | fix(sync): resolve macOS 'Initialisation...' blockage |
 
 ---
 
@@ -235,26 +236,30 @@ chmod +x install-macos.sh
 - `on_window_event` ne peut plus panic
 - CSP autorise Google Fonts
 - Setup tray non-fatal
+- **Fix du blocage "Initialisation..."** — checkAuth() ne boucle plus, keyring réduit à 1 appel
 
 ### Ce qui ne fonctionne PAS 🔴
-- **App bloque sur "Initialisation..."** — l'écran de chargement s'affiche mais l'app ne passe jamais à l'étape suivante
 - Le bug tao 0.35.3 sur macOS 26 n'est PAS résolu (crash release toujours probable)
+- **À tester** : le fix du blocage "Initialisation..." — build DMG nécessaire
 
-### Hypothèses sur le blocage "Initialisation..."
-1. `invoke('get_credentials')` pourrait bloquer si le keyring macOS demande une autorisation
-2. `invoke('sync_status')` pourrait bloquer si le sync engine n'est pas prêt
-3. Un error silencieux dans la chaîne `checkAuth()` → `fetchStatus()` pourrait empêcher `setInitialized(true)`
-4. Le `keyring` crate sur macOS utilise le Keychain — accès potentiellement bloquant en dev sans entitlements
+### Fix appliqué (session 2026-09-20)
+- `checkAuth()` ne appelle plus `refreshToken()` sur token expiré → set `isAuthenticated=false` directement
+- `SyncEngine::new()` lit credentials depuis `state.get_credentials()` au lieu de relire keyring
+- `login()` ne fait plus de double `store_credentials` (déjà fait dans `auth_poll_token`)
+- Logs `console.log` + `tracing::info!` ajoutés partout pour diagnostic
+- Nombre d'appels keyring réduit de 3 à 1 au démarrage
 
 ---
 
 ## 10. Prochaines étapes quand on reprend
 
-### Immédiat (investigation blocage "Initialisation...")
-1. Ajouter des `console.log` dans `App.tsx` init() pour voir où ça bloque
-2. Ajouter `tracing::info!` dans chaque command Rust pour voir laquelle ne répond pas
-3. Vérifier si le keyring fonctionne en dev (test manuel `invoke('get_credentials')`)
-4. Tester si `fetchStatus()` hang
+### Immédiat
+1. **Build DMG sur Mac** avec le fix (commit `b4a5880`)
+2. Vérifier logs dans la console WebView (inspecteur Safari) :
+   - `[init] Starting...` → `[init] Config loaded OK` → `[init] checkAuth OK` → `[init] fetchStatus OK` → `[init] All done`
+   - `[cmd] get_credentials called` → `[cmd] get_credentials result: has_creds=false`
+   - Si blocage → le dernier log affiché indique où ça bloque
+3. Si keyring bloque toujours → ajouter timeout 2s sur les appels keyring
 
 ### Important
 - **Option A recommandée** pour le bug tao : fork tao avec fix + version 0.35.4

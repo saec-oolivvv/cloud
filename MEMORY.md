@@ -665,3 +665,41 @@ Comme aucune machine physique macOS n'est à disposition, la solution idéale et
 - Intégration native avec GitHub Releases
 - Reproductibilité totale via workflow YAML
 ```
+
+---
+
+## 16. SESSION 2026-09-20 — FIX BLOCAGE "INITIALISATION..." DMG
+
+> Commit: `b4a5880` — fix(sync): resolve macOS 'Initialisation...' blockage
+
+### Bug analysé
+App macOS reste bloquée sur écran "Initialisation..." sans jamais avancer.
+
+### Racine identifiée
+1. **`checkAuth()` appelait `refreshToken()`** (auth.ts:39-46) si token expiré
+2. **`refreshToken()` relisait le keyring** au lieu de caller l'API refresh → retournait le même token expiré → `logout()`
+3. **`init()` ne throw pas** → `setInitialized(true)` jamais atteint
+4. **Keyring macOS** appelé 3× au démarrage (AppState, SyncEngine, frontend) = risque de blocage Keychain
+
+### Fixes appliqués
+
+| Fichier | Changement |
+|---------|-----------|
+| `src/App.tsx` | +console.log avant/après chaque invoke (diagnostic) |
+| `src/store/auth.ts` | Supprimer appel `refreshToken()` dans `checkAuth()` — set `isAuthenticated=false` directement |
+| `src/store/auth.ts` | Supprimer double `store_credentials` dans `login()` (déjà fait dans `auth_poll_token`) |
+| `src/store/auth.ts` | `refreshToken()` : ajouter check `expires_at` avant de retourner le token |
+| `src-tauri/src/sync/engine.rs:71` | `SyncEngine::new()` lit credentials depuis `state.get_credentials()` au lieu de relire keyring |
+| `src-tauri/src/main.rs` | +tracing::info à chaque étape du startup |
+| `src-tauri/src/state.rs` | +tracing::info sur load_credentials |
+| `src-tauri/src/ipc/commands.rs` | +tracing::info sur get_config, get_credentials, sync_status |
+
+### Nombre d'appels keyring réduit
+- Avant : 3 appels `load_credentials()` au démarrage (AppState + SyncEngine + frontend)
+- Après : 1 seul appel (AppState uniquement), le reste lit la mémoire
+
+### Prochaines étapes
+1. Build DMG sur Mac avec le fix
+2. Vérifier logs dans la console WebView (inspecteur Safari)
+3. Si keyring bloque toujours → ajouter timeout 2s sur les appels keyring
+4. Si tout marche → Upload DMG sur GitHub Releases v0.1.36
