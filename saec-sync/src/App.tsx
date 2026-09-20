@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { useAuthStore } from './store/auth'
@@ -234,16 +234,15 @@ function AuthView({ onSuccess }: { onSuccess: () => void }) {
   const [error, setError] = useState<string | null>(null)
   const { login } = useAuthStore()
 
-  const pollingRef = useRef(false)
-
   const handleAuth = async () => {
     try {
       setError(null)
+      console.log('[auth] Requesting device code...')
       const response = await invoke<DeviceCodeResponse>('auth_device_code')
+      console.log('[auth] Got device code:', response.user_code)
       setDeviceCode(response)
-      pollingRef.current = true
       setPolling(true)
-      pollForToken(response.device_code, response.interval)
+      startPolling(response.device_code, response.interval)
     } catch (err) {
       console.error('[auth] Device code error:', JSON.stringify(err))
       const msg = typeof err === 'string' ? err : err instanceof Error ? err.message : JSON.stringify(err)
@@ -251,36 +250,31 @@ function AuthView({ onSuccess }: { onSuccess: () => void }) {
     }
   }
 
-  const pollForToken = async (deviceCode: string, interval: number) => {
-    const maxAttempts = 60
-    let attempts = 0
-    while (pollingRef.current && attempts < maxAttempts) {
+  const startPolling = async (deviceCode: string, interval: number) => {
+    console.log('[auth] Starting poll, interval:', interval)
+    for (let i = 0; i < 60; i++) {
       await new Promise(resolve => setTimeout(resolve, interval * 1000))
-      attempts++
-      
+      console.log('[auth] Poll attempt', i + 1)
       try {
         const response = await invoke<TokenResponse>('auth_poll_token', { device_code: deviceCode })
+        console.log('[auth] Token received!')
         await login(response.access_token, response.refresh_token, response.expires_in, response.tenant_id, response.user_email)
-        pollingRef.current = false
         setPolling(false)
         onSuccess()
         return
       } catch (err) {
-        const error = err as string
-        if (error.includes('authorization_pending') || error.includes('slow_down')) {
-          continue // Keep polling
-        }
+        const error = typeof err === 'string' ? err : String(err)
+        console.log('[auth] Poll response:', error)
         if (error.includes('expired_token') || error.includes('access_denied')) {
           setError(error)
-          pollingRef.current = false
           setPolling(false)
           setDeviceCode(null)
           return
         }
-        // Other errors - keep polling but log
-        console.warn('Poll error:', error)
       }
     }
+    setError('Polling timed out')
+    setPolling(false)
   }
 
   if (deviceCode && polling) {
@@ -302,7 +296,7 @@ function AuthView({ onSuccess }: { onSuccess: () => void }) {
               Code: <strong className="text-saec-900 dark:text-saec-100">{deviceCode.user_code}</strong>
             </p>
           </div>
-          <button onClick={() => { pollingRef.current = false; setPolling(false); setDeviceCode(null); }} className="btn-secondary">
+          <button onClick={() => { setPolling(false); setDeviceCode(null); }} className="btn-secondary">
             Annuler
           </button>
         </div>
