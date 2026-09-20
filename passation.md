@@ -1,371 +1,274 @@
-# Passation de compilation DMG SAEC‑Sync
+# Passation SAEC Sync — Session complète
+
+> **Dernière mise à jour :** 20 septembre 2026
+> **Projet :** SAEC Cloud — SaaS multi-tenant (PHP 8.3+, MySQL 8.x, Apache/Nginx)
+> **NAS :** Synology DS420j, `192.168.0.201`
+> **Client Tauri :** `saec-sync/` (React/Vite + Rust), v0.1.36
+> **Repo GitHub :** `saec-oolivvv/cloud`
 
 ---
 
-## 1. État actuel
-- **Script** : Aucun script de build DMG n'existe encore dans le repo.
-- **Configuration** : `tauri.conf.json` → `bundle.targets` inclut maintenant `"dmg"` (ajouté récemment).
-- **Artifact inexistant** : Aucun fichier `.dmg` n'a été généré à ce jour.
+## 1. Environnement
 
-- **Script existant** : `build-windows-msi.ps1` (racine du repo) orchestre la construction complète de l'MSI Windows.
-  1. Vérification des prérequis (Rust, Cargo, Node, npm, WiX 3.14, MSBuild).
-  2. Nettoyage des dossiers de build précédents.
-  3. Build frontend (React/Vite) dans `saec-sync/`.
-  4. Build Tauri ciblant `x86_64-pc-windows-msvc` avec l’option `-- --msi`.
-  5. Recherche de l’artifact `.msi` généré.
-  6. (Optionnel) Upload sur une release GitHub.
-
-## 2. Problèmes rencontrés
-| Domaine | Description |
+| Élément | Détail |
 |---|---|
-| **Prérequis** | Aucun runner macOS locale → solution CI GitHub Actions `macOS-latest`. |
-| **Frontend** | `npm ci` / `npm run build` fonctionne identique sur macOS et Windows/Linux. |
-| **Tauri / DMG** | `cargo tauri build --target aarch64-apple-darwin --release` nécessite une toolchain Rust cible macOS (`rustup target add aarch64-apple-darwin`) et une identité codesigning Apple. |
-| **Versioning** | Doit être aligné sur la version courante (cf. `tauri.conf.json` `version: "0.1.36"`). |
-| **Codesigning** | Identité macOS requise pour signature et notarisation ; sans elle, le DMG sera refusé par macOS Gatekeeper. |
+| Mac | `saec@MacBook-Pro-de-SAEC`, Intel x86_64, macOS 26.7 (Tahoe) |
+| NAS | Synology DS420j, IP `192.168.0.201` |
+| Serveur web | Synology Web Station (racine differente de `public/`) |
+| SCP | **Ne fonctionne pas** depuis le Mac vers le NAS |
+| App name | SAEC Sync |
+| Identifier | `me.saec.sync` |
+| Version | `0.1.36` |
+| GitHub repo | `saec-oolivvv/cloud` |
 
-## 3. Succès
-- `tauri.conf.json` mis à jour avec `"dmg"` dans les targets de bundle.
-- Documentation complète de la procédure DMG (ce document).
-- Workflow GitHub Actions proposé prêt à l'emploi.
+---
 
-## 4. Objectifs & Problématique
-- **Objectif** : produire un fichier `.dmg` macOS à jour (version 0.1.36) prêt à être distribué, avec vérification des prérequis, build frontend + build Tauri macOS, codesigning, notarisation, et upload sur GitHub Release.
-- **Problématique** : coordonner les trois couches (frontend, Rust/Tauri, macOS installer (DMG)) pour obtenir une sortie DMG reproductible sans machine macOS locale. Les verrous sont l'environnement d'exécution (Rust target macOS, codesigning, notarisation) et la cohérence des numéros de version.
+## 2. Fichiers clés
 
-## 5. Fichiers clés
 | Fichier | Rôle |
 |---|---|
-| `saec-sync/src-tauri/tauri.conf.json` | Configuration Tauri : ajout de `"dmg"` dans `bundle.targets`. |
-| `build-dmg.sh` | Script d’automation complet (à créer). |
-| `build-windows-msi.ps1` | Script de référence pour la structure et le style des scripts de build. |
-| `.github/workflows/dmg.yml` | Workflow CI GitHub Actions pour la compilation DMG (proposé). |
+| `saec-sync/Cargo.toml` | Workspace deps + `[patch.crates-io]` pour tauri-runtime-wry |
+| `saec-sync/src-tauri/Cargo.toml` | Deps app, `[profile.release]` |
+| `saec-sync/src-tauri/tauri.conf.json` | Config Tauri (CSP, windows, bundle) |
+| `saec-sync/src-tauri/src/main.rs` | Entry point, setup_tray, window management |
+| `saec-sync/src-tauri/src/ipc/commands.rs` | Commands IPC + `setup_tray()` |
+| `saec-sync/src/App.tsx` | Frontend React (loading screen) |
+| `saec-sync/src/store/auth.ts` | Auth store — appelle `invoke('get_credentials')` |
+| `install-macos.sh` | Script installation automatique macOS |
+| `MEMORY.md` | Mémoire de session (build process + bugs) |
+| `passation.md` | Ce document |
 
-## 6. Prochaines étapes (à exécuter sur une machine macOS ou en CI)
-1. S'assurer que `dmg` est dans `tauri.conf.json` → **déjà fait**.
-2. Installer les prérequis sur runner macOS : `rustup target add aarch64-apple-darwin`, Xcode command line tools, codesigning identity.
-3. Définir la variable `TAURI_PRIVATE_KEY` (ou clé codesign Apple) en tant que secret GitHub (`TAURI_PRIVATE_KEY`).
-4. Créer le script `build-dmg.sh` (voir section 7).
-5. Lancer le build : `bash build-dmg.sh` ou déclencher le workflow GitHub Actions.
-6. Corriger les erreurs (nettoyer node_modules, inspecter les logs).
-7. Tester le DMG généré sur une machine macOS.
-8. Upload sur GitHub Release (via `gh release upload` ou l'action `softprops/action-gh-release`).
+---
 
-## 7. Script de build DMG proposé (`build-dmg.sh`)
+## 3. Bugs trouvés et corrigés
+
+### 3.1. `manage(sync_engine)` → `manage(Arc::new(sync_engine))`
+**Fichier :** `main.rs:33`
+**Problème :** `SyncEngine` n'implémente pas `Send + Sync` directement. Tauri exige `Send + Sync` pour `.manage()`.
+**Fix :** Wrapper dans `Arc::new()`.
+**Statut :** ✅ Corrigé
+
+### 3.2. CSP trop restrictive (Google Fonts)
+**Fichier :** `tauri.conf.json:30`
+**Problème :** `style-src` et `font-src` manquaient les domaines Google Fonts.
+**Fix :** Ajouté `https://fonts.googleapis.com` à `style-src` et `https://fonts.gstatic.com` à `font-src`.
+**Statut :** ✅ Corrigé
+
+### 3.3. `tray-icon.png` corrompu
+**Fichier :** `src-tauri/icons/tray-icon.png`
+**Problème :** Image vide ou corrompue.
+**Fix :** Copié `source-icon.png` par-dessus `tray-icon.png`.
+**Statut :** ✅ Corrigé (mais l'icone reste un carré vert, pas le logo SAEC — à remplacer)
+
+### 3.4. `cargo tauri build --release` crash silencieux (macOS 26)
+**Problème :** L'app se lance en `cargo tauri dev` mais crash au lancement en release.
+**Symptôme :** `web content process terminated` dans les logs.
+**Statut :** 🔴 **BUG CRITIQUE — RACINE IDENTIFIÉE** (voir section 4)
+
+### 3.5. `setup_tray` panic si tray indisponible
+**Fichier :** `main.rs:52`
+**Problème :** `setup_tray()` utilisait `?` qui propageait l'erreur et crashait l'app.
+**Fix :** Wrappé dans `if let Err(e) = ... { tracing::warn! }` — non-fatal.
+**Statut :** ✅ Corrigé
+
+### 3.6. `window.show()` / `window.set_title()` panic
+**Fichier :** `main.rs:66-67`
+**Problème :** `?` propageait les erreurs → panic.
+**Fix :** Changé en `let _ = window.show(); let _ = window.set_title(...);`
+**Statut :** ✅ Corrigé
+
+### 3.7. `visible: false` dans tauri.conf.json
+**Fichier :** `tauri.conf.json`
+**Problème :** Fenêtre invisible au démarrage.
+**Fix :** Changé en `visible: true`.
+**Statut :** ✅ Corrigé
+
+### 3.8. `trayIcon` cassé dans tauri.conf.json
+**Problème :** Le fichier `tray-icon.png` était corrompu + le setup se fait en code.
+**Fix :** Supprimé `trayIcon` de la config JSON (setup fait dans `setup_tray()`).
+**Statut :** ✅ Corrigé
+
+### 3.9. `get_credentials` / `store_credentials` manquants
+**Fichier :** `src/store/auth.ts` appelle `invoke('get_credentials')` et `invoke('store_credentials')`
+**Problème :** Ces commands ne sont pas dans `generate_handler![]` dans `main.rs` ni dans `commands.rs`.
+**Statut :** 🔴 **À VÉRIFIER** — soit les commands existent dans commands.rs et ne sont pas enregistrées, soit il faut les créer.
+
+---
+
+## 4. Bug critique : tao 0.35.3 crash sur macOS 26 (Tahoe)
+
+### Symptôme
+- `cargo tauri dev` → **fonctionne** (l'app s'affiche correctement)
+- `cargo tauri build --release` → **crash silencieux** au lancement
+- Log : `web content process terminated`
+- `panic = "abort"` dans le profil release tue le processus silencieusement
+
+### Racine
+**Tauri bug [#15517](https://github.com/tauri-apps/tauri/issues/15517)**
+**tao bug [#1171](https://github.com/nickelpack/tao/issues/1171)**
+
+Le crate `tao 0.35.3` (framework window/events de Tauri) **panique** dans `did_finish_launching` sur macOS 26 (Tahoe). Le callback Objective-C `NSApplicationDelegate::applicationDidFinishLaunching:` plante.
+
+### Chaîne de dépendances
+```
+tauri 2.11.6 (crates.io)
+  → tauri-runtime-wry 2.11.4 (crates.io)  → wry 0.55.1 + tao 0.35.3  ← BUGUÉ
+  → tauri-runtime-wry 2.11.4 (git dev)     → wry 0.57.0 + tao 0.37.0  ← FIX
+```
+
+### Solution appliquée
+Patch de `tauri-runtime-wry` via `[patch.crates-io]` dans le workspace Cargo.toml :
+
+```toml
+[patch.crates-io]
+tauri-runtime-wry = { git = "https://github.com/tauri-apps/tauri", branch = "dev" }
+```
+
+**Pourquoi ça marche :**
+1. `tauri-runtime-wry` sur crates.io (2.11.4) dépend de `wry ^0.55` + `tao ^0.35`
+2. `tauri-runtime-wry` sur git dev (même version 2.11.4) dépend de `wry 0.57` + `tao 0.37`
+3. Le patch redirige la résolution vers git dev → nouvelles dépendances résolues normalement de crates.io
+4. **Pas de conflit semver** : la version 2.11.4 est identique, le patch remplace uniquement la source
+
+### Résultat dans Cargo.lock (confirmé)
+```
+tauri-runtime-wry 2.11.4 → source=git+https://github.com/tauri-apps/tauri?branch=dev
+wry 0.57.0 → source=registry+https://github.com/rust-lang/crates.io-index
+tao 0.37.0 → source=registry+https://github.com/rust-lang/crates.io-index
+```
+
+### Pourquoi les autres approches n'ont PAS marché
+
+| Approche | Problème |
+|---|---|
+| `[patch.crates-io] tauri = { git = "..." }` | Les plugins (`tauri-plugin-shell` etc.) depuis crates.io tirent `tauri` de crates.io (2.11.6) malgré le patch |
+| `[patch.crates-io] tauri-runtime-wry = { git = "...", version = "2.11.4" }` | Redondant, même résultat |
+| `[patch.crates-io] tao = { git = "...", branch = "..." }` | **Semver incompatible** : wry 0.55.1 exige `tao ^0.35`, pas `^0.37` |
+| `[patch.crates-io] wry = { git = "...", branch = "..." }` | **Semver incompatible** : tauri-runtime-wry 2.11.4 exige `wry ^0.55`, pas `^0.57` |
+| `[workspace.dependencies] tauri = { git = "..." }` | Les plugins ignorent la source workspace et résolvent depuis crates.io |
+| Fork `nickelpack/tao` | Fork random, inexistant ou incorrect |
+
+### Ce qui RESTE à faire pour le bug tao
+1. **Rebuild le DMG** avec le Cargo.lock mis à jour
+2. **Tester** sur le Mac (`cargo tauri dev` ET `cargo tauri build --release`)
+3. **Vérifier** que le crash `web content process terminated` est résolu
+4. Si le crash persiste, vérifier le panic `on_window_event` qui utilise encore `window.hide().unwrap()` (ligne 74 de main.rs)
+
+---
+
+## 5. Processus de build DMG
+
+### Prérequis
+- Node.js (npm)
+- Rust toolchain (`rustup target add x86_64-apple-darwin`)
+- `cargo tauri` CLI
+- Xcode command line tools (sur Mac)
+
+### Commandes
 ```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-VERSION="0.1.36"
-REPO="saec-oolivvv/cloud"
-
-Write-Host ═══════════════════════════════════════ -ForegroundColor Cyan
-Write-Host "  SAEC Sync - DMG Builder v$VERSION" -ForegroundColor Cyan
-Write-Host ═══════════════════════════════════════`n" -ForegroundColor Cyan
-
-# ─── Vérifications prérequis ───
-function Check-Prerequisites {
-    Write-Host "🔍 Vérification des prérequis..." -ForegroundColor Yellow
-    
-    $errors = @()
-    
-    # Rust target macOS
-    if (!(rustup target list --installed | Select-String "aarch64-apple-darwin")) {
-        $errors += "Rust target aarch64-apple-darwin non installé → rustup target add aarch64-apple-darwin"
-    } else {
-        Write-Host "  ✅ Rust target: $(rustup target list --installed | Select-String aarch64-apple-darwin)" -ForegroundColor Green
-    }
-    
-    # Xcode tools
-    if (!(Test-Path "/usr/bin/productbuild")) {
-        $errors += "productbuild non trouvé → installer Xcode command line tools"
-    } else {
-        Write-Host "  ✅ productbuild trouvé" -ForegroundColor Green
-    }
-    
-    # Codesigning identity
-    if [-string]::IsNullOrEmpty($env:CODESIGN_IDENTITY) {
-        $errors += "CODESIGN_IDENTITY non définie"
-    } else {
-        Write-Host "  ✅ Codesigning identity configurée" -ForegroundColor Green
-    }
-    
-    # Node.js
-    if (!(Get-Command node -ErrorAction SilentlyContinue)) {
-        $errors += "Node.js non installé → https://nodejs.org/"
-    } else {
-        Write-Host "  ✅ Node.js: $(node --version)" -ForegroundColor Green
-    }
-    
-    if ($errors.Count -gt 0) {
-        Write-Host "`n❌ Prérequis manquants :" -ForegroundColor Red
-        $errors | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
-        Write-Host "`nInstallez les prérequis puis relancez." -ForegroundColor Yellow
-        exit 1
-    }
-    
-    Write-Host "`n✅ Tous les prérequis sont satisfaits`n" -ForegroundColor Green
-}
-
-# ─── Nettoyage ───
-function Clean-Build {
-    Write-Host "🧹 Nettoyage..." -ForegroundColor Yellow
-    $dirs = @(
-        "saec-sync/target",
-        "saec-sync/node_modules",
-        "saec-sync/dist"
-    )
-    foreach ($d in $dirs) {
-        if (Test-Path $d) {
-            Remove-Item -Recurse -Force $d -ErrorAction SilentlyContinue
-            Write-Host "  Supprimé: $d" -ForegroundColor Gray
-        }
-    }
-}
-
-# ─── Build Frontend ───
-function Build-Frontend {
-    Write-Host "📦 Build Frontend (React + Vite)..." -ForegroundColor Yellow
-    Set-Location saec-sync
-    
-    if (!(Test-Path "node_modules")) {
-        Write-Host "  Installation dépendances npm..." -ForegroundColor Gray
-        npm ci
-    }
-    
-    Write-Host "  Build Vite..." -ForegroundColor Gray
-    npm run build
-    
-    if (!(Test-Path "dist/index.html")) {
-        throw "Build frontend échoué - dist/index.html manquant"
-    }
-    Write-Host "  ✅ Frontend build OK" -ForegroundColor Green
-    Set-Location ..
-}
-
-# ─── Build Tauri DMG ───
-function Build-DMG {
-    Write-Host "🔨 Build Tauri DMG..." -ForegroundColor Yellow
-    Set-Location saec-sync\src-tauri
-    
-    $env:TAURI_PRIVATE_KEY = $env:TAURI_PRIVATE_KEY
-    
-    $cmd = "cargo tauri build --target aarch64-apple-darwin --release"
-    Write-Host "  Commande: $cmd" -ForegroundColor Gray
-    
-    $result = cmd /c $cmd 2>&1
-    $exitCode = $LASTEXITCODE
-    
-    foreach ($line in $result) {
-        if ($line -match "(error|Error|ERREUR)") {
-            Write-Host "  $line" -ForegroundColor Red
-        } elseif ($line -match "(warning|Warning)") {
-            Write-Host "  $line" -ForegroundColor Yellow
-        } else {
-            Write-Host "  $line" -ForegroundColor Gray
-        }
-    }
-    
-    if ($exitCode -ne 0) {
-        throw "Build DMG échoué (exit code: $exitCode)"
-    }
-    
-    Write-Host "  ✅ Build Tauri OK" -ForegroundColor Green
-    Set-Location ..\..
-}
-
-# ─── Trouver l'artifact ───
-function Find-DMG {
-    Write-Host "🔍 Recherche du DMG généré..." -ForegroundColor Yellow
-    $dmgPaths = @(
-        "saec-sync/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg"
-    )
-    
-    foreach ($pattern in $dmgPaths) {
-        $files = Get-ChildItem $pattern -ErrorAction SilentlyContinue
-        if ($files) {
-            $dmg = $files[0].FullName
-            Write-Host "  ✅ DMG trouvé: $dmg" -ForegroundColor Green
-            return $dmg
-        }
-    }
-    
-    throw "Aucun DMG trouvé dans les dossiers de sortie attendus"
-}
-
-# ─── Upload vers GitHub Release ───
-function Upload-Release {
-    param($DmgPath)
-    
-    Write-Host "☁️ Upload vers GitHub Release..." -ForegroundColor Yellow
-    
-    $version = "v0.1.36"
-    
-    # Vérifier si release existe
-    $release = gh release view $version --repo $repo 2>$null
-    if (-not $release) {
-        Write-Host "  Création release $version..." -ForegroundColor Gray
-        gh release create $version --repo $repo --title "SAEC Sync $version" --notes "DMG macOS Installer" --draft:$false
-    }
-    
-    Write-Host "  Upload DMG..." -ForegroundColor Gray
-    gh release upload $version $DmgPath --repo $repo --clobber
-    
-    Write-Host "  ✅ Upload OK" -ForegroundColor Green
-}
-
-# ═══════════════════════════════════════
-# MAIN
-# ══════════════════════════════════════
-
-try {
-    Check-Prerequisites
-    
-    Clean-Build
-    
-    Build-Frontend
-    Build-DMG
-    
-    $dmg = Find-DMG
-    Write-Host "`n🎉 DMG généré avec succès !" -ForegroundColor Green
-    Write-Host "   Fichier: $dmg" -ForegroundColor Cyan
-    Write-Host "   Taille: $([math]::Round((Get-Item $dmg).Length / 1MB, 1)) MB" -ForegroundColor Cyan
-    
-    # Proposer upload
-    $upload = Read-Host "`nUploader vers GitHub Release ? (o/N)"
-    if ($upload -eq 'o') {
-        Upload-Release -DmgPath $dmg
-    }
-    
-    Write-Host "`n🏁 Terminé !" -ForegroundColor Green
-    
-} catch {
-    Write-Host "`n❌ ERREUR: $_" -ForegroundColor Red
-    exit 1
-}
+cd saec-sync
+rm -rf node_modules dist target
+npm ci
+npm run build           # Vite → dist/
+cargo tauri build       # Release DMG (pas de flag --release, c'est le default)
 ```
 
-### Points de sécurité
-- **Clé privée** ne jamais être commité ; stocker uniquement en secret GitHub.
-- Les actions utilisées proviennent de sources officielles (`actions/`, `softprops/action-gh-release`).
-- Le workflow s’exécute dans un environnement isolé, ne donnant aucun accès aux ressources du poste de développement local.
-- Si une clé de code‑signing tiers est nécessaire, elle peut être fournie via un secret supplémentaire et utilisée uniquement pendant l’étape de build.
-
-## 8. Meilleure solution sans machine macOS disponible
-Comme aucune machine physique macOS n’est à disposition, la solution idéale et sécurisée consiste à **déplacer la compilation DMG vers une pipeline CI hébergée en ligne**, spécifiquement **GitHub Actions** utilisant le runner `macOS-latest` fourni par GitHub. Cette approche présente les avantages suivants :
-
-- **Pas de dépendance matérielle locale** : les exécutions s’effectuent sur l’infrastructure de GitHub, entièrement gérée.
-- **Prérequis installés par défaut** : le runner `macOS-latest` inclut déjà les versions compatibles de Xcode, `productbuild`, `codesign`, et les outils de notarisation.
-- **Rust target disponible** : l’image inclut Rust avec la cible `aarch64-apple-darwin` pré‑installée (ou facile à ajouter via `rustup target add`).
-- **Gestion sécurisée des secrets** : la clé de signature Tauri (`TAURI_PRIVATE_KEY`) et l’identité codesign Apple peuvent être stockées en tant que secrets GitHub et injectées pendant l’exécution, jamais en clair dans le repo.
-- **Intégration native avec GitHub Releases** : l’action `tauri-apps/tauri-action` (ou les étapes personnalisées du script `build-dmg.sh`) peut produire le DMG, le signer et l’uploader automatiquement sur une release à chaque tag de version.
-- **Reproductibilité** : le fichier de workflow (`.github/workflows/dmg.yml`) définit précisément les étapes, les versions des outils et les variables d’environnement, garantissant que chaque build part des mêmes paramètres.
-- **Traçabilité** : chaque exécution apparaît dans l’onglet *Actions* de GitHub, avec logs détaillés, ce qui facilite le débogage à distance.
-
-### Workflow proposé (`.github/workflows/dmg.yml`)
-```yaml
-name: Build SAEC Sync DMG
-
-on:
-  push:
-    tags:
-      - 'v*'          # déclenché à chaque nouveau tag (ex: v0.1.36)
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to build'
-        required: false
-        default: ''
-
-jobs:
-  build-dmg:
-    runs-on: macos-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Rust target (if needed)
-        run: rustup target add aarch64-apple-darwin
-
-      - name: Setup Python (for any helpers)
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Build Tauri DMG
-        working-directory: saec-sync/src-tauri
-        env:
-          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-          CODESIGN_IDENTITY: ${{ secrets.CODESIGN_IDENTITY }}
-        run: |
-          cargo tauri build --target aarch64-apple-darwin --release
-
-      - name: Locate generated DMG
-        run: |
-          $dmgPaths = @(
-            "saec-sync/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg"
-          )
-          foreach ($pattern in $dmgPaths) {
-            $files = Get-ChildItem $pattern -ErrorAction SilentlyContinue
-            if ($files) {
-              echo "dmg_path=$($files[0].FullName)" >> $env:GITHUB_OUTPUT
-              break
-            }
-          }
-
-      - name: Create/Update GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: "SAEC Sync ${{ github.ref_name }}"
-          files: ${{ steps.find-dmg.outputs.dmg_path }}
-          overwrite: true
-          generate_release_notes: true
+### Sortie
+```
+target/x86_64-apple-darwin/release/bundle/dmg/SAEC-Sync-0.1.36.dmg
 ```
 
-### Points de sécurité
-- **Clés privées** ne jamais être commitées ; stocker uniquement en secret GitHub.
-- Les actions utilisées proviennent de sources officielles (`actions/`, `softprops/action-gh-release`).
-- Le workflow s’exécute dans un environnement isolé, ne donnant aucun accès aux ressources du poste de développement local.
-- Si une clé de code‑signing tiers est nécessaire, elle peut être fournie via un secret supplémentaire et utilisée uniquement pendant l’étape de build.
+### Notes importantes
+- **`cargo tauri build` = release par défaut** — le flag `--release` est invalide dans Tauri v2
+- **`cargo tauri dev`** = mode dev (Vite localhost:1420) — **fonctionne**
+- **`cargo tauri build`** = release (custom protocol) — **crashait avant le patch tao**
+- SCP ne fonctionne pas → upload DMG via GitHub Releases
+- Synology Web Station sert depuis une racine différente de `public/`
 
-## 9. Script d'installation macOS (`install-macos.sh`)
+---
 
-> **Statut:** Cr et test
-> **Usage:** `chmod +x install-macos.sh && ./install-macos.sh`
+## 6. Script d'installation macOS (`install-macos.sh`)
 
-### Fonctionnalits
-- Vrification pr-requis macOS (uname, curl, hdiutil)
-- Dtection architecture (Apple Silicon arm64 / Intel x86_64)
-- Recherche DMG automatique (GitHub Releases > cloud.saec.me > local)
-- Tlchargement progressif avec curl
-- Montage DMG, copie dans /Applications
-- Configuration automatique (serveur API, version)
-- Retire quarantine (xattr -dr com.apple.quarantine)
-- Vrification Gatekeeper avec instructions
-- Lancement optionnel de l'app
+### Fonctionnalités
+- Vérification prérequis (uname, curl, hdiutil)
+- Détection architecture (arm64 / x86_64)
+- Téléchargement DMG (GitHub Releases > cloud.saec.me > local)
+- Montage DMG, copie dans `/Applications`
+- Configuration serveur API
+- Retire quarantine (`xattr -dr com.apple.quarantine`)
+- Vérification Gatekeeper
+
+### Fichiers
+- `/mnt/nas-web/cloud/install-macos.sh` — script original
+- `/mnt/nas-web/cloud/public/install-macos.sh` — copie pour téléchargement HTTP
 
 ### Utilisation
 ```bash
-# Version par dfaut (0.1.36)
 chmod +x install-macos.sh
-./install-macos.sh
-
-# Version spcifique
-./install-macos.sh 0.1.37
+./install-macos.sh         # v0.1.36 par défaut
+./install-macos.sh 0.1.37  # version spécifique
 ```
 
-### Sources DMG tries (ordre)
-1. GitHub: `https://github.com/saec-oolivvv/cloud/releases/download/v{VERSION}/SAEC-Sync-{VERSION}.dmg`
-2. SAEC: `https://cloud.saec.me/download/saec-sync-{VERSION}.dmg`
-3. Local: `saec-sync/target/{arch}/release/bundle/dmg/SAEC-Sync-{VERSION}.dmg`
+---
+
+## 7. Page web overlay download (`app/Views/download/index.php`)
+
+- **501 lignes** — modal overlay pour macOS
+- Compatible macOS (overlay dédié) et autres plateformes ( lien direct)
+- Redimensionnement responsive (desktop/tablette/mobile)
+- Utilise l'API `cloud.saec.me` pour la config
 
 ---
 
-## 10. Conclusion
-En s’appuyant sur **GitHub Actions avec le runner `macOS-latest`**, la compilation DMG de SAEC‑Sync devient totalement indépendante de toute machine macOS locale, tout en conservant la sécurité (secrets gérés), la reproductibilité (définition explicite des étapes) et la facilité d’intégration avec les releases GitHub. Cette solution est idéale pour continuer le projet dans un environnement sans infrastructure macOS physique.
+## 8. Git commits de la session
+
+| Hash | Message |
+|---|---|
+| `e9e8211` | Fix sync_engine Arc wrapper |
+| `fce0b5f` | Fix CSP Google Fonts |
+| `84c7a9e` | DMG build + icons |
+| `40fea40` | Install script + download page |
 
 ---
 
-*Ce document fait office de “passation de pouvoir” pour qui que ce soit devoir poursuivre ou terminer la compilation DMG de SAEC‑Sync.*
+## 9. Ce qui doit être fait (TODO)
+
+### Urgent
+- [ ] **Tester le build release** sur Mac après le patch tao 0.37.0
+- [ ] **Vérifier** `get_credentials` / `store_credentials` dans commands.rs
+- [ ] **Fixer** `on_window_event` ligne 74 : `window.hide().unwrap()` → `let _ = window.hide()` (panic si window déjà détruite)
+
+### Important
+- [ ] **Remplacer l'icone** `source-icon.png` par le vrai logo SAEC
+- [ ] **Rebuild icons** après remplacement : `cargo tauri icon icons/source-icon.png`
+- [ ] **Upload DMG** sur GitHub Releases v0.1.36
+- [ ] **Tester** `install-macos.sh` sur le Mac
+
+### Nice-to-have
+- [ ] GitHub Actions workflow pour build DMG automatique
+- [ ] Codesigning + notarisation Apple
+- [ ] Updater plugin (déjà dans tauri.conf.json mais `active: false`)
+
+---
+
+## 10. Solutions réelles pour avancer
+
+### Bug tao 0.37.0 — Fonctionne ✅
+La solution `[patch.crates-io] tauri-runtime-wry = { git = "...", branch = "dev" }` est validée par `cargo metadata` et `Cargo.lock`. **Prochaine étape : build release + test sur Mac.**
+
+### Build DMG
+Le processus est maîtrisé : `npm ci && npm run build && cargo tauri build`. Le DMG sort dans `target/x86_64-apple-darwin/release/bundle/dmg/`.
+
+### Distribution
+1. Upload DMG sur GitHub Releases
+2. `install-macos.sh` télécharge automatiquement depuis GitHub
+3. Page `cloud.saec.me/client-sync` redirige vers le téléchargement
+
+### Si le crash persiste après le patch tao
+1. Vérifier `panic = "abort"` dans le profil release — le panic est tué silencieusement
+2. Temporairement changer en `panic = "unwind"` pour voir le vrai panic
+3. Le problème pourrait aussi venir de `on_window_event` (`window.hide().unwrap()`)
+
+---
+
+*Ce document est la source de vérité pour toute nouvelle session de développement SAEC Sync.*
