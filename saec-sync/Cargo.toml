@@ -33,3 +33,5 @@ dashmap = "5.5"
 
 [patch.crates-io]
 tauri-runtime-wry = { git = "https://github.com/tauri-apps/tauri", branch = "dev" }
+tauri-runtime = { git = "https://github.com/tauri-apps/tauri", branch = "dev" }
+tauri-utils = { git = "https://github.com/tauri-apps/tauri", branch = "dev" }
