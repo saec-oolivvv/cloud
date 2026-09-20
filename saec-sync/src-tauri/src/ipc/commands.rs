@@ -93,7 +93,11 @@ pub async fn auth_poll_token(
     device_code: String,
 ) -> Result<TokenResponse, String> {
     let config = state.get_config();
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(config.api.timeout_seconds))
+        .user_agent("SAEC-Sync/0.1.36")
+        .build()
+        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
     let response = client
         .post(&config.api.token_url)
