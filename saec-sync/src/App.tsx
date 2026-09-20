@@ -237,45 +237,41 @@ function AuthView({ onSuccess }: { onSuccess: () => void }) {
   const handleAuth = async () => {
     try {
       setError(null)
-      console.log('[auth] Requesting device code...')
       const response = await invoke<DeviceCodeResponse>('auth_device_code')
-      console.log('[auth] Got device code:', response.user_code)
       setDeviceCode(response)
       setPolling(true)
-      startPolling(response.device_code, response.interval)
     } catch (err) {
-      console.error('[auth] Device code error:', JSON.stringify(err))
       const msg = typeof err === 'string' ? err : err instanceof Error ? err.message : JSON.stringify(err)
       setError(msg)
     }
   }
 
-  const startPolling = async (deviceCode: string, interval: number) => {
-    console.log('[auth] Starting poll, interval:', interval)
-    for (let i = 0; i < 60; i++) {
-      await new Promise(resolve => setTimeout(resolve, interval * 1000))
-      console.log('[auth] Poll attempt', i + 1)
-      try {
-        const response = await invoke<TokenResponse>('auth_poll_token', { device_code: deviceCode })
-        console.log('[auth] Token received!')
-        await login(response.access_token, response.refresh_token, response.expires_in, response.tenant_id, response.user_email)
-        setPolling(false)
-        onSuccess()
-        return
-      } catch (err) {
-        const error = typeof err === 'string' ? err : String(err)
-        console.log('[auth] Poll response:', error)
-        if (error.includes('expired_token') || error.includes('access_denied')) {
-          setError(error)
-          setPolling(false)
-          setDeviceCode(null)
-          return
-        }
-      }
+  useEffect(() => {
+    if (!polling) return
+
+    let cancelled = false
+
+    const unlistenToken = listen<TokenResponse>('auth://token', async (event) => {
+      if (cancelled) return
+      const token = event.payload
+      await login(token.access_token, token.refresh_token, token.expires_in, token.tenant_id, token.user_email)
+      setPolling(false)
+      onSuccess()
+    })
+
+    const unlistenError = listen<string>('auth://error', (event) => {
+      if (cancelled) return
+      setError(event.payload)
+      setPolling(false)
+      setDeviceCode(null)
+    })
+
+    return () => {
+      cancelled = true
+      unlistenToken.then(fn => fn())
+      unlistenError.then(fn => fn())
     }
-    setError('Polling timed out')
-    setPolling(false)
-  }
+  }, [polling, login, onSuccess])
 
   if (deviceCode && polling) {
     return (

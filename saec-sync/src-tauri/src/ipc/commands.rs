@@ -1,5 +1,5 @@
 use crate::{config::Config, keyring::StoredCredentials, state::{AppState, SyncState, SyncStatus, ConflictInfo}, sync::engine::{SyncEngine, ConflictResolution as EngineConflictResolution}};
-use tauri::{Manager, tray::TrayIconBuilder, menu::{Menu, MenuItem}, Emitter};
+use tauri::{Manager, tray::TrayIconBuilder, Emitter};
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_dialog::DialogExt;
 use std::sync::Arc;
@@ -84,66 +84,95 @@ pub async fn auth_device_code(
     app.opener().open_url(&data.verification_uri_complete, None::<&str>)
         .map_err(|e| format!("Failed to open browser: {}", e))?;
 
+    // Spawn background polling task
+    let state_inner = state.inner().clone();
+    let app_handle = app.clone();
+    let device_code = data.device_code.clone();
+    let interval = data.interval;
+    let token_url = config.api.token_url.clone();
+
+    tauri::async_runtime::spawn(async move {
+        let poll_client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .user_agent("SAEC-Sync/0.1.36")
+            .build()
+            .unwrap();
+
+        for i in 0..60 {
+            tokio::time::sleep(std::time::Duration::from_secs(interval)).await;
+            tracing::info!("[cmd] auth_poll attempt {}", i + 1);
+
+            let response = poll_client
+                .post(&token_url)
+                .json(&serde_json::json!({
+                    "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+                    "device_code": device_code,
+                    "client_id": "saec-sync-desktop"
+                }))
+                .send()
+                .await;
+
+            match response {
+                Ok(resp) if resp.status().is_success() => {
+                    match resp.json::<TokenResponse>().await {
+                        Ok(token_data) => {
+                            tracing::info!("[cmd] auth_poll SUCCESS — token received");
+                            let _ = crate::keyring::store_credentials(
+                                token_data.access_token.clone(),
+                                token_data.refresh_token.clone(),
+                                token_data.expires_in as i64,
+                                token_data.tenant_id.clone(),
+                                token_data.user_email.clone(),
+                            );
+                            state_inner.set_credentials(Some(StoredCredentials {
+                                access_token: token_data.access_token.clone(),
+                                refresh_token: token_data.refresh_token.clone(),
+                                expires_at: chrono::Utc::now().timestamp() + token_data.expires_in as i64,
+                                tenant_id: token_data.tenant_id.clone(),
+                                user_email: token_data.user_email.clone(),
+                            }));
+                            state_inner.update_sync_status(|s| s.state = SyncState::Scanning);
+                            let _ = app_handle.emit("auth://token", &token_data);
+                            return;
+                        }
+                        Err(e) => {
+                            tracing::warn!("[cmd] auth_poll parse error: {}", e);
+                            continue;
+                        }
+                    }
+                }
+                Ok(resp) => {
+                    let error_value: serde_json::Value = resp.json().await.unwrap_or_default();
+                    let error_desc = error_value.get("error_description")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown");
+                    match error_desc {
+                        "authorization_pending" | "slow_down" => {
+                            tracing::debug!("[cmd] auth_poll: {}", error_desc);
+                            continue;
+                        }
+                        "expired_token" | "access_denied" => {
+                            tracing::warn!("[cmd] auth_poll terminal: {}", error_desc);
+                            let _ = app_handle.emit("auth://error", error_desc.to_string());
+                            return;
+                        }
+                        other => {
+                            tracing::warn!("[cmd] auth_poll unknown error: {}", other);
+                            continue;
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("[cmd] auth_poll network error: {}", e);
+                    continue;
+                }
+            }
+        }
+        tracing::warn!("[cmd] auth_poll timed out after 60 attempts");
+        let _ = app_handle.emit("auth://error", "Polling timed out".to_string());
+    });
+
     Ok(data)
-}
-
-#[tauri::command]
-pub async fn auth_poll_token(
-    state: tauri::State<'_, Arc<AppState>>,
-    device_code: String,
-) -> Result<TokenResponse, String> {
-    tracing::info!("[cmd] auth_poll_token called, code={}", &device_code[..std::cmp::min(8, device_code.len())]);
-    let config = state.get_config();
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(config.api.timeout_seconds))
-        .user_agent("SAEC-Sync/0.1.36")
-        .build()
-        .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
-
-    let response = client
-        .post(&config.api.token_url)
-        .json(&serde_json::json!({
-            "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
-            "device_code": device_code,
-            "client_id": "saec-sync-desktop"
-        }))
-        .send()
-        .await
-        .map_err(|e| format!("Request failed: {}", e))?;
-
-    if response.status().is_success() {
-        let data: TokenResponse = response
-            .json()
-            .await
-            .map_err(|e| format!("Invalid response: {}", e))?;
-
-        crate::keyring::store_credentials(
-            data.access_token.clone(),
-            data.refresh_token.clone(),
-            data.expires_in as i64,
-            data.tenant_id.clone(),
-            data.user_email.clone(),
-        ).map_err(|e| e.to_string())?;
-
-        state.set_credentials(Some(StoredCredentials {
-            access_token: data.access_token.clone(),
-            refresh_token: data.refresh_token.clone(),
-            expires_at: chrono::Utc::now().timestamp() + data.expires_in as i64,
-            tenant_id: data.tenant_id.clone(),
-            user_email: data.user_email.clone(),
-        }));
-
-        state.update_sync_status(|s| s.state = SyncState::Scanning);
-
-        Ok(data)
-    } else {
-        let error_value: serde_json::Value = response.json().await.unwrap_or_default();
-        let error_desc = error_value.get("error_description")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| "Authentication failed".to_string());
-        Err(error_desc)
-    }
 }
 
 #[tauri::command]

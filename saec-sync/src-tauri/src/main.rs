@@ -45,7 +45,6 @@ fn main() -> anyhow::Result<()> {
             commands::get_credentials,
             commands::store_credentials,
             commands::auth_device_code,
-            commands::auth_poll_token,
             commands::auth_logout,
             commands::sync_start,
             commands::sync_pause,
