@@ -15,6 +15,7 @@ impl ApiClient {
     pub fn new(config: Config) -> Self {
         let client = Client::builder()
             .timeout(Duration::from_secs(config.api.timeout_seconds))
+            .user_agent("SAEC-Sync/0.1.36")
             .gzip(true)
             .brotli(true)
             .build()
@@ -54,7 +55,9 @@ impl ApiClient {
     async fn refresh_token(&self) -> AppResult<()> {
         let mut creds = self.credentials.lock().await;
         if let Some(current) = creds.as_ref() {
-            let client = Client::new();
+            let client = Client::builder()
+                .user_agent("SAEC-Sync/0.1.36")
+                .build()?;
             let response = client
                 .post(&self.config.api.token_url)
                 .json(&serde_json::json!({

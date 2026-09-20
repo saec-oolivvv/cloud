@@ -54,6 +54,7 @@ pub async fn auth_device_code(
     tracing::info!("[cmd] device_code_url: {}", config.api.device_code_url);
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(config.api.timeout_seconds))
+        .user_agent("SAEC-Sync/0.1.36")
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
