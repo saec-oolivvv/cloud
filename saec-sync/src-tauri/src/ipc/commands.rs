@@ -6,12 +6,19 @@ use std::sync::Arc;
 
 #[tauri::command]
 pub async fn get_config(state: tauri::State<'_, AppState>) -> Result<Config, String> {
+    tracing::info!("[cmd] get_config called");
     Ok(state.get_config())
 }
 
 #[tauri::command]
 pub async fn get_credentials(state: tauri::State<'_, AppState>) -> Result<Option<StoredCredentials>, String> {
-    Ok(crate::keyring::load_credentials().map_err(|e| e.to_string())?)
+    tracing::info!("[cmd] get_credentials called");
+    let result = crate::keyring::load_credentials().map_err(|e| {
+        tracing::warn!("[cmd] get_credentials keyring error: {}", e);
+        e.to_string()
+    })?;
+    tracing::info!("[cmd] get_credentials result: has_creds={}", result.is_some());
+    Ok(result)
 }
 
 #[tauri::command]
@@ -153,6 +160,7 @@ pub async fn sync_resume(engine: tauri::State<'_, Arc<SyncEngine>>) -> Result<()
 
 #[tauri::command]
 pub async fn sync_status(state: tauri::State<'_, AppState>) -> Result<SyncStatus, String> {
+    tracing::info!("[cmd] sync_status called");
     Ok(state.get_sync_status())
 }
 

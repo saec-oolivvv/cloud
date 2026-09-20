@@ -36,14 +36,8 @@ export const useAuthStore = create<AuthState>()(
               user: creds,
               accessToken: creds.access_token,
             })
-          } else if (creds) {
-            // Token expired, try to refresh
-            const newToken = await get().refreshToken()
-            if (newToken) {
-              set({ accessToken: newToken })
-            } else {
-              await get().logout()
-            }
+          } else {
+            set({ isAuthenticated: false, user: null, accessToken: null })
           }
         } catch (error) {
           console.error('Auth check failed:', error)
@@ -59,14 +53,6 @@ export const useAuthStore = create<AuthState>()(
           tenant_id: tenantId,
           user_email: userEmail,
         }
-
-        await invoke('store_credentials', {
-          access_token: accessToken,
-          refresh_token: refreshToken,
-          expires_in: expiresIn,
-          tenant_id: tenantId,
-          user_email: userEmail,
-        })
 
         set({
           isAuthenticated: true,
@@ -85,10 +71,8 @@ export const useAuthStore = create<AuthState>()(
         if (!user) return null
 
         try {
-          // The backend handles token refresh automatically via the API client
-          // This is just a placeholder - actual refresh happens in the Rust layer
           const creds = await invoke<StoredCredentials | null>('get_credentials')
-          if (creds) {
+          if (creds && creds.expires_at > Date.now() / 1000) {
             set({ user: creds, accessToken: creds.access_token })
             return creds.access_token
           }

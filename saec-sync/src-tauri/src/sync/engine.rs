@@ -68,7 +68,7 @@ impl SyncEngine {
         let config = state.get_config();
         let api_client = Arc::new(ApiClient::new(config.clone()));
         
-        if let Ok(Some(creds)) = crate::keyring::load_credentials() {
+        if let Some(creds) = state.get_credentials() {
             api_client.set_credentials(Some(creds));
         }
 

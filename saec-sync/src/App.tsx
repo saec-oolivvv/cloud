@@ -24,17 +24,20 @@ function App() {
   useEffect(() => {
     async function init() {
       try {
-        // Load config
+        console.log('[init] Starting...')
+        
+        console.log('[init] Calling get_config...')
         const config = await invoke<Config>('get_config')
-        // TODO: set config in store
+        console.log('[init] Config loaded OK')
         
-        // Check auth
+        console.log('[init] Calling checkAuth...')
         await checkAuth()
+        console.log('[init] checkAuth OK')
         
-        // Fetch initial sync status
+        console.log('[init] Calling fetchStatus...')
         await fetchStatus()
+        console.log('[init] fetchStatus OK')
         
-        // Listen for sync events
         const unlistenStatus = await listen<SyncStatus>('sync://status', (event) => {
           useSyncStore.getState().setStatus(event.payload)
         })
@@ -47,6 +50,7 @@ function App() {
           useSyncStore.getState().setFileTree(event.payload)
         })
 
+        console.log('[init] All done, setting initialized=true')
         setInitialized(true)
         
         return () => {
@@ -55,7 +59,7 @@ function App() {
           unlistenFileTree()
         }
       } catch (error) {
-        console.error('Initialization failed:', error)
+        console.error('[init] FAILED:', error)
         setInitError(error instanceof Error ? error.message : 'Failed to initialize')
       }
     }

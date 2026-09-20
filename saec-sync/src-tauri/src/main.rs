@@ -18,12 +18,17 @@ fn main() -> anyhow::Result<()> {
 
     tracing::info!("Starting SAEC Sync v{}", env!("CARGO_PKG_VERSION"));
 
+    tracing::info!("[main] Loading config...");
     let config = Config::load()?;
-    tracing::debug!("Config loaded: {:?}", config);
+    tracing::info!("[main] Config loaded OK");
 
+    tracing::info!("[main] Creating AppState...");
     let app_state = Arc::new(AppState::new(config.clone()));
+    tracing::info!("[main] AppState created OK");
 
+    tracing::info!("[main] Creating SyncEngine...");
     let sync_engine = SyncEngine::new(app_state.clone());
+    tracing::info!("[main] SyncEngine created OK");
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -51,12 +56,15 @@ fn main() -> anyhow::Result<()> {
             commands::open_external,
         ])
         .setup(|app| {
+            tracing::info!("[main] Tauri setup starting...");
+
             if let Err(e) = commands::setup_tray(app.handle().clone()) {
                 tracing::warn!("Tray setup failed (non-fatal): {}", e);
             }
 
             let engine = app.state::<Arc<SyncEngine>>().inner().clone();
             if engine.should_auto_start() {
+                tracing::info!("[main] Auto-starting sync engine...");
                 tauri::async_runtime::spawn(async move {
                     if let Err(e) = engine.start().await {
                         tracing::error!("Sync engine failed to start: {}", e);
@@ -69,6 +77,7 @@ fn main() -> anyhow::Result<()> {
                 let _ = window.set_title("SAEC Sync");
             }
 
+            tracing::info!("[main] Tauri setup done");
             Ok(())
         })
         .on_window_event(|window, event| {

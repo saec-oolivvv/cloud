@@ -93,8 +93,12 @@ impl AppState {
             conflicts: RwLock::new(Vec::new()),
         };
 
+        tracing::info!("[state] Loading credentials from keyring...");
         if let Ok(Some(creds)) = crate::keyring::load_credentials() {
+            tracing::info!("[state] Credentials loaded from keyring");
             *state.credentials.write() = Some(creds);
+        } else {
+            tracing::info!("[state] No credentials in keyring");
         }
 
         state
