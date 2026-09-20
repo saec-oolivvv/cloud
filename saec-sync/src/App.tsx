@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { useAuthStore } from './store/auth'
@@ -234,11 +234,14 @@ function AuthView({ onSuccess }: { onSuccess: () => void }) {
   const [error, setError] = useState<string | null>(null)
   const { login } = useAuthStore()
 
+  const pollingRef = useRef(false)
+
   const handleAuth = async () => {
     try {
       setError(null)
       const response = await invoke<DeviceCodeResponse>('auth_device_code')
       setDeviceCode(response)
+      pollingRef.current = true
       setPolling(true)
       pollForToken(response.device_code, response.interval)
     } catch (err) {
@@ -249,12 +252,16 @@ function AuthView({ onSuccess }: { onSuccess: () => void }) {
   }
 
   const pollForToken = async (deviceCode: string, interval: number) => {
-    while (polling) {
+    const maxAttempts = 60
+    let attempts = 0
+    while (pollingRef.current && attempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, interval * 1000))
+      attempts++
       
       try {
         const response = await invoke<TokenResponse>('auth_poll_token', { device_code: deviceCode })
         await login(response.access_token, response.refresh_token, response.expires_in, response.tenant_id, response.user_email)
+        pollingRef.current = false
         setPolling(false)
         onSuccess()
         return
@@ -265,6 +272,7 @@ function AuthView({ onSuccess }: { onSuccess: () => void }) {
         }
         if (error.includes('expired_token') || error.includes('access_denied')) {
           setError(error)
+          pollingRef.current = false
           setPolling(false)
           setDeviceCode(null)
           return
@@ -294,7 +302,7 @@ function AuthView({ onSuccess }: { onSuccess: () => void }) {
               Code: <strong className="text-saec-900 dark:text-saec-100">{deviceCode.user_code}</strong>
             </p>
           </div>
-          <button onClick={() => { setPolling(false); setDeviceCode(null); }} className="btn-secondary">
+          <button onClick={() => { pollingRef.current = false; setPolling(false); setDeviceCode(null); }} className="btn-secondary">
             Annuler
           </button>
         </div>
