@@ -27,7 +27,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:1420; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src ipc: http://ipc.localhost 'self' http://localhost:1420 ws://localhost:1420 https://cloud.saec.me wss://cloud.saec.me; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:"
+      "csp": "default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:1420 http://tauri.localhost; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src ipc: http://ipc.localhost http://tauri.localhost 'self' http://localhost:1420 ws://localhost:1420 https://cloud.saec.me wss://cloud.saec.me; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:"
     }
   },
   "bundle": {
