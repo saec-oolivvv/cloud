@@ -92,7 +92,7 @@ pub async fn auth_poll_token(
     state: tauri::State<'_, Arc<AppState>>,
     device_code: String,
 ) -> Result<TokenResponse, String> {
-    tracing::info!("[cmd] auth_poll_token called, device_code={}", &device_code[..8]);
+    tracing::info!("[cmd] auth_poll_token called, code={}", &device_code[..std::cmp::min(8, device_code.len())]);
     let config = state.get_config();
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(config.api.timeout_seconds))

@@ -1,6 +1,6 @@
 # SAEC CLOUD — MÉMOIRE DE CONTEXTE COMPLÈTE
 
-> Dernière mise à jour: 2026-09-03
+> Dernière mise à jour: 2026-09-20
 > Version: 1.0.0-alpha
 
 ---
@@ -509,31 +509,76 @@ chmod 644 /mnt/nas-web/cloud/storage/keys/master.key
 - `app/Views/files/index.php` — MODIFIÉ (delete CSRF header au lieu de body)
 - `app/Views/auth/login.php` — MODIFIÉ (champ hidden redirect)
 
-## 15. DMG — Build macOS
+## 15. SAEC Sync — Client Desktop Tauri (CRITIQUE)
 
-> Target: `dmg` via Tauri bundle — voir `tauri.conf.json` → `bundle.targets`.
-> **Statut:** DMG fonctionnel, installé et testé sur macOS Intel (x86_64).
+> **Statut:** 🔴 BLOCAGE — auth_device_code OK, polling token jamais déclenché
+> **Dernière session:** 20 septembre 2026
 
-### Prérequis
-- Machine macOS (ou CI macOS compatible)
-- Rust + cargo-tauri: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && cargo install tauri-cli`
-- Target: `rustup target add x86_64-apple-darwin` (Intel) ou `aarch64-apple-darwin` (Apple Silicon)
-- Node.js + npm (pour le frontend React/Vite)
-- Xcode command line tools: `xcode-select --install`
+### Environnement de dev
+| Élément | Détail |
+|---|---|
+| Mac | `saec@MacBook-Pro-de-SAEC`, Intel x86_64, macOS 26.7 (Tahoe) |
+| Repo Mac | `/Users/saec/saec-cloud/` |
+| Repo NAS | `/mnt/nas-web/cloud/` (agent workspace) |
+| SCP | **Ne fonctionne pas** Mac → NAS |
+| Keyring | `me.saec.sync` / user `auth` |
+| API | `https://cloud.saec.me/api/auth/device` + `/api/auth/token` |
 
-### Processus de build DMG
+### Ce qui fonctionne ✅
+1. `cargo tauri dev` compile et lance l'app
+2. Écran "Initialisation..." disparaît (fixé: `checkAuth` ne boucle plus)
+3. Écran de login s'affiche
+4. Clic "Se connecter" → `auth_device_code` appelé → 200 OK → browser s'ouvre
+5. Autorisation dans le navigateur fonctionne
+6. Keyring: 1 seul appel au startup (au lieu de 3)
+7. User-Agent `SAEC-Sync/0.1.36` sur tous les reqwest clients
+8. CSP autorise Cloudflare, Vite dev, Google Fonts
+9. Tauri v2 IPC bridge: `withGlobalTauri: true` + `capabilities/default.json`
+10. `npm run build` avant `cargo tauri dev` résout le problème dist/
+
+### 🔴 BLOCAGE: polling token jamais déclenché
+`auth_poll_token` n'est JAMAIS appelé depuis le frontend React.
+Le terminal Rust montre `auth_device_code 200 OK` puis plus rien.
+
+**Racines possibles (non confirmées — WebKit Inspector jamais consulté):**
+- Vite sert du JavaScript stale (cache non invalidé)
+- Erreur JavaScript silencieuse dans le try/catch
+- Stale closure React malgré le useRef
+- Bug IPC Tauri avec invoke imbriqués dans un async non-awaited
+
+**Plan de fix: déplacer le poll vers Rust (elimine les problèmes React)**
+1. `auth_device_code` spawn un `tokio::spawn` qui poll en arrière-plan
+2. Le poll émet `app.emit("auth://token", data)` quand token reçu
+3. Frontend utilise `listen('auth://token')` au lieu de `invoke('auth_poll_token')`
+4. Supprime la command `auth_poll_token`
+→ Voir passation.md §6 pour le code détaillé.
+
+### Build DMG
 ```bash
-cd saec-sync/src-tauri
-# 1. Générer les icônes (AVANT le build)
-cargo tauri icon icons/source-icon.png
-# 2. Fix tray-icon (cargo tauri icon produit un 108 bytes sur macOS)
-cp icons/source-icon.png icons/tray-icon.png
-# 3. Build
-cargo tauri build --target x86_64-apple-darwin
+cd saec-sync && npm run build && cargo tauri build
+# Output: target/x86_64-apple-darwin/release/bundle/dmg/SAEC Sync_0.1.36_x64.dmg
 ```
-- **Artifact:** `saec-sync/target/x86_64-apple-darwin/release/bundle/dmg/SAEC Sync_0.1.36_x64.dmg`
-- **Note:** `--release` n'est PAS nécessaire (Tauri v2 = release par défaut)
-- Le build nettoie la .app après création du DMG → monter le DMG pour récupérer la .app
+
+### Bug tao 0.35.3 sur macOS 26
+- `cargo tauri build` crash en release mode
+- Fix dans tao >= 0.36.0 (Tauri 2.12+)
+- Options: fork tao 0.35.4 (recommandé) ou attendre Tauri 2.12
+
+### Icônes
+- **Source:** `public/img/favicon-192x192.png` (32KB, 192x192, PNG RGBA)
+- **tray-icon:** Copier source-icon.png par dessus (le générateur Tauri produit un fichier trop petit)
+- **Icons requis:** icon.png (1024x1024), icon.icns (macOS), icon.ico (Windows), tray-icon.png (32x32)
+
+### Prérequis build
+- Node.js (npm)
+- Rust toolchain (`rustup target add x86_64-apple-darwin`)
+- `cargo tauri` CLI
+- Xcode command line tools (`xcode-select --install`)
+
+### Commandes
+```bash
+cd saec-sync && rm -rf node_modules dist target && npm ci && npm run build && cargo tauri build
+```
 
 ### Installation sur macOS
 ```bash
@@ -544,162 +589,57 @@ codesign --force --deep --sign - "/Applications/SAEC Sync.app"
 open "/Applications/SAEC Sync.app"
 ```
 
-### Bugs corrigés (session 2026-09-20)
-
-#### Bug 1: State management — panic `state() called before manage()`
-- **Erreur:** `state() called before manage() for Arc<SyncEngine>`
-- **Cause:** `SyncEngine` enregistré comme `SyncEngine` mais récupéré comme `Arc<SyncEngine>`
-- **Fix:** `.manage(Arc::new(sync_engine))` au lieu de `.manage(sync_engine)` dans `main.rs`
-- **Règle:** Toujours wrapper dans `Arc` quand on passe au `.manage()` de Tauri
-
-#### Bug 2: CSP bloque Google Fonts → webview crash
-- **Erreur:** `web content process terminated` + app bloquée sur "Initialisation..."
-- **Cause:** CSP dans `tauri.conf.json` n'autorisait pas `fonts.googleapis.com` / `fonts.gstatic.com`
-- **Fix:** Ajouter au CSP:
-  ```
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  font-src 'self' data: https://fonts.gstatic.com;
-  ```
-- **Règle:** Le frontend React charge Google Fonts → CSP doit les autoriser
-
-#### Bug 3: Icônes corrompues → crash TAO
-- **Erreur:** `panic_cannot_unwind` dans `tao::did_finish_launching`
-- **Cause:** `tray-icon.png` faisait 108-316 bytes (vide/corrompu)
-- **Fix:** Utiliser `cargo tauri icon icons/source-icon.png` PUIS `cp icons/source-icon.png icons/tray-icon.png`
-- **Règle:** Toujours vérifier la taille des icônes après génération (>1KB)
-
-#### Bug 4: git pull pas appliqué sur Mac
-- **Erreur:** Fix CSP fait sur NAS mais pas sur le Mac local
-- **Cause:** Le clone GitHub est un snapshot, pas un lien vers le NAS
-- **Fix:** Éditer directement les fichiers sur le Mac ou `git pull` avant rebuild
-- **Règle:** Toujours vérifier que le code local est à jour avant de builder
-
-### Icônes
-- **Source:** `public/img/favicon-192x192.png` (32KB, 192x192, PNG RGBA)
-- **Génération:** `cargo tauri icon icons/source-icon.png` → icon.png, icon.icns, icon.ico
-- **tray-icon:** Copier source-icon.png par dessus (le générateur Tauri produit un fichier trop petit)
-- **Icons requis:** icon.png (1024x1024), icon.icns (macOS), icon.ico (Windows), tray-icon.png (32x32 template)
-
-### Workflow GitHub Actions proposé (`.github/workflows/dmg.yml`)
-```yaml
-name: Build SAEC Sync DMG
-
-on:
-  push:
-    tags:
-      - 'v*'          # déclenché à chaque nouveau tag
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to build'
-        required: false
-        default: ''
-
-jobs:
-  build-dmg:
-    runs-on: macos-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install Rust target (if needed)
-        run: rustup target add aarch64-apple-darwin
-
-      - name: Setup Python (for any helpers)
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Build Tauri DMG
-        working-directory: saec-sync/src-tauri
-        env:
-          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
-        run: |
-          cargo tauri build --target aarch64-apple-darwin --release
-
-      - name: Locate generated DMG
-        run: |
-          $dmgPaths = @(
-            "saec-sync/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg"
-          )
-          foreach ($pattern in $dmgPaths) {
-            $files = Get-ChildItem $pattern -ErrorAction SilentlyContinue
-            if ($files) {
-              echo "dmg_path=$($files[0].FullName)" >> $env:GITHUB_OUTPUT
-              break
-            }
-          }
-
-      - name: Create/Update GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: "SAEC Sync ${{ github.ref_name }}"
-          files: ${{ steps.find-dmg.outputs.dmg_path }}
-          overwrite: true
-          generate_release_notes: true
-```
-
-### Scripts d'installation
-
-#### `install-macos.sh` (cr, excutable)
-- **Usage:** `chmod +x install-macos.sh && ./install-macos.sh [VERSION]`
-- **Fonctions:**
-  - Vrification pr-requis macOS (uname, curl, hdiutil)
-  - Dtection architecture (Apple Silicon arm64 / Intel x86_64)
-  - Recherche DMG automatique (GitHub Releases > cloud.saec.me > local)
-  - Tlchargement progressif avec curl
-  - Montage DMG, copie dans /Applications
-  - Configuration automatique (serveur API, version)
-  - Retire quarantine Gatekeeper
-  - Lancement optionnel de l'app
-- **Sources DMG:** GitHub Releases, cloud.saec.me, ou local
-
-### Meilleure solution sans machine macOS locale
-Comme aucune machine physique macOS n'est à disposition, la solution idéale et sécurisée consiste à **déplacer la compilation DMG vers une pipeline CI hébergée en ligne**, spécifiquement **GitHub Actions** utilisant le runner `macOS-latest`. Cette approche présente les mêmes avantages que la solution Windows MSI (voir passation §7) :
-- Pas de dépendance matérielle locale
-- Environnement préconfiguré avec Xcode, codesigning tools, etc.
-- Rust target `aarch64-apple-darwin` disponible par défaut
-- Secrets (TAURI_PRIVATE_KEY) stockés en secret GitHub
-- Intégration native avec GitHub Releases
-- Reproductibilité totale via workflow YAML
-```
+### Script d'installation (`install-macos.sh`)
+- Détection architecture (arm64 / x86_64)
+- Téléchargement DMG (GitHub Releases > cloud.saec.me > local)
+- Montage DMG, copie dans `/Applications`
+- Retire quarantine Gatekeeper
 
 ---
 
-## 16. SESSION 2026-09-20 — FIX BLOCAGE "INITIALISATION..." DMG
+## 16. SESSION 2026-09-20 — Fix blocage + Auth polling
 
-> Commit: `b4a5880` — fix(sync): resolve macOS 'Initialisation...' blockage
+> Dernière session: 20 septembre 2026
 
-### Bug analysé
-App macOS reste bloquée sur écran "Initialisation..." sans jamais avancer.
+### Fixes appliqués cette session
 
-### Racine identifiée
-1. **`checkAuth()` appelait `refreshToken()`** (auth.ts:39-46) si token expiré
-2. **`refreshToken()` relisait le keyring** au lieu de caller l'API refresh → retournait le même token expiré → `logout()`
-3. **`init()` ne throw pas** → `setInitialized(true)` jamais atteint
-4. **Keyring macOS** appelé 3× au démarrage (AppState, SyncEngine, frontend) = risque de blocage Keychain
+| Fichier | Changement | Statut |
+|---------|-----------|--------|
+| `main.rs` | `RUST_LOG` fallback to `info` si pas défini | ✅ |
+| `main.rs` | Toutes commands: `Arc<AppState>` au lieu de `AppState` | ✅ |
+| `commands.rs` | User-Agent `SAEC-Sync/0.1.36` sur auth_device_code | ✅ |
+| `commands.rs` | User-Agent sur auth_poll_token | ✅ |
+| `api/client.rs` | User-Agent sur ApiClient::new() et refresh_token | ✅ |
+| `tauri.conf.json` | `withGlobalTauri: true` pour IPC bridge | ✅ |
+| `capabilities/default.json` | Permissions Tauri v2 (core, window, event, shell, dialog, opener) | ✅ |
+| `Cargo.toml` (workspace + src-tauri) | `devtools` feature ajoutée | ✅ |
+| `App.tsx` | useRef → simplifié en boucle for + console.log tracing | ✅ |
+| `App.tsx` | handleAuth: console.log error stringified | ✅ |
+| `App.tsx` | imported `useRef` puis ré-import `useState` sans `useRef` | ✅ |
+| `App.tsx` | startPolling: for loop 60 iters, logs à chaque tentative | ✅ |
 
-### Fixes appliqués
+### Logs Rust attendus après auth_device_code
+```
+[cmd] auth_device_code called
+[cmd] device_code_url: https://cloud.saec.me/api/auth/device
+[cmd] Sending device code request...
+[cmd] Device code response status: 200 OK
+```
+→ Plus rien. `auth_poll_token` n'apparaît JAMAIS.
 
-| Fichier | Changement |
-|---------|-----------|
-| `src/App.tsx` | +console.log avant/après chaque invoke (diagnostic) |
-| `src/store/auth.ts` | Supprimer appel `refreshToken()` dans `checkAuth()` — set `isAuthenticated=false` directement |
-| `src/store/auth.ts` | Supprimer double `store_credentials` dans `login()` (déjà fait dans `auth_poll_token`) |
-| `src/store/auth.ts` | `refreshToken()` : ajouter check `expires_at` avant de retourner le token |
-| `src-tauri/src/sync/engine.rs:71` | `SyncEngine::new()` lit credentials depuis `state.get_credentials()` au lieu de relire keyring |
-| `src-tauri/src/main.rs` | +tracing::info à chaque étape du startup |
-| `src-tauri/src/state.rs` | +tracing::info sur load_credentials |
-| `src-tauri/src/ipc/commands.rs` | +tracing::info sur get_config, get_credentials, sync_status |
+### Ce qu'il faut faire (PROCHAINE SESSION)
+1. **Déplacer le poll vers Rust** — `auth_device_code` spawn un `tokio::spawn`
+2. Le poll émet events `auth://token` et `auth://error`
+3. Frontend utilise `listen()` au lieu de `invoke()` dans une boucle
+4. Tester le flow complet
 
-### Nombre d'appels keyring réduit
-- Avant : 3 appels `load_credentials()` au démarrage (AppState + SyncEngine + frontend)
-- Après : 1 seul appel (AppState uniquement), le reste lit la mémoire
-
-### Prochaines étapes
-1. Build DMG sur Mac avec le fix
-2. Vérifier logs dans la console WebView (inspecteur Safari)
-3. Si keyring bloque toujours → ajouter timeout 2s sur les appels keyring
-4. Si tout marche → Upload DMG sur GitHub Releases v0.1.36
+### Fichiers modifiés (session 2026-09-20)
+- `src/App.tsx` — AuthView simplifié, console.log tracing
+- `src/store/auth.ts` — checkAuth sans refreshToken(), login sans double store
+- `src-tauri/src/main.rs` — RUST_LOG fallback, Arc<AppState>
+- `src-tauri/src/state.rs` — keyring 1 seul appel au startup
+- `src-tauri/src/ipc/commands.rs` — User-Agent, Arc<AppState>, tracing
+- `src-tauri/src/api/client.rs` — User-Agent sur tous les reqwest clients
+- `src-tauri/tauri.conf.json` — withGlobalTauri: true, CSP étendue
+- `src-tauri/capabilities/default.json` — permissions Tauri v2
+- `src-tauri/Cargo.toml` + workspace Cargo.toml — devtools feature
