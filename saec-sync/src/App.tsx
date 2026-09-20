@@ -242,7 +242,9 @@ function AuthView({ onSuccess }: { onSuccess: () => void }) {
       setPolling(true)
       pollForToken(response.device_code, response.interval)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed')
+      console.error('[auth] Device code error:', err)
+      const msg = typeof err === 'string' ? err : err instanceof Error ? err.message : 'Authentication failed'
+      setError(msg)
     }
   }
 

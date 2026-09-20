@@ -30,6 +30,7 @@ export const useAuthStore = create<AuthState>()(
       checkAuth: async () => {
         try {
           const creds = await invoke<StoredCredentials | null>('get_credentials')
+          console.log('[auth] checkAuth result:', creds ? 'has credentials' : 'no credentials')
           if (creds && creds.expires_at > Date.now() / 1000) {
             set({
               isAuthenticated: true,
