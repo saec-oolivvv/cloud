@@ -23,15 +23,11 @@
         "fullscreen": false,
         "decorations": true,
         "transparent": false,
-        "visible": false
+        "visible": true
       }
     ],
     "security": {
-      "csp": "default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://cloud.saec.me wss://cloud.saec.me; font-src 'self' data:;"
-    },
-    "trayIcon": {
-      "iconPath": "icons/tray-icon.png",
-      "iconAsTemplate": true
+      "csp": "default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src ipc: http://ipc.localhost 'self' https://cloud.saec.me wss://cloud.saec.me; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:"
     }
   },
   "bundle": {

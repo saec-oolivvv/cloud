@@ -30,7 +30,7 @@ fn main() -> anyhow::Result<()> {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(app_state)
-        .manage(sync_engine)
+        .manage(Arc::new(sync_engine))
         .invoke_handler(tauri::generate_handler![
             commands::get_config,
             commands::set_config,
@@ -49,7 +49,9 @@ fn main() -> anyhow::Result<()> {
             commands::open_external,
         ])
         .setup(|app| {
-            commands::setup_tray(app.handle().clone())?;
+            if let Err(e) = commands::setup_tray(app.handle().clone()) {
+                tracing::warn!("Tray setup failed (non-fatal): {}", e);
+            }
 
             let engine = app.state::<Arc<SyncEngine>>().inner().clone();
             if engine.should_auto_start() {
@@ -61,8 +63,8 @@ fn main() -> anyhow::Result<()> {
             }
 
             if let Some(window) = app.get_webview_window("main") {
-                window.show()?;
-                window.set_title("SAEC Sync")?;
+                let _ = window.show();
+                let _ = window.set_title("SAEC Sync");
             }
 
             Ok(())
