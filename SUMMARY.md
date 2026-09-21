@@ -62,6 +62,11 @@ Ajouté `urlencoding = "2.1"` dans `Cargo.toml` (workspace + member).
 
 - **Race condition auth** : les listeners `auth://token` / `auth://error` dans `src/App.tsx` sont enregistrés au montage (`useEffect(..., [login, onSuccess])`, sans `polling` dans le dependency array). Sinon le listener était ré-enregistré à chaque changement de `polling` et l'événement émis par le backend Rust arrivait avant l'enregistrement.
 
+- **Ré-authentification à chaque redémarrage** : le token d'accès expirait (1h) et le frontend ne le rafraîchissait pas au démarrage.
+  - **Fix Rust** : nouvelle commande `refresh_credentials` dans `src-tauri/src/ipc/commands.rs` — vérifie `expires_at`, appelle `/api/auth/token` avec `refresh_token` si nécessaire, stocke nouveaux tokens dans keyring.
+  - **Fix Frontend** : `checkAuth` dans `src/store/auth.ts` appelle maintenant `refresh_credentials` — rafraîchit automatiquement si token expiré.
+  - **Résultat** : autorisation permanente tant que l'app n'est pas supprimée (refresh token valide ~30 jours).
+
 ---
 
 ## `saec_run.sh`
@@ -77,3 +82,27 @@ Le DMG sort dans :
 ```
 target/universal-apple-darwin/release/bundle/dmg/SAEC Sync-*.dmg
 ```
+
+---
+
+## ⚠️ Limitation connue : Synchronisation non implémentée
+
+Le DMG se construit avec succès, mais **la synchronisation de fichiers ne fonctionne pas** :
+
+| Composant | Statut |
+|-----------|--------|
+| Authentification | ✅ Fonctionnel |
+| Dashboard | ✅ Apparaît |
+| Indexation locale (SQLite) | ✅ Fonctionnelle |
+| **Synchronisation cloud** | ❌ **Non implémentée** |
+
+**Cause** : Dans `src-tauri/src/sync/engine.rs`, les méthodes critiques sont des stubs :
+```rust
+async fn sync_mount(&self, _mount: &MountInfo) -> AppResult<()> { Ok(()) }
+async fn upload_file(&self, _mount_id: &str, _item: DeltaItem) -> AppResult<()> { Ok(()) }
+async fn download_file(&self, _mount_id: &str, _item: DeltaItem) -> AppResult<()> { Ok(()) }
+```
+
+Le `SyncEngine` démarre, crée le watcher, fait un `Full scan` (indexe les fichiers locaux), mais **aucun appel API vers SAEC Cloud n'est effectué**. Les logs montrent `File watcher started` et `Full scan complete`, mais pas de téléchargement/push.
+
+**Pour activer le sync** : implémenter ces méthodes dans `engine.rs` et connecter l'API client aux endpoints `/api/v1/files` et `/api/v1/blobs`.

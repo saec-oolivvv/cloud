@@ -92,6 +92,7 @@ Frontend                    Rust Backend                    SAEC Cloud API
 | 4.23 | frontendDist mal résolu — **erreur d'analyse** | Voir 4.24 | ❌ annulé |
 | 4.24 | **`frontendDist` est relatif à `src-tauri/`, pas à la racine projet** | Remis à `"../dist"` | ✅ |
 | 4.25 | **SQLite code 14 : espace non échappé dans chemin DB** | `urlencoding::encode()` sur chemin avant connect | ✅ |
+| 4.26 | **Ré-authentification à chaque redémarrage** | `refresh_credentials` command Rust + `checkAuth` frontend appelle `refresh_credentials` | ✅ |
 
 ### ⚠️ 4.25 — SQLite CANTOPEN : espace dans « Application Support »
 
@@ -148,11 +149,46 @@ Le `mkdir -p dist` du script créait un dossier vide **au mauvais endroit**, ce 
 9. Event `auth://token` émis vers le frontend ✅
 10. **Le frontend reçoit l'event `auth://token` et passe au Dashboard** ✅
 11. L'écran "Autorisation en cours" disparaît correctement
-12. Le tableau de bord apparaît avec les fichiers et fonctionnalités de synchronisation
+12. Le tableau de bord apparaît
+
+### ⚠️ À surveiller (pas bloquant)
+- **Synchronisation** : **Non implémentée** — les méthodes `sync_mount`, `upload_file`, `download_file` dans `src-tauri/src/sync/engine.rs` retournent `Ok(())` (stubs).
+  - Le `SyncEngine` est créé et démarre, mais **aucune action de synchronisation réelle n'est effectuée**.
+  - Le `Full scan` ne fait que lister les fichiers locaux dans la base SQLite — **pas de communication avec le serveur SAEC Cloud**.
+  - Les logs montrent `File watcher started` et `Full scan complete`, mais **aucun téléchargement/push vers le cloud**.
+  - **Pour activer le sync** : il faut implémenter les méthodes manquantes dans `engine.rs` et connecter l'API client aux endpoints `/api/v1/files` et `/api/v1/blobs`.
 
 ### 🟡 À surveiller (pas bloquant)
+- **Synchronisation** : **Non implémentée** — les méthodes `sync_mount`, `upload_file`, `download_file` dans `src-tauri/src/sync/engine.rs` retournent `Ok(())` (stubs).
+  - Le `SyncEngine` est créé et démarre, mais **aucune action de synchronisation réelle n'est effectuée**.
+  - Le `Full scan` ne fait que lister les fichiers locaux dans la base SQLite — **pas de communication avec le serveur SAEC Cloud**.
+  - Les logs montrent `File watcher started` et `Full scan complete`, mais **aucun téléchargement/push vers le cloud**.
+  - **Pour activer le sync** : il faut implémenter les méthodes manquantes dans `engine.rs` et connecter l'API client aux endpoints `/api/v1/files` et `/api/v1/blobs`.
+
 - Warnings Rust mineurs (unused variables, dead code) - pas bloquant pour la fonctionnalité
 - Aucune erreur critique en production
+
+---
+
+### ⚠️ 4.26 — Ré-authentification à chaque redémarrage
+
+**Problème :** À chaque fermeture/ouverture de l'app, l'utilisateur devait se reconnecter. Le token d'accès expire (typiquement 1h), et le frontend ne tentait pas de le rafraîchir au démarrage.
+
+**Root cause :** 
+- `checkAuth` dans `src/store/auth.ts` appelait `get_credentials` qui ne fait que lire le keyring sans refresh.
+- Le `refresh_token` était stocké mais **jamais utilisé** pour obtenir un nouveau `access_token`.
+- Pas de commande Rust pour rafraîchir le token.
+
+**Fix :**
+1. **Rust (`src-tauri/src/ipc/commands.rs`)** : Nouvelle commande `refresh_credentials` qui :
+   - Charge les credentials actuels du keyring
+   - Si `expires_at < now + 300s`, appelle l'API `/api/auth/token` avec `grant_type=refresh_token`
+   - Stocke les nouveaux tokens dans le keyring et met à jour `AppState`
+   - Retourne les nouveaux credentials ou `None` si refresh échoué
+
+2. **Frontend (`src/store/auth.ts`)** : `checkAuth` appelle maintenant `refresh_credentials` au lieu de `get_credentials`. Si le refresh réussit, l'utilisateur reste connecté.
+
+**Résultat :** L'autorisation est maintenant **permanente** tant que l'app n'est pas supprimée (le refresh token est valide longtemps, typiquement 30 jours).
 
 ---
 
@@ -169,6 +205,14 @@ Pour vérifier que tout fonctionne correctement :
    ```bash
    ./saec_run.sh dev
    ```
+   - **Attention** : Si le script attend Vite (`Waiting for your frontend dev server to start`), lancez Vite manuellement dans un terminal séparé :
+     ```bash
+     npm run dev
+     ```
+     Puis relancez Tauri dans un autre terminal :
+     ```bash
+     cargo tauri dev
+     ```
 
 3. **Dans l'application** :
    - Cliquer sur "Se connecter"
@@ -180,8 +224,10 @@ Pour vérifier que tout fonctionne correctement :
      ```
    - Vérifier que :
      - L'écran "Autorisation en cours" disparaît
-     - Le tableau de bord apparaît avec les fichiers
-     - Les fonctionnalités de synchronisation sont accessibles
+     - Le tableau de bord apparaît
+   - **Synchronisation** : **Non fonctionnelle** — les fichiers locaux sont indexés dans la base SQLite, mais **aucune synchronisation avec le serveur SAEC Cloud n'est effectuée**.
+     - Les méthodes `sync_mount`, `upload_file`, `download_file` dans `src-tauri/src/sync/engine.rs` sont des stubs (`Ok(())`).
+     - Pour activer le sync, il faut implémenter ces méthodes et connecter l'API client aux endpoints `/api/v1/files` et `/api/v1/blobs`.
 
 4. **Pour construire un DMG universel** (Intel + Apple Silicon) :
    ```bash
@@ -189,7 +235,7 @@ Pour vérifier que tout fonctionne correctement :
    ```
    Le DMG sera généré dans :
    ```
-   src-tauri/target/universal-apple-darwin/release/bundle/dmg/SAEC Sync-*.dmg
+   target/universal-apple-darwin/release/bundle/dmg/SAEC Sync-*.dmg
    ```
 
 ---

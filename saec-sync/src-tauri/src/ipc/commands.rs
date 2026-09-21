@@ -22,6 +22,80 @@ pub async fn get_credentials(state: tauri::State<'_, Arc<AppState>>) -> Result<O
 }
 
 #[tauri::command]
+pub async fn refresh_credentials(state: tauri::State<'_, Arc<AppState>>) -> Result<Option<StoredCredentials>, String> {
+    tracing::info!("[cmd] refresh_credentials called");
+
+    // Load current credentials from keyring
+    let creds = crate::keyring::load_credentials().map_err(|e| e.to_string())?;
+
+    if let Some(current_creds) = creds {
+        // Check if token is expired or near expiry (within 5 minutes)
+        let now = chrono::Utc::now().timestamp();
+        if current_creds.expires_at > now + 300 {
+            // Token still valid
+            tracing::info!("[cmd] Token still valid, no refresh needed");
+            return Ok(Some(current_creds));
+        }
+
+        // Token expired or near expiry - attempt refresh
+        tracing::info!("[cmd] Token expired, refreshing...");
+        let config = state.get_config();
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(config.api.timeout_seconds))
+            .user_agent("SAEC-Sync/0.1.36")
+            .build()
+            .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
+
+        let response = client
+            .post(&config.api.token_url)
+            .json(&serde_json::json!({
+                "grant_type": "refresh_token",
+                "refresh_token": current_creds.refresh_token,
+                "client_id": "saec-sync-desktop"
+            }))
+            .send()
+            .await
+            .map_err(|e| format!("Refresh request failed: {}", e))?;
+
+        if response.status().is_success() {
+            let data: TokenResponse = response.json().await
+                .map_err(|e| format!("Invalid refresh response: {}", e))?;
+
+            // Store new credentials in keyring
+            let _ = crate::keyring::store_credentials(
+                data.access_token.clone(),
+                data.refresh_token.clone(),
+                data.expires_in as i64,
+                data.tenant_id.clone(),
+                data.user_email.clone(),
+            );
+
+            // Update state
+            let new_creds = StoredCredentials {
+                access_token: data.access_token.clone(),
+                refresh_token: data.refresh_token.clone(),
+                expires_at: chrono::Utc::now().timestamp() + data.expires_in as i64,
+                tenant_id: data.tenant_id.clone(),
+                user_email: data.user_email.clone(),
+            };
+            state.set_credentials(Some(new_creds.clone()));
+
+            tracing::info!("[cmd] Token refreshed successfully");
+            Ok(Some(new_creds))
+        } else {
+            tracing::warn!("[cmd] Token refresh failed: {}", response.status());
+            // Clear invalid credentials
+            let _ = crate::keyring::clear_credentials();
+            state.set_credentials(None);
+            state.update_sync_status(|s| s.state = SyncState::AuthRequired);
+            Ok(None)
+        }
+    } else {
+        Ok(None)
+    }
+}
+
+#[tauri::command]
 pub async fn store_credentials(
     access_token: String,
     refresh_token: String,

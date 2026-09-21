@@ -189,3 +189,16 @@ saec-sync --version
    - Creation of required directories (`dist`, SQLite DB dir)
    - Cleaning of frontend caches
    - Launching dev mode or building DMG
+
+5. **Persistent Auth Fix**: Added automatic token refresh at startup so users stay authenticated across app restarts.
+   - **Rust** (`src-tauri/src/ipc/commands.rs`): New `refresh_credentials` command that checks token expiry and calls `/api/auth/token` with `refresh_token` if needed. Stores new tokens in keyring.
+   - **Frontend** (`src/store/auth.ts`): `checkAuth` now calls `refresh_credentials` instead of `get_credentials`. If access token expired, it's transparently refreshed.
+   - Result: User stays logged in as long as app is installed (refresh token valid ~30 days).
+
+## Known Limitations (v0.1.36)
+
+- **Synchronization NOT IMPLEMENTED**: The DMG builds successfully, but file synchronization with SAEC Cloud is not functional.
+  - Methods `sync_mount`, `upload_file`, `download_file` in `src-tauri/src/sync/engine.rs` are stubs returning `Ok(())`.
+  - The `SyncEngine` starts and indexes local files, but **no API calls to SAEC Cloud are made**.
+  - To implement sync: connect API client to `/api/v1/files` and `/api/v1/blobs` endpoints, implement upload/download logic in `engine.rs`.
+  - This is a **backend feature gap**, not a build issue.

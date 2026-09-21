@@ -29,17 +29,28 @@ export const useAuthStore = create<AuthState>()(
 
       checkAuth: async () => {
         try {
-          const creds = await invoke<StoredCredentials | null>('get_credentials')
+          const creds = await invoke<StoredCredentials | null>('refresh_credentials')
           console.log('[auth] checkAuth result:', creds ? 'has credentials' : 'no credentials')
-          if (creds && creds.expires_at > Date.now() / 1000) {
+
+          if (!creds) {
+            set({ isAuthenticated: false, user: null, accessToken: null })
+            return
+          }
+
+          const now = Date.now() / 1000
+
+          // Token still valid
+          if (creds.expires_at > now + 60) { // 60s buffer
             set({
               isAuthenticated: true,
               user: creds,
               accessToken: creds.access_token,
             })
-          } else {
-            set({ isAuthenticated: false, user: null, accessToken: null })
+            return
           }
+
+          // If somehow we still have expired creds
+          set({ isAuthenticated: false, user: null, accessToken: null })
         } catch (error) {
           console.error('Auth check failed:', error)
           set({ isAuthenticated: false, user: null, accessToken: null })
