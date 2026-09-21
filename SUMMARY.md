@@ -35,10 +35,32 @@ Ce combo a créé un dossier vide au mauvais endroit. Tauri ne paniquait plus su
 
 ---
 
+## Bug 2 : SQLite CANTOPEN (code 14) — espace dans le chemin
+
+Erreur macOS au démarrage du SyncEngine :
+```
+Database error: error returned from database: (code: 14) unable to open database file
+```
+
+Chemin : `~/Library/Application Support/me.saec.sync/sync/.saec-sync/index.db` — contient un espace ("Application Support").
+
+`format!("sqlite:{}", path.display())` produit une URL SQLite invalide : l'espace n'est pas percent-encodé.
+
+### Fix
+
+Dans `src-tauri/src/sync/index.rs` :
+```rust
+use urlencoding::encode;
+let db_url = format!("sqlite://{}?mode=rwc", encode(&self.db_path.to_string_lossy()));
+```
+
+Ajouté `urlencoding = "2.1"` dans `Cargo.toml` (workspace + member).
+
+---
+
 ## Autres corrections
 
 - **Race condition auth** : les listeners `auth://token` / `auth://error` dans `src/App.tsx` sont enregistrés au montage (`useEffect(..., [login, onSuccess])`, sans `polling` dans le dependency array). Sinon le listener était ré-enregistré à chaque changement de `polling` et l'événement émis par le backend Rust arrivait avant l'enregistrement.
-- **Répertoire SQLite** : `~/Library/Application Support/me.saec.sync/sync/.saec-sync/` doit exister avant le lancement.
 
 ---
 
@@ -53,5 +75,5 @@ Script d'automatisation dev/build. Changement notable de cette session : `check_
 
 Le DMG sort dans :
 ```
-src-tauri/target/universal-apple-darwin/release/bundle/dmg/SAEC Sync-*.dmg
+target/universal-apple-darwin/release/bundle/dmg/SAEC Sync-*.dmg
 ```

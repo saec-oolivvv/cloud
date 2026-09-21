@@ -175,7 +175,7 @@ saec-sync --version
 
 1. **Auth Race Condition Fix**: Moved Tauri event listeners (`auth://token`, `auth://error`) to mount-time in `src/App.tsx` (`useEffect(() => { ... }, [login, onSuccess])`) to prevent losing the token event before frontend is ready.
 
-2. **Database Path Fix**: Ensured `.saec-sync` directory exists in sync folder for SQLite database: `~/Library/Application Support/me.saec.sync/sync/.saec-sync/index.db`
+2. **Database Path Fix** (SQLite code 14): The SQLite database path on macOS contains a space (`~/Library/Application Support/...`) which breaks the SQLx connection URL. Fixed by percent-encoding the path with `urlencoding::encode()` before passing to `sqlx::connect()`. Added `urlencoding = "2.1"` dependency.
 
 3. **FrontendDist Path Fix** — root cause corrected:
    - **Wrong fix attempted first**: `frontendDist` changed from `"../dist"` to `"dist"` + `mkdir -p dist` in the script. This was based on a misread of the error.

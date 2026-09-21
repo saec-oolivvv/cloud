@@ -91,6 +91,24 @@ Frontend                    Rust Backend                    SAEC Cloud API
 | 4.22 | Répertoire DB manquant | Création de ~/.saec-sync dans sync folder | ✅ |
 | 4.23 | frontendDist mal résolu — **erreur d'analyse** | Voir 4.24 | ❌ annulé |
 | 4.24 | **`frontendDist` est relatif à `src-tauri/`, pas à la racine projet** | Remis à `"../dist"` | ✅ |
+| 4.25 | **SQLite code 14 : espace non échappé dans chemin DB** | `urlencoding::encode()` sur chemin avant connect | ✅ |
+
+### ⚠️ 4.25 — SQLite CANTOPEN : espace dans « Application Support »
+
+Erreur macOS : `Database error: (code: 14) unable to open database file`
+
+Chemin réel : `~/Library/Application Support/me.saec.sync/sync/.saec-sync/index.db` — contient un espace.
+
+`sqlx::connect(&format!("sqlite:{}", path.display()))` passe le chemin brut dans une URL SQLite → l'espace n'est pas encodé → SQLite résout un chemin invalide.
+
+**Fix :** encoder le chemin avec `urlencoding::encode()` avant de le passer à sqlx, et utiliser le format `sqlite://<encoded>?mode=rwc` :
+
+```rust
+use urlencoding::encode;
+let db_url = format!("sqlite://{}?mode=rwc", encode(&self.db_path.to_string_lossy()));
+```
+
+Ajouté `urlencoding = "2.1"` dans `Cargo.toml` (workspace + member).
 
 ### ⚠️ 4.23 / 4.24 — Le vrai root cause du « frontendDist n'existe pas »
 
