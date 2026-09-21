@@ -22,18 +22,49 @@ check_course_fix() {
         error "Fichier $file introuvable"
     fi
 
-    # On cherche le useEffect qui enregistre les listeners auth://token et auth://error
+    # On cherche SPECIFIQUEMENT le useEffect dans AuthView qui enregistre les listeners auth://token et auth://error
     # Il doit contenir listen<TokenResponse>('auth://token' ... ) et listen<string>('auth://error' ... )
     # et ses dépendances doivent être exactement [login, onSuccess] (pas polling)
-    if ! grep -A 20 "useEffect(() => {" "$file" | \
-        grep -q "listen<TokenResponse>('auth://token'"; then
-        warn "Le useEffect des listeners auth ne semble pas présent dans $file"
+
+    # Extraire la section AuthView complète et chercher le useEffect avec les listeners auth
+    local auth_view_section
+    auth_view_section=$(awk '/function AuthView/,/^}/' "$file" 2>/dev/null)
+
+    if [[ -z "$auth_view_section" ]]; then
+        # Fallback: chercher dans tout le fichier le useEffect avec auth listeners
+        if ! echo "$auth_view_section" | grep -q "listen<TokenResponse>('auth://token'"; then
+            warn "Le useEffect des listeners auth ne semble pas présent dans $file (section AuthView)"
+            return 1
+        fi
+    else
+        if ! echo "$auth_view_section" | grep -q "listen<TokenResponse>('auth://token'"; then
+            warn "Le useEffect des listeners auth ne semble pas présent dans AuthView"
+            return 1
+        fi
+    fi
+
+    # Extraire les dépendances du useEffect qui contient les listeners auth
+    # On cherche le useEffect qui a les deux listeners, puis on prend sa ligne de fermeture
+    local deps_line
+    # Utiliser une approche plus robuste : chercher le useEffect contenant les deux listeners
+    deps_line=$(awk '
+        /useEffect\(\(\) => \{/ { in_useeffect=1; buffer="" }
+        in_useeffect { buffer = buffer $0 "\n" }
+        /listen<TokenResponse>.*auth:\/\/token/ { has_token=1 }
+        /listen<string>.*auth:\/\/error/ { has_error=1 }
+        in_useeffect && /^\s*}\s*,\s*\[.*\]\s*\)/ && has_token && has_error {
+            # Extraire ce qui est entre [ et ]
+            match($0, /\[([^\]]*)\]/, arr)
+            if (arr[1] != "") print arr[1]
+            exit
+        }
+    ' "$file")
+
+    if [[ -z "$deps_line" ]]; then
+        warn "Impossible de trouver les dépendances du useEffect avec les listeners auth"
         return 1
     fi
 
-    # Extraire les dépendances du useEffect (la dernière ligne contenant ])
-    local deps_line
-    deps_line=$(grep -A 20 "useEffect(() => {" "$file" | tail -n 1 | sed -E 's/.*\[(.*)\].*/\1/')
     # Nettoyer les espaces
     deps_line=$(echo "$deps_line" | tr -d '[:space:]')
     if [[ "$deps_line" != "login,onSuccess" && "$deps_line" != "onSuccess,login" ]]; then
