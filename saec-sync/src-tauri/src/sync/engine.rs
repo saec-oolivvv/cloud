@@ -238,7 +238,7 @@ impl SyncEngine {
     }
 
     async fn sync_mount(&self, mount: &crate::api::client::MountInfo) -> AppResult<()> {
-        debug!("Syncing mount: {}", mount.name);
+        debug!("Syncing mount: {} (id={})", mount.name, mount.id);
 
         let session = SyncSession {
             mount_id: mount.id.clone(),
@@ -249,11 +249,15 @@ impl SyncEngine {
         };
         *self.current_sync.lock().await = Some(session);
 
+        tracing::info!("[sync] Calling list_files for mount {} path=\"\"", mount.id);
         let remote_files = self.api_client.list_files(&mount.id, "").await?;
+        tracing::info!("[sync] list_files returned {} items for mount {}", remote_files.items.len(), mount.id);
 
         let local_index = self.index.lock().await;
         let local_files = local_index.get_all_files().await?;
         let delta = self.delta_calculator.calculate(&local_files, &remote_files.items);
+        tracing::info!("[sync] Delta calculated: to_upload={}, to_download={}, conflicts={}",
+            delta.to_upload.len(), delta.to_download.len(), delta.conflicts.len());
         drop(local_index);
 
         for item in delta.to_upload {

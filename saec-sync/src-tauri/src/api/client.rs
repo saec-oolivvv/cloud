@@ -43,10 +43,14 @@ impl ApiClient {
                 let creds = self.credentials.lock().await;
                 if let Some(creds) = creds.as_ref() {
                     builder = builder.bearer_auth(&creds.access_token);
+                    tracing::debug!("[api] Using bearer token for {} (refreshed)", path);
                 }
             } else {
                 builder = builder.bearer_auth(&creds.access_token);
+                tracing::debug!("[api] Using bearer token for {}", path);
             }
+        } else {
+            tracing::warn!("[api] No credentials available for {}", path);
         }
 
         Ok(builder)
@@ -97,7 +101,9 @@ impl ApiClient {
 
     pub async fn get<T: for<'de> Deserialize<'de>>(&self, path: &str) -> AppResult<T> {
         let request = self.authenticated_request(reqwest::Method::GET, path).await?;
+        tracing::debug!("[api] GET {} -> sending request", path);
         let response = request.send().await?;
+        tracing::debug!("[api] GET {} -> status: {}", path, response.status());
         self.handle_response(response).await
     }
 
@@ -141,9 +147,11 @@ impl ApiClient {
     }
 
     pub async fn get_file(&self, mount_id: &str, path: &str) -> AppResult<Vec<u8>> {
-        let path = format!("/sync/mounts/{}/files/{}/content", mount_id, path);
-        let request = self.authenticated_request(reqwest::Method::GET, &path).await?;
+        let api_path = format!("/sync/mounts/{}/files/{}/content", mount_id, path);
+        tracing::info!("[api] Downloading file: {}", api_path);
+        let request = self.authenticated_request(reqwest::Method::GET, &api_path).await?;
         let response = request.send().await?;
+        tracing::debug!("[api] Download {} -> status: {}", api_path, response.status());
         if response.status().is_success() {
             Ok(response.bytes().await?.to_vec())
         } else {
@@ -153,18 +161,22 @@ impl ApiClient {
     }
 
     pub async fn upload_file(&self, mount_id: &str, path: &str, content: Vec<u8>, checksum: String) -> AppResult<FileInfo> {
-        let path = format!("/sync/mounts/{}/files{}", mount_id, path);
-        let request = self.authenticated_request(reqwest::Method::PUT, &path).await?
+        let api_path = format!("/sync/mounts/{}/files{}", mount_id, path);
+        tracing::info!("[api] Uploading file: {} ({} bytes)", api_path, content.len());
+        let request = self.authenticated_request(reqwest::Method::PUT, &api_path).await?
             .header("X-File-Checksum", checksum)
             .body(content);
         let response = request.send().await?;
+        tracing::debug!("[api] Upload {} -> status: {}", api_path, response.status());
         self.handle_response(response).await
     }
 
     pub async fn delete_file(&self, mount_id: &str, path: &str) -> AppResult<()> {
-        let path = format!("/sync/mounts/{}/files{}", mount_id, path);
-        let request = self.authenticated_request(reqwest::Method::DELETE, &path).await?;
+        let api_path = format!("/sync/mounts/{}/files{}", mount_id, path);
+        tracing::info!("[api] Deleting file: {}", api_path);
+        let request = self.authenticated_request(reqwest::Method::DELETE, &api_path).await?;
         let response = request.send().await?;
+        tracing::debug!("[api] Delete {} -> status: {}", api_path, response.status());
         if response.status().is_success() {
             Ok(())
         } else {
@@ -174,10 +186,12 @@ impl ApiClient {
     }
 
     pub async fn create_folder(&self, mount_id: &str, path: &str) -> AppResult<FileInfo> {
-        let path = format!("/sync/mounts/{}/files{}", mount_id, path);
-        let request = self.authenticated_request(reqwest::Method::POST, &path).await?
+        let api_path = format!("/sync/mounts/{}/files{}", mount_id, path);
+        tracing::info!("[api] Creating folder: {}", api_path);
+        let request = self.authenticated_request(reqwest::Method::POST, &api_path).await?
             .json(&serde_json::json!({ "type": "folder" }));
         let response = request.send().await?;
+        tracing::debug!("[api] Create folder {} -> status: {}", api_path, response.status());
         self.handle_response(response).await
     }
 }
