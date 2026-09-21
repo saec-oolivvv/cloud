@@ -1,15 +1,15 @@
 # Building SAEC Sync Clients
 
-## Current Status (v0.1.7)
+## Current Status (v0.1.36) - Updated 2026-09-21
 
 | Platform | Artifact | Status |
 |----------|----------|--------|
-| Linux (Debian/Ubuntu) | `saec-sync_0.1.0_amd64.deb` | ✅ Built & Released |
-| Linux (Fedora/RHEL) | `saec-sync-0.1.0-1.x86_64.rpm` | ✅ Built & Released |
+| Linux (Debian/Ubuntu) | `saec-sync_0.1.36_amd64.deb` | ✅ Built & Released |
+| Linux (Fedora/RHEL) | `saec-sync-0.1.36-1.x86_64.rpm` | ✅ Built & Released |
 | Linux (Binary) | `saec-sync-linux-x64` | ✅ Built & Released |
 | Linux AppImage | — | ❌ Not built |
 | Windows (MSI) | — | ❌ Needs Windows |
-| macOS (DMG) | — | ❌ Needs macOS |
+| macOS (DMG) | — | ✅ Built & Released (Universal) |
 
 ## Release Process (Current)
 
@@ -21,15 +21,16 @@ The `upload-artifacts.yml` workflow:
 **To release**: Add artifacts to `artifacts/` folder, commit, tag, push.
 
 ```bash
-# Example for v0.1.8
+# Example for v0.1.37
 mkdir -p artifacts
 cp saec-sync/target/release/saec-sync artifacts/saec-sync-linux-x64
 cp saec-sync/target/release/bundle/deb/*.deb artifacts/
 cp saec-sync/target/release/bundle/rpm/*.rpm artifacts/
-# Add Windows .msi, macOS .dmg, Linux .AppImage when available
+cp saec-sync/target/release/bundle/dmg/*.dmg artifacts/  # macOS universal
+# Add Windows .msi when available
 git add artifacts/
-git commit -m "chore: add artifacts for v0.1.8"
-git tag v0.1.8
+git commit -m "chore: add artifacts for v0.1.37"
+git tag v0.1.37
 git push origin master --tags
 ```
 
@@ -48,7 +49,7 @@ cargo tauri build --target x86_64-unknown-linux-gnu
 **Requirements** (Ubuntu 24.04):
 ```bash
 sudo apt-get install -y \
-  libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+  libwebkit2gtk-4.1-0 libgtk-3-0 libayatana-appindicator3-1 \
   librsvg2-dev libsoup-3.0-dev gstreamer1.0-plugins-base-dev \
   libssl-dev pkg-config file libgirepository1.0-dev \
   libcairo2-dev libpango1.0-dev libatk1.0-dev libgdk-pixbuf-2.0-dev
@@ -94,8 +95,7 @@ brew install node
 cd saec-sync
 npm ci
 npm run build
-cargo tauri build --target aarch64-apple-darwin  # Apple Silicon
-cargo tauri build --target x86_64-apple-darwin  # Intel
+cargo tauri build --target universal-apple-darwin --bundles dmg
 # For Universal: lipo -create -output saec-sync-universal target/aarch64/.../saec-sync target/x86_64/.../saec-sync
 # Then: cargo tauri build --target universal-apple-darwin -- --dmg
 ```
@@ -122,9 +122,9 @@ mkdir -p artifacts
 cp saec-sync/target/release/saec-sync artifacts/saec-sync-linux-x64
 cp saec-sync/target/release/bundle/deb/*.deb artifacts/
 cp saec-sync/target/release/bundle/rpm/*.rpm artifacts/
+cp saec-sync/target/release/bundle/dmg/*.dmg artifacts/  # if built
+cp saec-sync/target/release/bundle/msi/*.msi artifacts/   # if built
 cp saec-sync/target/release/bundle/appimage/*.AppImage artifacts/  # if built
-cp saec-sync/target/release/bundle/msi/*.msi artifacts/           # if built
-cp saec-sync/target/release/bundle/dmg/*.dmg artifacts/           # if built
 
 git add artifacts/
 git commit -m "chore: add artifacts for vX.Y.Z"
@@ -149,9 +149,9 @@ The `/client-sync` page auto-fetches from GitHub Releases API. No code changes n
 - [ ] Linux AppImage ⬜
 - [ ] Windows .msi ⬜ (Windows build)
 - [ ] Windows .exe (NSIS) ⬜
-- [ ] macOS .dmg (ARM64) ⬜
-- [ ] macOS .dmg (x64) ⬜
-- [ ] macOS Universal DMG ⬜
+- [ ] macOS .dmg (ARM64) ✅
+- [ ] macOS .dmg (x64) ✅
+- [ ] macOS Universal DMG ✅
 
 ## Quick Test Commands
 
@@ -160,10 +160,32 @@ The `/client-sync` page auto-fetches from GitHub Releases API. No code changes n
 ./saec-sync-linux-x64 --version
 
 # Test .deb
-sudo apt install ./saec-sync_0.1.0_amd64.deb
+sudo apt install ./saec-sync_0.1.36_amd64.deb
 saec-sync --version
 
 # Test .rpm
-sudo rpm -i saec-sync-0.1.0-1.x86_64.rpm
+sudo rpm -i saec-sync-0.1.36-1.x86_64.rpm
 saec-sync --version
+
+# Test macOS dmg (after mounting)
+/Volumes/SAEC\ Sync/SAEC\ Sync.app/Contents/MacOS/saec-sync --version
 ```
+
+## Recent Fixes (2026-09-21)
+
+1. **Auth Race Condition Fix**: Moved Tauri event listeners (`auth://token`, `auth://error`) to mount-time in `src/App.tsx` (`useEffect(() => { ... }, [login, onSuccess])`) to prevent losing the token event before frontend is ready.
+
+2. **Database Path Fix**: Ensured `.saec-sync` directory exists in sync folder for SQLite database: `~/Library/Application Support/me.saec.sync/sync/.saec-sync/index.db`
+
+3. **FrontendDist Path Fix** — root cause corrected:
+   - **Wrong fix attempted first**: `frontendDist` changed from `"../dist"` to `"dist"` + `mkdir -p dist` in the script. This was based on a misread of the error.
+   - **Actual root cause**: `frontendDist` in Tauri v2 is resolved **relative to the directory containing `tauri.conf.json`** (i.e. `src-tauri/`), not the project root. So `"dist"` resolved to `src-tauri/dist` (never populated — Vite writes to `saec-sync/dist`), producing `Unable to find your web assets`.
+   - **Correct value**: `"frontendDist": "../dist"` → resolves to `saec-sync/dist`, the real Vite output.
+   - The `mkdir -p` in `saec_run.sh` is kept (Tauri's `generate_context!()` checks the path exists at compile time), but now targets the correct directory.
+   - **Takeaway**: Tauri prints the resolved absolute path in parentheses in the error message. Read it before editing the config.
+
+4. **Script Automation**: Created `saec_run.sh` script that automates:
+   - Verification of the auth race-condition fix (parses the real `useEffect` dependency array; fails if `polling` is still present)
+   - Creation of required directories (`dist`, SQLite DB dir)
+   - Cleaning of frontend caches
+   - Launching dev mode or building DMG

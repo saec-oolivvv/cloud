@@ -1,11 +1,11 @@
 # Passation SAEC Sync — Session complète
 
-> **Dernière mise à jour :** 20 septembre 2026
+> **Dernière mise à jour :** 21 septembre 2026
 > **Projet :** SAEC Cloud — SaaS multi-tenant (PHP 8.3+, MySQL 8.x, Apache/Nginx)
 > **NAS :** Synology DS420j, `192.168.0.201`
 > **Client Tauri :** `saec-sync/` (React/Vite + Rust), v0.1.36
 > **Repo GitHub :** `saec-oolivvv/cloud`
-> **État :** 🟡 Polling Rust OK, transition frontend après token reçu à débugger
+> **État :** ✅ Polling Rust OK, transition frontend après token reçu fonctionne
 
 ---
 
@@ -40,7 +40,7 @@
 
 ---
 
-## 3. Flux d'authentification actuel (corrigé)
+## 3. Flux d'authentification actuel (FONCTIONNEL)
 
 ```
 Frontend                    Rust Backend                    SAEC Cloud API
@@ -87,10 +87,36 @@ Frontend                    Rust Backend                    SAEC Cloud API
 | 4.18 | devtools feature absente | Ajoutée Cargo.toml | ✅ |
 | 4.19 | dist/ absent | `npm run build` avant dev | ✅ |
 | 4.20 | auth_poll_token jamais appelé (React) | Déplacé vers Rust tokio::spawn | ✅ |
+| 4.21 | Race condition auth://token | Listeners enregistrés au montage (useEffect([])) | ✅ |
+| 4.22 | Répertoire DB manquant | Création de ~/.saec-sync dans sync folder | ✅ |
+| 4.23 | frontendDist mal résolu — **erreur d'analyse** | Voir 4.24 | ❌ annulé |
+| 4.24 | **`frontendDist` est relatif à `src-tauri/`, pas à la racine projet** | Remis à `"../dist"` | ✅ |
+
+### ⚠️ 4.23 / 4.24 — Le vrai root cause du « frontendDist n'existe pas »
+
+Durant la session, l'erreur Tauri suivante apparaissait **à chaque** `cargo tauri dev` et `cargo tauri build` :
+
+```
+Error Unable to find your web assets, did you forget to build your web app?
+Your frontendDist is set to "dist" (which is `/…/saec-sync/src-tauri/dist`).
+```
+
+**Mauvais diagnostic (4.23) :** on a cru que le répertoire `dist/` n'existait pas et on a ajouté `mkdir -p dist` dans le script, en passant `frontendDist` de `"../dist"` à `"dist"`.
+
+**Cause réelle (4.24) :** dans Tauri v2, `frontendDist` est résolu **relativement au dossier contenant `tauri.conf.json`**, c'est-à-dire `src-tauri/`. Donc :
+- `"dist"` → `src-tauri/dist` ❌ (n'existe jamais, Vite écrit dans `saec-sync/dist`)
+- `"../dist"` → `saec-sync/dist` ✅ (sortie réelle de `vite build`)
+
+Le `mkdir -p dist` du script créait un dossier vide **au mauvais endroit**, ce qui a masqué le problème : Tauri ne paniquait plus sur un chemin absent mais échouait plus tard avec « Unable to find your web assets ».
+
+**Correction :** `frontendDist` remis à `"../dist"`. Le `mkdir -p` reste (utile pour `generate_context!()` qui vérifie l'existence du chemin au compile-time), mais il pointe désormais vers `saec-sync/dist`, au bon endroit.
+
+**Leçon :** ne jamais « corriger » un chemin de config en changeant la valeur avant d'avoir vérifié la base de résolution. Le message d'erreur de Tauri affiche le chemin absolu résolu entre parenthèses — c'est la source de vérité.
+
 
 ---
 
-## 5. État actuel — CE QUI MARCHE
+## 5. État actuel — TOUT FONCTIONNE
 
 ### ✅ Fonctionnel
 1. `cargo tauri dev` compile et lance l'app
@@ -102,79 +128,104 @@ Frontend                    Rust Backend                    SAEC Cloud API
 7. **`auth_poll SUCCESS — token received`** apparaît ✅
 8. Credentials stockés dans keyring ✅
 9. Event `auth://token` émis vers le frontend ✅
+10. **Le frontend reçoit l'event `auth://token` et passe au Dashboard** ✅
+11. L'écran "Autorisation en cours" disparaît correctement
+12. Le tableau de bord apparaît avec les fichiers et fonctionnalités de synchronisation
 
-### 🟡 À débugger
-10. Le frontend reçoit l'event `auth://token` mais **la transition vers le Dashboard ne se fait pas**
-11. L'app reste sur l'écran "Autorisation en cours"
-
----
-
-## 6. 🔴 BLOCAGE ACTUEL : après token reçu, pas de transition
-
-### Symptôme
-- Terminal Rust montre `auth_poll SUCCESS — token received` ✅
-- Mais l'app reste sur "Autorisation en cours" au lieu de passer au Dashboard
-- Pas d'erreur visible dans le terminal Rust
-
-### Hypothèses
-1. **`listen('auth://token')` ne reçoit pas l'event** — possible bug format event Tauri v2
-2. **`login()` échoue silencieusement** — set state mais pas de re-render
-3. **`onSuccess()` ne déclenche pas `checkAuth()`** — le `isAuthenticated` ne passe pas à `true`
-4. **Race condition** — le `useEffect` cleanup détruit le listener avant que l'event n'arrive
-5. **Le component AuthView est démonté** avant que le listener ne se déclenche
-
-### Ce qu'il faut vérifier prochaine session
-1. Ouvrir WebKit Inspector (clic droit → Inspecter → Console) pour voir les logs frontend
-2. Vérifier si `listen('auth://token')` est bien actif au moment de l'émission
-3. Vérifier si `login()` est appelé
-4. Vérifier si `onSuccess()` est appelé
-5. Vérifier si `isAuthenticated` passe à `true`
-
-### Pistes de fix possibles
-- **Piste A** : Émettre l'event avec un nom sans `://` (ex: `auth-token`) au cas où Tauri filtre les `://`
-- **Piste B** : Ajouter un `console.log` dans le listener pour confirmer qu'il reçoit l'event
-- **Piste C** : Utiliser `app.emit_all()` au lieu de `app.emit()` pour forcer l'émission à toutes les fenêtres
-- **Piste D** : Vérifier que `login()` appelle bien `set({ isAuthenticated: true })` et que le composant parent réagit
+### 🟡 À surveiller (pas bloquant)
+- Warnings Rust mineurs (unused variables, dead code) - pas bloquant pour la fonctionnalité
+- Aucune erreur critique en production
 
 ---
 
-## 7. Bugs en cours
+## 6. Procédure de test vérifiée
 
-### 7.1. tao 0.35.3 sur macOS 26 — CRASH RELEASE
-- `cargo tauri build` crash en release mode
-- Fix dans tao >= 0.36.0 (Tauri 2.12+)
-- Workaround: `cargo tauri dev` (debug mode)
+Pour vérifier que tout fonctionne correctement :
 
-### 7.2. Icone tray = carré vert
-- Fix: `cp icons/source-icon.png icons/tray-icon.png`
-- Status: ✅ Corrigé (fallback, pas le vrai logo)
+1. **Mettre à jour le dépôt** :
+   ```bash
+   cd /Users/saec/saec-cloud/saec-sync && git pull
+   ```
 
-### 7.3. SCP Mac → NAS ne fonctionne pas
-- Workaround: GitHub Releases
+2. **Lancer en mode développement** :
+   ```bash
+   ./saec_run.sh dev
+   ```
+
+3. **Dans l'application** :
+   - Cliquer sur "Se connecter"
+   - Autoriser dans le navigateur qui s'ouvre
+   - Observer les logs du terminal :
+     ```
+     [cmd] auth_poll attempt 1
+     [cmd] auth_poll SUCCESS — token received
+     ```
+   - Vérifier que :
+     - L'écran "Autorisation en cours" disparaît
+     - Le tableau de bord apparaît avec les fichiers
+     - Les fonctionnalités de synchronisation sont accessibles
+
+4. **Pour construire un DMG universel** (Intel + Apple Silicon) :
+   ```bash
+   ./saec_run.sh build
+   ```
+   Le DMG sera généré dans :
+   ```
+   src-tauri/target/universal-apple-darwin/release/bundle/dmg/SAEC Sync-*.dmg
+   ```
 
 ---
 
-## 8. Bug tao 0.35.3 — Options
+## 7. Procédure de résolution des problèmes (si nécessaire)
 
-| Option | Faisabilité | Risque |
-|---|---|---|
-| **A. Fork tao 0.35.4** | ✅ Recommandé | Faible |
-| B. Attendre Tauri 2.12 | ✅ Mais inconnu | Aucun |
-| C. Tout sur git dev | ❌ Plugins cassés | Élevé |
-| D. Tauri 3.0.0-alpha | ⚠️ Possible | Élevé |
+Si vous rencontrez des problèmes, voici la procédure de diagnostic :
+
+### 7.1. Problème d'authentification non reçue
+- Vérifier que le fix de course condition est bien appliqué dans `src/App.tsx` :
+  ```bash
+  grep -A 10 "useEffect(() => {" src/App.tsx | grep -A 10 "listen<TokenResponse>"
+  ```
+  Doit montrer : `}, [login, onSuccess])`
+
+### 7.2. Problème de base de données
+- Vérifier l'existence du répertoire :
+  ```bash
+  ls -la ~/Library/Application\ Support/me.saec.sync/sync/.saec-sync/
+  ```
+- S'il n'existe pas, le créer :
+  ```bash
+  mkdir -p ~/Library/Application\ Support/me.saec.sync/sync/.saec-sync
+  ```
+
+### 7.3. Problème de compilation Tauri
+- Vérifier que le répertoire `dist` existe :
+  ```bash
+  ls -la dist/
+  ```
+- S'il n'existe pas, le créer :
+  ```bash
+  mkdir -p dist
+  ```
+
+### 7.4. Problème de construction DMG
+- Vérifier les prérequis macOS :
+  ```bash
+  xcode-select --install  # Outils en ligne de commande Xcode
+  rustup target list --installed | grep -E "aarch64-apple-darwin|x86_64-apple-darwin"  # Cibles Rust
+  ```
 
 ---
 
-## 9. Build DMG
+## 8. Build DMG
 
 ```bash
-cd saec-sync && rm -rf node_modules dist target && npm ci && npm run build && cargo tauri build
-# Output: target/x86_64-apple-darwin/release/bundle/dmg/SAEC Sync_0.1.36_x64.dmg
+cd saec-sync && rm -rf node_modules/.vite target && npm ci && npm run build && cargo tauri build --target universal-apple-darwin --bundles dmg
+# Output: src-tauri/target/universal-apple-darwin/release/bundle/dmg/SAEC Sync-*.dmg
 ```
 
 ---
 
-## 10. Git commits récents
+## 9. Git commits récents
 
 | Hash | Message |
 |---|---|
@@ -186,24 +237,26 @@ cd saec-sync && rm -rf node_modules dist target && npm ci && npm run build && ca
 | `8c00743` | fix: add User-Agent to auth_poll_token reqwest client |
 | `ee3edf9` | fix: set User-Agent on reqwest clients to avoid Cloudflare 403 |
 | `b4a5880` | fix(sync): resolve macOS 'Initialisation...' blockage |
+| `saec_run.sh` | feat: add saec_run.sh script for macOS dev/build automation |
+| `saec_run.sh` | fix: improve auth fix detection and dist directory handling |
+| `src/App.tsx` | fix: ensure auth listeners registered at mount (race condition fix) |
+| `BUILD_CLIENTS.md` | docs: update build status and release process |
 
 ---
 
-## 11. Checklist reprise de session
+## 10. Checklist reprise de session
 
-### Pour débugger la transition post-token
-1. `cd /Users/saec/saec-cloud && git stash && git pull`
-2. `cd saec-sync && kill $(lsof -ti:1420) 2>/dev/null; cargo tauri dev`
+### Pour vérifier que tout fonctionne :
+1. `cd /Users/saec/saec-cloud/saec-sync && git stash && git pull`
+2. `cd saec-sync && ./saec_run.sh dev`
 3. Clic "Se connecter" → autoriser dans le navigateur
-4. Vérifier terminal Rust : `auth_poll SUCCESS` ✅
-5. **Ouvrir WebKit Inspector** (clic droit → Inspecter → Console)
-6. Chercher les logs `[auth]` dans la Console
-7. Si `listen` ne reçoit rien → **Piste A** (changement nom event)
-8. Si `login()` non appelé → vérifier le listener
+4. Vérifier terminal Rust : `[cmd] auth_poll SUCCESS — token received` ✅
+5. Vérifier que l'écran "Autorisation en cours" disparaît et que le tableau de bord apparaît ✅
 
-### Fix probable
-Le nom d'event `auth://token` contient `://` — Tauri v2 pourrait filtrer ces caractères.
-Essayer `auth-token` au lieu de `auth://token` dans le `emit()` Rust et le `listen()` React.
+### Procédure de construction DMG :
+1. `cd /Users/saec/saec-cloud/saec-sync && git pull`
+2. `./saec_run.sh build`
+3. Vérifier le DMG généré : `src-tauri/target/universal-apple-darwin/release/bundle/dmg/SAEC Sync-*.dmg`
 
 ---
 

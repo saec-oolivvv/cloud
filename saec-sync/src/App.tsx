@@ -246,9 +246,8 @@ function AuthView({ onSuccess }: { onSuccess: () => void }) {
     }
   }
 
+  // Register listeners at mount — before auth_device_code can emit
   useEffect(() => {
-    if (!polling) return
-
     let cancelled = false
 
     const unlistenToken = listen<TokenResponse>('auth://token', async (event) => {
@@ -271,7 +270,7 @@ function AuthView({ onSuccess }: { onSuccess: () => void }) {
       unlistenToken.then(fn => fn())
       unlistenError.then(fn => fn())
     }
-  }, [polling, login, onSuccess])
+  }, [login, onSuccess])
 
   if (deviceCode && polling) {
     return (

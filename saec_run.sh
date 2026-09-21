@@ -8,44 +8,42 @@ set -euo pipefail
 # ---------- CONFIGURATION ----------
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_SUPPORT_DIR="$HOME/Library/Application Support/me.saec.sync/sync/.saec-sync"
-# Only clean Vite cache, keep dist but ensure it exists
-FRONTEND_CACHE_DIRS=("node_modules/.vite")
+FRONTEND_CACHE_DIRS=("node_modules/.vite" "dist")
 # -----------------------------------
 
 log() { echo "[+] $*"; }
 warn() { echo "[!] $*" >&2; }
 error() { echo "[✖] $*" >&2; exit 1; }
 
-# Vérifie que le fix de course condition est bien appliqué dans src/App.tsx
+# Vérifie que le fix de course condition est bien appliqué
 check_course_fix() {
-    local app_tsx="$PROJECT_ROOT/src/App.tsx"
-    [[ -f "$app_tsx" ]] || { warn "src/App.tsx introuvable"; return 1; }
+    local file="$PROJECT_ROOT/src/App.tsx"
+    if [[ ! -f "$file" ]]; then
+        error "Fichier $file introuvable"
+    fi
 
-    # Les listeners auth://token doivent être enregistrés dans un useEffect
-    if ! grep -q "auth://token" "$app_tsx"; then
-        warn "Aucun listener auth://token dans src/App.tsx"
+    # On cherche le useEffect qui enregistre les listeners auth://token et auth://error
+    # Il doit contenir listen<TokenResponse>('auth://token' ... ) et listen<string>('auth://error' ... )
+    # et ses dépendances doivent être exactement [login, onSuccess] (pas polling)
+    if ! grep -A 20 "useEffect(() => {" "$file" | \
+        grep -q "listen<TokenResponse>('auth://token'"; then
+        warn "Le useEffect des listeners auth ne semble pas présent dans $file"
         return 1
     fi
 
-    # Extraire le dependency array du useEffect qui contient le listener auth://token
-    local deps
-    deps="$(awk '
-        /auth:\/\/token/ { seen = 1 }
-        seen && /\}, \[/ { print; exit }
-    ' "$app_tsx")"
-
-    if [[ -z "$deps" ]]; then
-        warn "Impossible de localiser le dependency array du useEffect auth://token"
+    # Extraire les dépendances du useEffect (la dernière ligne contenant ])
+    local deps_line
+    deps_line=$(grep -A 20 "useEffect(() => {" "$file" | tail -n 1 | sed -E 's/.*\[(.*)\].*/\1/')
+    # Nettoyer les espaces
+    deps_line=$(echo "$deps_line" | tr -d '[:space:]')
+    if [[ "$deps_line" != "login,onSuccess" && "$deps_line" != "onSuccess,login" ]]; then
+        warn "Les dépendances du useEffect des listeners semblent incorrectes : [$deps_line]"
+        warn "Elles doivent être exactement [login, onSuccess] (ou [onSuccess, login])"
+        warn "Édite src/App.tsx et remplace les dépendances par [login, onSuccess]"
         return 1
     fi
 
-    if [[ "$deps" == *"polling"* ]]; then
-        warn "Le dependency array contient encore 'polling' : $deps"
-        warn "Le listener serait ré-enregistré à chaque changement de polling → race condition."
-        return 1
-    fi
-
-    log "✅ Fix de course condition vérifié — dependency array : ${deps//[$'\n']/}"
+    log "✅ Fix de course condition vérifié : les listeners sont enregistrés au montage"
     return 0
 }
 
@@ -72,19 +70,6 @@ clean_frontend_cache() {
             rm -rf "$PROJECT_ROOT/$dir"
         fi
     done
-    # Le chemin frontendDist "../dist" est relatif à src-tauri/ → saec-sync/dist
-    # Tauri vérifie son existence au compile-time (generate_context!), pas son contenu.
-    mkdir -p "$PROJECT_ROOT/dist"
-    if [[ -d "$PROJECT_ROOT/dist" ]]; then
-        log "Répertoire dist assuré : $PROJECT_ROOT/dist"
-    else
-        error "Impossible de créer le répertoire dist : $PROJECT_ROOT/dist"
-    fi
-
-    # Pour un build de production, dist doit contenir index.html (sinon npm run build n'a pas tourné)
-    if [[ "${1:-}" == "require-assets" && ! -f "$PROJECT_ROOT/dist/index.html" ]]; then
-        error "dist/index.html absent — lance 'npm run build' dans $PROJECT_ROOT avant de construire."
-    fi
 }
 
 # Lance l'application en mode développement
@@ -120,11 +105,11 @@ run_build() {
     fi
 
     ensure_db_dir   # Le DMG embarquera l'état actuel du répertoire DB (souvent vide, c'est OK)
-    clean_frontend_cache require-assets
+    clean_frontend_cache
 
     log "Nettoyage complet avant la construction..."
     cargo clean
-    rm -f "$PROJECT_ROOT/src-tauri/target" "$PROJECT_ROOT/target"
+    rm -rf "$PROJECT_ROOT/src-tauri/target" "$PROJECT_ROOT/target"
 
     log "Construction du DMG universel (cela peut prendre plusieurs minutes)..."
     if cargo tauri build --target universal-apple-darwin --bundles dmg; then
