@@ -195,10 +195,22 @@ saec-sync --version
    - **Frontend** (`src/store/auth.ts`): `checkAuth` now calls `refresh_credentials` instead of `get_credentials`. If access token expired, it's transparently refreshed.
    - Result: User stays logged in as long as app is installed (refresh token valid ~30 days).
 
+6. **Sync Debug Logging**: Added comprehensive debug logging to trace sync operations.
+   - **Rust** (`src-tauri/src/api/client.rs`): All API calls (GET/PUT/DELETE/POST) log request path and response status.
+   - **Rust** (`src-tauri/src/sync/engine.rs`): `sync_mount` logs mount info, remote file count, delta calculation results.
+   - Purpose: Diagnose why sync doesn't start — likely missing server endpoints.
+
 ## Known Limitations (v0.1.36)
 
-- **Synchronization NOT IMPLEMENTED**: The DMG builds successfully, but file synchronization with SAEC Cloud is not functional.
-  - Methods `sync_mount`, `upload_file`, `download_file` in `src-tauri/src/sync/engine.rs` are stubs returning `Ok(())`.
-  - The `SyncEngine` starts and indexes local files, but **no API calls to SAEC Cloud are made**.
-  - To implement sync: connect API client to `/api/v1/files` and `/api/v1/blobs` endpoints, implement upload/download logic in `engine.rs`.
-  - This is a **backend feature gap**, not a build issue.
+- **Synchronization NOT YET FUNCTIONAL** (client ready, server endpoints missing):
+  - Client code in `src-tauri/src/sync/engine.rs` and `api/client.rs` is **fully implemented** for sync operations.
+  - `SyncEngine` starts, indexes local files, calculates deltas, handles conflicts.
+  - **Blocker**: Server endpoints `/api/sync/mounts/{id}/files` and related endpoints **do not exist** on SAEC Cloud (PHP).
+  - Debug logging added to confirm: run with `RUST_LOG=saec_sync=debug` — will show 404/500 on `list_files` calls.
+  - To enable sync: implement these endpoints in SAEC Cloud PHP backend:
+    - `GET /api/sync/mounts/{id}/files?path=`
+    - `GET /api/sync/mounts/{id}/files/{path}/content`
+    - `PUT /api/sync/mounts/{id}/files/{path}` + `X-File-Checksum`
+    - `DELETE /api/sync/mounts/{id}/files/{path}`
+    - `POST /api/sync/mounts/{id}/files/{path}` + `{"type":"folder"}`
+  - This is a **server-side implementation task**, not a client build issue.

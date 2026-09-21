@@ -93,6 +93,7 @@ Frontend                    Rust Backend                    SAEC Cloud API
 | 4.24 | **`frontendDist` est relatif à `src-tauri/`, pas à la racine projet** | Remis à `"../dist"` | ✅ |
 | 4.25 | **SQLite code 14 : espace non échappé dans chemin DB** | `urlencoding::encode()` sur chemin avant connect | ✅ |
 | 4.26 | **Ré-authentification à chaque redémarrage** | `refresh_credentials` command Rust + `checkAuth` frontend appelle `refresh_credentials` | ✅ |
+| 4.27 | **Synchronisation ne démarre pas** | Endpoint `/api/sync/mounts/{id}/files` manquant côté serveur + debug logs ajoutés | ⚠️ en cours |
 
 ### ⚠️ 4.25 — SQLite CANTOPEN : espace dans « Application Support »
 
@@ -189,6 +190,24 @@ Le `mkdir -p dist` du script créait un dossier vide **au mauvais endroit**, ce 
 2. **Frontend (`src/store/auth.ts`)** : `checkAuth` appelle maintenant `refresh_credentials` au lieu de `get_credentials`. Si le refresh réussit, l'utilisateur reste connecté.
 
 **Résultat :** L'autorisation est maintenant **permanente** tant que l'app n'est pas supprimée (le refresh token est valide longtemps, typiquement 30 jours).
+
+### ⚠️ 4.27 — Synchronisation ne démarre pas
+
+**Problème :** Le `SyncEngine` démarre correctement, fait le `Full scan` local, mais **ne synchronise pas avec le cloud** — pas d'uploads, pas de downloads, pas d'erreurs visibles.
+
+**Root cause :** L'endpoint serveur `/api/sync/mounts/{id}/files` (et les autres endpoints `/api/sync/*`) **n'existe pas** côté SAEC Cloud (PHP). Le client appelle ces endpoints mais reçoit probablement 404/500 sans que l'erreur ne soit loggée de manière visible.
+
+**Fix en cours :**
+1. **Client Rust** : Ajout de logs debug détaillés dans `api/client.rs` (tous les appels GET/PUT/DELETE/POST) et dans `engine.rs` (`sync_mount`) pour tracer chaque étape.
+2. **Nécessaire côté serveur (SAEC Cloud PHP)** : Implémenter les endpoints suivants :
+   - `GET /api/sync/mounts` ✅ (déjà OK)
+   - `GET /api/sync/mounts/{id}/files?path=` — Liste fichiers
+   - `GET /api/sync/mounts/{id}/files/{path}/content` — Télécharge fichier
+   - `PUT /api/sync/mounts/{id}/files/{path}` + Header `X-File-Checksum` — Upload
+   - `DELETE /api/sync/mounts/{id}/files/{path}` — Supprime
+   - `POST /api/sync/mounts/{id}/files/{path}` + `{"type":"folder"}` — Crée dossier
+
+**Prochaine étape :** Tester avec `RUST_LOG=saec_sync=debug` pour confirmer que le serveur retourne 404/500 sur `list_files`, puis implémenter les endpoints côté PHP.
 
 ---
 

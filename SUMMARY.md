@@ -85,24 +85,33 @@ target/universal-apple-darwin/release/bundle/dmg/SAEC Sync-*.dmg
 
 ---
 
-## ⚠️ Limitation connue : Synchronisation non implémentée
+## ⚠️ Limitation connue : Synchronisation bloquée côté serveur
 
-Le DMG se construit avec succès, mais **la synchronisation de fichiers ne fonctionne pas** :
+Le DMG se construit avec succès, l'authentification est permanente, **mais la synchronisation ne démarre pas** :
 
 | Composant | Statut |
 |-----------|--------|
-| Authentification | ✅ Fonctionnel |
+| Authentification | ✅ Fonctionnelle (persistante) |
 | Dashboard | ✅ Apparaît |
 | Indexation locale (SQLite) | ✅ Fonctionnelle |
-| **Synchronisation cloud** | ❌ **Non implémentée** |
+| **Synchronisation cloud** | ⚠️ **Client prêt, serveur manquant** |
 
-**Cause** : Dans `src-tauri/src/sync/engine.rs`, les méthodes critiques sont des stubs :
-```rust
-async fn sync_mount(&self, _mount: &MountInfo) -> AppResult<()> { Ok(()) }
-async fn upload_file(&self, _mount_id: &str, _item: DeltaItem) -> AppResult<()> { Ok(()) }
-async fn download_file(&self, _mount_id: &str, _item: DeltaItem) -> AppResult<()> { Ok(()) }
-```
+**Cause** : Le code client dans `src-tauri/src/sync/engine.rs` et `src-tauri/src/api/client.rs` est **entièrement implémenté** :
+- `SyncEngine` démarre, crée le watcher, fait le `Full scan` local
+- Calcule les deltas (upload/download/conflicts)
+- Gère les stratégies de conflit (LastWriteWins, KeepLocal, KeepRemote, KeepBoth)
+- Upload/download fichiers avec checksums Blake3
 
-Le `SyncEngine` démarre, crée le watcher, fait un `Full scan` (indexe les fichiers locaux), mais **aucun appel API vers SAEC Cloud n'est effectué**. Les logs montrent `File watcher started` et `Full scan complete`, mais pas de téléchargement/push.
+**Mais** : Les endpoints serveur `/api/sync/mounts/{id}/files` et suivants **n'existent pas** sur SAEC Cloud (PHP). Le client appelle ces endpoints et reçoit probablement 404/500.
 
-**Pour activer le sync** : implémenter ces méthodes dans `engine.rs` et connecter l'API client aux endpoints `/api/v1/files` et `/api/v1/blobs`.
+**Debug logging ajouté** pour confirmer : lance avec `RUST_LOG=saec_sync=debug` — tu verras les appels `GET /sync/mounts/xxx/files` et leur status HTTP.
+
+**Pour activer le sync** : implémenter ces endpoints côté serveur SAEC Cloud (PHP) :
+- `GET /api/sync/mounts` ✅ (déjà OK)
+- `GET /api/sync/mounts/{id}/files?path=`
+- `GET /api/sync/mounts/{id}/files/{path}/content`
+- `PUT /api/sync/mounts/{id}/files/{path}` + Header `X-File-Checksum`
+- `DELETE /api/sync/mounts/{id}/files/{path}`
+- `POST /api/sync/mounts/{id}/files/{path}` + `{"type":"folder"}`
+
+C'est une **tâche côté serveur**, pas un problème de build client.
