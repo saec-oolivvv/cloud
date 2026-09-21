@@ -6,6 +6,7 @@ use tokio::sync::Mutex;
 use chrono::{DateTime, Utc};
 use blake3;
 use tracing::{debug, info};
+use urlencoding::encode;
 
 pub struct FileIndex {
     pool: Arc<Mutex<Option<Pool<Sqlite>>>>,
@@ -27,9 +28,11 @@ impl FileIndex {
             tokio::fs::create_dir_all(parent).await?;
         }
 
+        let db_url = format!("sqlite://{}?mode=rwc", encode(&self.db_path.to_string_lossy()));
+
         let pool = SqlitePoolOptions::new()
             .max_connections(5)
-            .connect(&format!("sqlite:{}", self.db_path.display()))
+            .connect(&db_url)
             .await?;
 
         // Run migrations

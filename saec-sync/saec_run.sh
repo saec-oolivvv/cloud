@@ -94,20 +94,6 @@ run_dev() {
     ensure_db_dir
     clean_frontend_cache
 
-    # Override database path to avoid spaces in the path which can cause SQLite issues on some systems
-    export SAEC_SYNC_ADVANCED_DATABASE_PATH="/tmp/saec-sync/index.db"
-    mkdir -p "$(dirname "$SAEC_SYNC_ADVANCED_DATABASE_PATH")"
-    if [[ ! -w "$(dirname "$SAEC_SYNC_ADVANCED_DATABASE_PATH")" ]]; then
-        error "Le répertoire $(dirname "$SAEC_SYNC_ADVANCED_DATABASE_PATH") n'est pas writable."
-    fi
-    # Test d'écriture réel pour le chemin de substitution
-    local test_file="$(dirname "$SAEC_SYNC_ADVANCED_DATABASE_PATH")/.write_test_$$"
-    if touch "$test_file" 2>/dev/null && rm -f "$test_file"; then
-        log "✅ Répertoire DB de substitution prêt et writable : $(dirname "$SAEC_SYNC_ADVANCED_DATABASE_PATH")"
-    else
-        error "Impossible d'écrire dans $(dirname "$SAEC_SYNC_ADVANCED_DATABASE_PATH"). Vérifie les permissions."
-    fi
-
     log "Démarrage de cargo tauri dev..."
     log "Après l'autorisation device-code, tu devrais voir :"
     log "  - [cmd] auth_poll SUCCESS — token received"
