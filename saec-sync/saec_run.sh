@@ -26,47 +26,49 @@ check_course_fix() {
     # Il doit contenir listen<TokenResponse>('auth://token' ... ) et listen<string>('auth://error' ... )
     # et ses dépendances doivent être exactement [login, onSuccess] (pas polling)
 
-    # Extraire la section AuthView complète et chercher le useEffect avec les listeners auth
+    # Extraire la section AuthView complète (de la fonction à la prochaine fonction ou à la fin du fichier)
+    # Utiliser sed pour récupérer le bloc entre 'function AuthView' et la prochaine 'function ' ou fin de fichier
     local auth_view_section
-    auth_view_section=$(awk '/function AuthView/,/^}/' "$file" 2>/dev/null)
-
+    auth_view_section=$(sed -n '/function AuthView/,/^function /p' "$file" 2>/dev/null)
+    # Si pas de prochaine fonction, prendre jusqu'à la fin
     if [[ -z "$auth_view_section" ]]; then
-        # Fallback: chercher dans tout le fichier le useEffect avec auth listeners
-        if ! echo "$auth_view_section" | grep -q "listen<TokenResponse>('auth://token'"; then
-            warn "Le useEffect des listeners auth ne semble pas présent dans $file (section AuthView)"
-            return 1
-        fi
-    else
-        if ! echo "$auth_view_section" | grep -q "listen<TokenResponse>('auth://token'"; then
-            warn "Le useEffect des listeners auth ne semble pas présent dans AuthView"
-            return 1
-        fi
+        auth_view_section=$(sed -n '/function AuthView/,$p' "$file")
     fi
 
-    # Extraire les dépendances du useEffect qui contient les listeners auth
-    # On cherche le useEffect qui a les deux listeners, puis on prend sa ligne de fermeture
-    local deps_line
-    # Utiliser une approche plus robuste : chercher le useEffect contenant les deux listeners
-    deps_line=$(awk '
-        /useEffect\(\(\) => \{/ { in_useeffect=1; buffer="" }
-        in_useeffect { buffer = buffer $0 "\n" }
-        /listen<TokenResponse>.*auth:\/\/token/ { has_token=1 }
-        /listen<string>.*auth:\/\/error/ { has_error=1 }
-        in_useeffect && /^\s*}\s*,\s*\[.*\]\s*\)/ && has_token && has_error {
-            # Extraire ce qui est entre [ et ]
-            match($0, /\[([^\]]*)\]/, arr)
-            if (arr[1] != "") print arr[1]
-            exit
-        }
-    ' "$file")
-
-    if [[ -z "$deps_line" ]]; then
-        warn "Impossible de trouver les dépendances du useEffect avec les listeners auth"
+    if [[ -z "$auth_view_section" ]]; then
+        warn "Impossible d'extraire la section AuthView depuis $file"
         return 1
     fi
 
-    # Nettoyer les espaces
-    deps_line=$(echo "$deps_line" | tr -d '[:space:]')
+    # Vérifier que cette section contient les deux listeners
+    if ! echo "$auth_view_section" | grep -q "listen<TokenResponse>.*auth:\/\/token"; then
+        warn "Le listener auth://token n'est pas trouvé dans la section AuthView"
+        return 1
+    fi
+    if ! echo "$auth_view_section" | grep -q "listen<string>.*auth:\/\/error"; then
+        warn "Le listener auth://error n'est pas trouvé dans la section AuthView"
+        return 1
+    fi
+
+    # Maintenant, extraire la ligne contenant les dépendances du useEffect qui contient ces listeners
+    # On cherche la ligne qui a un '[' suivi de quelque chose puis ']' juste avant la fermeture de useEffect
+    # On prend la dernière ligne du useEffect qui contient un '[' et un ']'
+    local deps_line
+    deps_line=$(echo "$auth_view_section" | sed -n '/useEffect(() => {/,/})/p' | grep -E '\s*\[[^]]*\]\s*[),]' | tail -1)
+
+    if [[ -z "$deps_line" ]]; then
+        # Fallback: chercher dans toute la section
+        deps_line=$(echo "$auth_view_section" | grep -E '\s*\[[^]]*\]\s*[),]' | tail -1)
+    fi
+
+    if [[ -z "$deps_line" ]]; then
+        warn "Impossible de trouver les dépendances du useEffect avec les listeners auth dans AuthView"
+        return 1
+    fi
+
+    # Nettoyer les espaces et les caractères spéciaux autour
+    deps_line=$(echo "$deps_line" | sed -E 's/.*\[([^]]*)\].*/\1/' | tr -d '[:space:]')
+
     if [[ "$deps_line" != "login,onSuccess" && "$deps_line" != "onSuccess,login" ]]; then
         warn "Les dépendances du useEffect des listeners semblent incorrectes : [$deps_line]"
         warn "Elles doivent être exactement [login, onSuccess] (ou [onSuccess, login])"
